@@ -20,7 +20,6 @@ use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
 use internet2::lnp;
-use internet2::lnp::application::payment;
 
 #[cfg(feature = "node")]
 use crate::error::RuntimeError;
@@ -102,6 +101,7 @@ where
     }
 }
 
+/*
 impl From<payment::channel::NegotiationError> for Failure {
     fn from(err: payment::channel::NegotiationError) -> Self {
         Failure {
@@ -110,3 +110,4 @@ impl From<payment::channel::NegotiationError> for Failure {
         }
     }
 }
+*/

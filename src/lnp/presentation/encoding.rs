@@ -11,7 +11,7 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use amplify::{IoError, Wrapper};
+use amplify::IoError;
 use core::any::Any;
 use core::borrow::Borrow;
 use std::io;
@@ -320,6 +320,7 @@ pub mod strategies {
         type Strategy = AsBitcoinHash;
     }
 
+    /*
     impl Strategy for crate::bp::HashLock {
         type Strategy = AsWrapped;
     }
@@ -327,6 +328,7 @@ pub mod strategies {
     impl Strategy for crate::bp::HashPreimage {
         type Strategy = AsWrapped;
     }
+     */
 
     impl Strategy for bitcoin::OutPoint {
         type Strategy = AsStrict;
@@ -605,6 +607,7 @@ mod collections {
     }
 }
 
+/*
 use crate::lnp::ChannelId;
 // With ChannelId we have a special situation when zero-based channel id
 // represents "all channels" and is encoded in LNP as an Option::None
@@ -633,8 +636,10 @@ impl LightningDecode for Option<ChannelId> {
         }
     }
 }
+*/
 
 // TODO: Replace this temporary solution with proper TLV processing
+/*
 mod temp_before_tlv {
     use super::*;
     use crate::bp::chain::AssetId;
@@ -657,3 +662,4 @@ mod temp_before_tlv {
         }
     }
 }
+*/

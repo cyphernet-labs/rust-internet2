@@ -33,8 +33,6 @@ extern crate amplify;
 extern crate amplify_derive;
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate num_derive;
 
 extern crate chacha20poly1305;
 
@@ -53,10 +51,8 @@ extern crate serde_crate as serde;
 // of the libs so downstream dependencies can use them directly from this lib
 // TODO: Refactor re-exported bitcoin and hashes functionality
 pub extern crate bitcoin;
+pub use bitcoin::hashes::hex;
 pub use bitcoin::secp256k1;
-#[macro_use]
-pub extern crate bitcoin_hashes as hashes;
-pub use hashes::hex;
 pub extern crate miniscript;
 #[cfg(feature = "bulletproofs")]
 pub extern crate secp256k1zkp;
@@ -68,7 +64,6 @@ extern crate internet2_derive;
 pub mod test_helpers;
 #[macro_use]
 mod paradigms;
-mod standards;
 #[macro_use]
 pub mod bp;
 #[cfg(feature = "lnp")]
@@ -77,12 +72,7 @@ pub mod bp;
 pub mod lnp;
 
 pub use lnp::presentation::encoding as lightning_encoding;
-pub use paradigms::{
-    client_side_validation, commit_verify, single_use_seals, strict_encoding,
-};
-#[cfg(feature = "elgamal")]
-pub use standards::elgamal;
-pub use standards::{features, lnpbp1, lnpbp2, lnpbp3, lnpbp4};
+pub use paradigms::strict_encoding;
 
 lazy_static! {
     /// Global Secp256k1 context object

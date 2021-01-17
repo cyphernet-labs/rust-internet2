@@ -27,7 +27,6 @@ use ed25519_dalek::ed25519::signature::Signature;
 use miniscript::descriptor::DescriptorSinglePub;
 use miniscript::{policy, Miniscript, MiniscriptKey};
 
-use super::blind::OutpointHash;
 use crate::strict_encoding::{self, Error, StrictDecode, StrictEncode};
 
 impl strict_encoding::Strategy for Txid {
@@ -37,9 +36,6 @@ impl strict_encoding::Strategy for Wtxid {
     type Strategy = strict_encoding::strategies::HashFixedBytes;
 }
 impl strict_encoding::Strategy for BlockHash {
-    type Strategy = strict_encoding::strategies::HashFixedBytes;
-}
-impl strict_encoding::Strategy for OutpointHash {
     type Strategy = strict_encoding::strategies::HashFixedBytes;
 }
 impl strict_encoding::Strategy for XpubIdentifier {
@@ -527,24 +523,12 @@ where
 
 #[cfg(test)]
 pub(crate) mod test {
-    use std::{convert::TryFrom, str::FromStr};
+    use std::str::FromStr;
 
-    use bitcoin::{
-        consensus, hashes::hex::FromHex, secp256k1::Message, BlockHash,
-    };
+    use bitcoin::{consensus, hashes::hex::FromHex, secp256k1::Message};
 
     use super::*;
-    use crate::bp::{blind::OutpointReveal, short_id, ShortId};
     use crate::test_helpers::test_suite;
-
-    pub(crate) fn encode_decode<T: StrictEncode + StrictDecode>(
-        object: &T,
-    ) -> Result<(T, usize), Error> {
-        let mut encoded_object: Vec<u8> = vec![];
-        let written = object.strict_encode(&mut encoded_object).unwrap();
-        let decoded_object = T::strict_decode(&encoded_object[..]).unwrap();
-        Ok((decoded_object, written))
-    }
 
     #[test]
     fn test_encoding_network() {
@@ -679,99 +663,6 @@ pub(crate) mod test {
     }
 
     #[test]
-    fn test_encoding_shortids() {
-        static SHORT_ONCHAINBLOCK: [u8; 8] =
-            [0x0, 0x0, 0x0, 0x0, 0x20, 0x97, 0xcc, 0x9];
-        static SHORT_ONCHAINTX: [u8; 8] =
-            [0x0, 0x0, 0x5, 0x0, 0x20, 0x97, 0xcc, 0x9];
-        static SHORT_ONCHAINTXINPUT: [u8; 8] =
-            [0x6, 0x0, 0x5, 0x0, 0x20, 0x97, 0xcc, 0x9];
-        static SHORT_ONCHAINTXOUT: [u8; 8] =
-            [0x6, 0x0, 0x5, 0x80, 0x20, 0x97, 0xcc, 0x9];
-        static SHORT_OFFCHAINTX: [u8; 8] =
-            [0x0, 0x00, 0x53, 0xc6, 0x31, 0x13, 0xed, 0x80];
-        static SHORT_OFFCHAINTXIN: [u8; 8] =
-            [0x6, 0x0, 0x53, 0xc6, 0x31, 0x13, 0xed, 0x80];
-        static SHORT_OFFCHAINTXOUT: [u8; 8] =
-            [0x6, 0x0, 0x53, 0xc6, 0x31, 0x13, 0xed, 0x80];
-
-        let block_checksum = short_id::BlockChecksum::from(
-            BlockHash::from_hex("00000000000000000000fc48ad6e814097387355463c9ba4fdf8ecc2df34b52f")
-                .unwrap(),
-        );
-        let tx_checksum = short_id::TxChecksum::from(
-            Txid::from_hex("217861d1a487f8e7140b9da48385e3e5d64d1ffdcd8edf0afc6818ed1331c653")
-                .unwrap(),
-        );
-        let height = 642199u32;
-        let tx_index = 5u16;
-        let input_index = 5u16;
-        let output_index = 5u16;
-
-        // Test OnchainBlock
-        let des = short_id::Descriptor::OnchainBlock {
-            block_height: height,
-            block_checksum: block_checksum,
-        };
-        let short_id = ShortId::try_from(des).unwrap();
-        // TOD0: descriptor validity fails
-        //short_id.get_descriptor().try_validity().unwrap();
-        test_suite(&short_id, &SHORT_ONCHAINBLOCK, 8);
-
-        // test ShortId for OnchainTransaction
-        let des = short_id::Descriptor::OnchainTransaction {
-            block_height: height,
-            block_checksum: block_checksum,
-            tx_index: tx_index,
-        };
-        let short_id = ShortId::try_from(des).unwrap();
-        test_suite(&short_id, &SHORT_ONCHAINTX, 8);
-
-        // test ShortId for OnchainTxInput
-        let des = short_id::Descriptor::OnchainTxInput {
-            block_height: height,
-            block_checksum: block_checksum,
-            tx_index: tx_index,
-            input_index: input_index,
-        };
-        let short_id = ShortId::try_from(des).unwrap();
-        test_suite(&short_id, &SHORT_ONCHAINTXINPUT, 8);
-
-        // test ShortId for OnchainTxOutput
-        let des = short_id::Descriptor::OnchainTxOutput {
-            block_height: height,
-            block_checksum: block_checksum,
-            tx_index: tx_index,
-            output_index: output_index,
-        };
-        let short_id = ShortId::try_from(des).unwrap();
-        test_suite(&short_id, &SHORT_ONCHAINTXOUT, 8);
-
-        // test ShortId for OffchainTransaction
-        let des = short_id::Descriptor::OffchainTransaction {
-            tx_checksum: tx_checksum,
-        };
-        let short_id = ShortId::try_from(des).unwrap();
-        test_suite(&short_id, &SHORT_OFFCHAINTX, 8);
-
-        // test ShortId for OffchainTxInput
-        let des = short_id::Descriptor::OffchainTxInput {
-            tx_checksum: tx_checksum,
-            input_index: input_index,
-        };
-        let short_id = ShortId::try_from(des).unwrap();
-        test_suite(&short_id, &SHORT_OFFCHAINTXIN, 8);
-
-        // test ShortId for OffchainTxOutput
-        let des = short_id::Descriptor::OffchainTxOutput {
-            tx_checksum: tx_checksum,
-            output_index: output_index,
-        };
-        let short_id = ShortId::try_from(des).unwrap();
-        test_suite(&short_id, &SHORT_OFFCHAINTXOUT, 8);
-    }
-
-    #[test]
     fn test_encoding_outpoint() {
         static OUTPOINT: [u8; 36] = [
             0x53, 0xc6, 0x31, 0x13, 0xed, 0x18, 0x68, 0xfc, 0xa, 0xdf, 0x8e,
@@ -793,33 +684,9 @@ pub(crate) mod test {
 
         // test random and null outpoints
         let outpoint = OutPoint::new(txid, vout);
-        let decoded_outpoint = test_suite(&outpoint, &OUTPOINT, 36);
+        let _ = test_suite(&outpoint, &OUTPOINT, 36);
         let null = OutPoint::null();
-        let decoded_null = test_suite(&null, &OUTPOINT_NULL, 36);
-
-        // test random and null revealed outpoints
-        // test_suite cannot be used here because blinding factor is random.
-        let outpoint_reveal = OutpointReveal::from(decoded_outpoint);
-        let (decoded, written) = encode_decode(&outpoint_reveal).unwrap();
-        assert_eq!(written, 44);
-        assert_eq!(decoded, outpoint_reveal);
-
-        let null = OutpointReveal::from(decoded_null);
-        let (decoded, written) = encode_decode(&null).unwrap();
-        assert_eq!(written, 44);
-        assert_eq!(decoded, null);
-
-        // test random and null outpoint hash
-        // test_suite cannot be used here because blinding factor is random.
-        let random = OutpointHash::from(decoded_outpoint);
-        let (decoded, written) = encode_decode(&random).unwrap();
-        assert_eq!(written, 32);
-        assert_eq!(decoded, random);
-
-        let null = OutpointHash::from(decoded_null);
-        let (decoded_null, written) = encode_decode(&null).unwrap();
-        assert_eq!(written, 32);
-        assert_eq!(decoded_null, null);
+        let _ = test_suite(&null, &OUTPOINT_NULL, 36);
     }
 
     #[test]

@@ -13,9 +13,9 @@
 
 use bitcoin::secp256k1;
 
+use bitcoin::hashes::sha256::Hash as Sha256;
+use bitcoin::hashes::{Hash, HashEngine};
 use bitcoin::secp256k1::{PublicKey, SecretKey};
-use bitcoin_hashes::sha256::Hash as Sha256;
-use bitcoin_hashes::{Hash, HashEngine};
 
 use super::act::{
     Act, ActBuilder, ACT_ONE_LENGTH, ACT_THREE_LENGTH, ACT_TWO_LENGTH,
@@ -672,7 +672,7 @@ mod test {
     use super::HandshakeState::*;
     use super::*;
 
-    use bitcoin_hashes::hex::{FromHex, ToHex};
+    use bitcoin::hashes::hex::{FromHex, ToHex};
 
     use bitcoin::secp256k1;
     use bitcoin::secp256k1::{PublicKey, SecretKey};

@@ -25,8 +25,4 @@
 //! will be nearly impossible to use in the wrong form.
 
 #[macro_use]
-pub mod client_side_validation;
-pub mod commit_verify;
-pub mod single_use_seals;
-#[macro_use]
 pub mod strict_encoding;

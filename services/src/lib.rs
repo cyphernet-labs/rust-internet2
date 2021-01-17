@@ -53,8 +53,8 @@ pub mod esb;
 pub mod format;
 #[cfg(feature = "node")]
 pub mod node;
-#[cfg(feature = "node")]
-pub mod peer;
+// #[cfg(feature = "node")]
+// pub mod peer;
 #[cfg(any(feature = "client", feature = "node"))]
 pub mod rpc;
 #[cfg(feature = "shell")]

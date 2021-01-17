@@ -11,23 +11,10 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-pub mod channel;
-pub mod extension;
-pub mod factories;
-mod features;
-pub mod message;
-pub mod payment;
-pub mod peer_connection;
-pub mod prometheus;
+// pub mod peer_connection;
 pub mod rpc_connection;
-pub mod storm;
 
-pub use extension::{
-    ChannelExtension, Extension, GossipExtension, RoutingExtension,
-};
-pub use features::{FeatureContext, FeatureFlag, Features};
-pub use message::{Messages, OnionPacket, LNPWP_UNMARSHALLER};
-pub use peer_connection::{
-    PeerConnection, PeerReceiver, PeerSender, RecvMessage, SendMessage,
-};
+// pub use peer_connection::{
+//     PeerConnection, PeerReceiver, PeerSender, RecvMessage, SendMessage,
+// };
 pub use rpc_connection::RpcConnection;

@@ -639,9 +639,7 @@ dependencies = [
  "amplify",
  "amplify_derive",
  "async-trait",
- "bech32",
  "bitcoin",
- "bitcoin_hashes",
  "cc",
  "chacha20poly1305",
  "chrono",
@@ -650,8 +648,6 @@ dependencies = [
  "internet2_derive",
  "lazy_static",
  "miniscript",
- "num-derive",
- "num-traits 0.2.14",
  "openssl",
  "regex",
  "serde 1.0.119",
@@ -797,17 +793,6 @@ dependencies = [
  "lexical-core",
  "memchr",
  "version_check",
-]
-
-[[package]]
-name = "num-derive"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
-dependencies = [
- "proc-macro2 1.0.24",
- "quote 1.0.8",
- "syn 1.0.58",
 ]
 
 [[package]]
