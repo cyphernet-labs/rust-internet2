@@ -18,7 +18,7 @@ use std::io;
 
 /// Re-exporting extended read and write functions from bitcoin consensus
 /// module so others may use semantic convenience
-/// `lnpbp::strict_encode::ReadExt`
+/// `internet2::strict_encode::ReadExt`
 pub use bitcoin::consensus::encode::{ReadExt, WriteExt};
 
 /// Binary encoding according to the strict rules that usually apply to

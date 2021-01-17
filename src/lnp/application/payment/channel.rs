@@ -33,7 +33,7 @@ use crate::SECP256K1_PUBKEY_DUMB;
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(doc_comments)]
 /// Errors from
 /// <https://github.com/lightningnetwork/lightning-rfc/blob/master/02-peer-protocol.md#requirements-1>
@@ -63,7 +63,7 @@ pub enum NegotiationError {
     serde(crate = "serde_crate"),
     display(Params::to_yaml_string)
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct Params {
     pub funding_satoshis: u64,
     pub push_msat: u64,
@@ -165,7 +165,7 @@ impl Params {
     serde(crate = "serde_crate"),
     display(Keyset::to_yaml_string)
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct Keyset {
     pub funding_pubkey: PublicKey,
     pub revocation_basepoint: PublicKey,

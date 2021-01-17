@@ -13,9 +13,9 @@
 
 use std::collections::HashMap;
 
-use lnpbp::lnp::rpc_connection::Request;
-use lnpbp::lnp::transport::zmqsocket;
-use lnpbp::lnp::{session, PlainTranscoder, Session, Unmarshall, Unmarshaller};
+use internet2::lnp::rpc_connection::Request;
+use internet2::lnp::transport::zmqsocket;
+use internet2::lnp::{session, PlainTranscoder, Session, Unmarshall, Unmarshaller};
 
 use super::{BusId, Error, ServiceAddress};
 use crate::esb::BusConfig;

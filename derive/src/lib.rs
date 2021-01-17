@@ -32,7 +32,7 @@ mod strict_encoding;
 use proc_macro::TokenStream;
 use syn::DeriveInput;
 
-#[proc_macro_derive(LnpApi, attributes(lnp_api, lnpbp_crate))]
+#[proc_macro_derive(LnpApi, attributes(lnp_api, encoding_crate))]
 pub fn derive_lnp_api(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     lnp_api::inner(derive_input)
@@ -40,7 +40,7 @@ pub fn derive_lnp_api(input: TokenStream) -> TokenStream {
         .into()
 }
 
-#[proc_macro_derive(StrictEncode, attributes(lnpbp_crate))]
+#[proc_macro_derive(StrictEncode, attributes(encoding_crate))]
 pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     strict_encoding::encode_inner(derive_input)
@@ -48,7 +48,7 @@ pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
         .into()
 }
 
-#[proc_macro_derive(StrictDecode, attributes(lnpbp_crate))]
+#[proc_macro_derive(StrictDecode, attributes(encoding_crate))]
 pub fn derive_strict_decode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     strict_encoding::decode_inner(derive_input)
@@ -56,7 +56,7 @@ pub fn derive_strict_decode(input: TokenStream) -> TokenStream {
         .into()
 }
 
-#[proc_macro_derive(LightningEncode, attributes(lnpbp_crate, tlv))]
+#[proc_macro_derive(LightningEncode, attributes(encoding_crate, tlv))]
 pub fn derive_lightning_encode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     lightning_encoding::encode_inner(derive_input)
@@ -64,7 +64,7 @@ pub fn derive_lightning_encode(input: TokenStream) -> TokenStream {
         .into()
 }
 
-#[proc_macro_derive(LightningDecode, attributes(lnpbp_crate, tlv))]
+#[proc_macro_derive(LightningDecode, attributes(encoding_crate, tlv))]
 pub fn derive_lightning_decode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     lightning_encoding::decode_inner(derive_input)

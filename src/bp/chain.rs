@@ -565,7 +565,7 @@ impl StrictDecode for AssetParams {
     serde(crate = "serde_crate")
 )]
 #[display(Debug)]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct ChainParams {
     /// Hash of the genesis block, uniquely defining chain
     pub genesis_hash: BlockHash,

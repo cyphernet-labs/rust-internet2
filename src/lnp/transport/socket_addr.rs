@@ -36,7 +36,7 @@ use crate::lnp::{AddrError, UrlString};
 #[derive(
     Clone, Copy, PartialEq, Eq, Hash, Debug, Display, StrictEncode, StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -114,7 +114,7 @@ impl FromStr for FramingProtocol {
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub enum LocalSocketAddr {
     /// Microservices connected using ZeroMQ protocol locally
     #[cfg(feature = "zmq")]
@@ -139,7 +139,7 @@ pub enum LocalSocketAddr {
 #[derive(
     Clone, Copy, PartialEq, Eq, Hash, Debug, Display, StrictEncode, StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[non_exhaustive]
 pub enum RemoteSocketAddr {
     /// Framed TCP socket connection, that may be served either over plain IP,

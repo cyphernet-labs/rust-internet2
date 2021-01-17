@@ -41,7 +41,7 @@ use bitcoin::hashes::hex::{Error, FromHex, ToHex};
     LightningEncode,
     LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(LowerHex)]
 pub struct Slice32([u8; 32]);
 

@@ -1,12 +1,12 @@
 [package]
-name = "lnpbp_services"
-version = "0.3.0-alpha.1"
+name = "services4"
+version = "0.3.0-alpha.3"
 license = "MIT"
 authors = ["Dr Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "LNP/BP support crate for devloping microservices"
-repository = "https://github.com/LNP-BP/rust-lnpbp"
-homepage = "https://github.com/LNP-BP"
-keywords = ["microservices", "lightning", "lnp-bp", "layer-3", "lnp"]
+repository = "https://github.com/internet2-org/internet2"
+homepage = "https://github.com/internet2-org"
+keywords = ["internet2", "microservices", "lnp-bp", "privacy", "esb", "rpc", "api"]
 readme = "../README.md"
 edition = "2018"
 
@@ -14,8 +14,8 @@ edition = "2018"
 # LNP/BP libraries
 amplify = "2.4"
 amplify_derive = "2.4"
-lnpbp = { version = ">=0.3.0-alpha.1", path = ".." }
-lnpbp_derive = { version = ">=0.3.0-alpha.1", path = "../derive" }
+internet2 = { version = ">=0.3.0-alpha.3", path = ".." }
+internet2_derive = { version = ">=0.3.0-alpha.3", path = "../derive" }
 # Serialization & parsing
 serde_crate = { package = "serde", version = "~1.0.106", features = ["derive"], optional = true }
 serde_with = { version = "~1.5.1", optional = true, features = ["hex"] }
@@ -54,7 +54,7 @@ shell = ["dotenv", "clap", "settings", "amplify/parse_arg", "serde",
 # Besides server node can be run as a part of mobile app
 # and other types of clients; thus `server` != `node`.
 # This feature results in building with features not required for CLI
-node = ["serde", "lnpbp/keygen", "tokio", "zmq", "log", "env_logger"]
-serde = ["serde_crate", "serde_with", "amplify/serde", "lnpbp/serde", "toml"]
+node = ["serde", "internet2/keygen", "tokio", "zmq", "log", "env_logger"]
+serde = ["serde_crate", "serde_with", "amplify/serde", "internet2/serde", "toml"]
 # TODO: Consider adding "rpc" feature which will be replacement for
 #       any("node", "client") and will hold the features common for both

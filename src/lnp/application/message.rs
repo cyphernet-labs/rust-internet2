@@ -38,7 +38,7 @@ lazy_static! {
 
 #[derive(Clone, Debug, Display, LnpApi)]
 #[lnp_api(encoding = "lightning")]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[non_exhaustive]
 pub enum Messages {
     // Part I: Generic messages outside of channel operations
@@ -155,7 +155,7 @@ pub enum Messages {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display("init({global_features}, {local_features}, {assets:#?})")]
 pub struct Init {
     pub global_features: Features,
@@ -176,7 +176,7 @@ pub struct Init {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct Ping {
     pub ignored: Vec<u8>,
@@ -189,7 +189,7 @@ pub struct Ping {
 /// # Specification
 /// <https://github.com/lightningnetwork/lightning-rfc/blob/master/01-messaging.md#the-error-message>
 #[derive(Clone, PartialEq, Debug, Error, LightningEncode, LightningDecode)]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct Error {
     /// The channel is referred to by channel_id, unless channel_id is 0 (i.e.
     /// all bytes are 0), in which case it refers to all channels.
@@ -220,7 +220,7 @@ impl Display for Error {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct OpenChannel {
     /// The genesis hash of the blockchain where the channel is to be opened
@@ -297,7 +297,7 @@ pub struct OpenChannel {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct AcceptChannel {
     /// A temporary channel ID, until the funding outpoint is announced
@@ -361,7 +361,7 @@ pub struct AcceptChannel {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct FundingCreated {
     /// A temporary channel ID, until the funding is established
@@ -381,7 +381,7 @@ pub struct FundingCreated {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct FundingSigned {
     /// The channel ID
@@ -394,7 +394,7 @@ pub struct FundingSigned {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct FundingLocked {
     /// The channel ID
@@ -407,7 +407,7 @@ pub struct FundingLocked {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct Shutdown {
     /// The channel ID
@@ -421,7 +421,7 @@ pub struct Shutdown {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct ClosingSigned {
     /// The channel ID
@@ -437,7 +437,7 @@ pub struct ClosingSigned {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct UpdateAddHtlc {
     /// The channel ID
@@ -470,7 +470,7 @@ pub struct UpdateAddHtlc {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct UpdateFulfillHtlc {
     /// The channel ID
@@ -486,7 +486,7 @@ pub struct UpdateFulfillHtlc {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct UpdateFailHtlc {
     /// The channel ID
@@ -506,7 +506,7 @@ pub struct UpdateFailHtlc {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct UpdateFailMalformedHtlc {
     /// The channel ID
@@ -525,7 +525,7 @@ pub struct UpdateFailMalformedHtlc {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct CommitmentSigned {
     /// The channel ID
@@ -541,7 +541,7 @@ pub struct CommitmentSigned {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct RevokeAndAck {
     /// The channel ID
@@ -557,7 +557,7 @@ pub struct RevokeAndAck {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct UpdateFee {
     /// The channel ID
@@ -570,7 +570,7 @@ pub struct UpdateFee {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct ChannelReestablish {
     /// The channel ID
@@ -595,7 +595,7 @@ pub struct ChannelReestablish {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct AssignFunds {
     /// The channel ID
@@ -662,7 +662,7 @@ impl DumbDefault for OpenChannel {
 #[derive(
     Clone, PartialEq, Eq, Debug, Display, LightningEncode, LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub struct OnionPacket {
     pub version: u8,

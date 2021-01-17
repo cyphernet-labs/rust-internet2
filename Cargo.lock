@@ -633,6 +633,51 @@ dependencies = [
 ]
 
 [[package]]
+name = "internet2"
+version = "0.3.0-alpha.3"
+dependencies = [
+ "amplify",
+ "amplify_derive",
+ "async-trait",
+ "bech32",
+ "bitcoin",
+ "bitcoin_hashes",
+ "cc",
+ "chacha20poly1305",
+ "chrono",
+ "ed25519-dalek",
+ "grin_secp256k1zkp",
+ "internet2_derive",
+ "lazy_static",
+ "miniscript",
+ "num-derive",
+ "num-traits 0.2.14",
+ "openssl",
+ "regex",
+ "serde 1.0.119",
+ "serde_json",
+ "serde_with",
+ "serde_with_macros",
+ "socket2",
+ "tokio",
+ "torut",
+ "url",
+ "zeromq-src 0.1.10+4.3.2 (git+https://github.com/LNP-BP/zeromq-src-rs?branch=fix/cmake)",
+ "zmq",
+]
+
+[[package]]
+name = "internet2_derive"
+version = "0.3.0-alpha.3"
+dependencies = [
+ "amplify",
+ "internet2",
+ "proc-macro2 1.0.24",
+ "quote 1.0.8",
+ "syn 1.0.58",
+]
+
+[[package]]
 name = "itoa"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -694,71 +739,6 @@ name = "linked-hash-map"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
-
-[[package]]
-name = "lnpbp"
-version = "0.3.0-alpha.2"
-dependencies = [
- "amplify",
- "amplify_derive",
- "async-trait",
- "bech32",
- "bitcoin",
- "bitcoin_hashes",
- "cc",
- "chacha20poly1305",
- "chrono",
- "ed25519-dalek",
- "grin_secp256k1zkp",
- "lazy_static",
- "lnpbp_derive",
- "miniscript",
- "num-derive",
- "num-traits 0.2.14",
- "openssl",
- "regex",
- "serde 1.0.119",
- "serde_json",
- "serde_with",
- "serde_with_macros",
- "socket2",
- "tokio",
- "torut",
- "url",
- "zeromq-src 0.1.10+4.3.2 (git+https://github.com/LNP-BP/zeromq-src-rs?branch=fix/cmake)",
- "zmq",
-]
-
-[[package]]
-name = "lnpbp_derive"
-version = "0.3.0-alpha.2"
-dependencies = [
- "amplify",
- "lnpbp",
- "proc-macro2 1.0.24",
- "quote 1.0.8",
- "syn 1.0.58",
-]
-
-[[package]]
-name = "lnpbp_services"
-version = "0.3.0-alpha.1"
-dependencies = [
- "amplify",
- "amplify_derive",
- "clap",
- "config",
- "dotenv",
- "env_logger",
- "lnpbp",
- "lnpbp_derive",
- "log",
- "serde 1.0.119",
- "serde_with",
- "tokio",
- "toml 0.5.8",
- "zmq",
-]
 
 [[package]]
 name = "log"
@@ -1382,6 +1362,26 @@ dependencies = [
  "linked-hash-map 0.5.4",
  "serde 1.0.119",
  "yaml-rust",
+]
+
+[[package]]
+name = "services4"
+version = "0.3.0-alpha.3"
+dependencies = [
+ "amplify",
+ "amplify_derive",
+ "clap",
+ "config",
+ "dotenv",
+ "env_logger",
+ "internet2",
+ "internet2_derive",
+ "log",
+ "serde 1.0.119",
+ "serde_with",
+ "tokio",
+ "toml 0.5.8",
+ "zmq",
 ]
 
 [[package]]

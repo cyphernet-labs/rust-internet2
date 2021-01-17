@@ -43,7 +43,7 @@ pub type AssetsBalance = BTreeMap<AssetId, u64>;
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(Debug)]
 pub enum ExtensionId {
     /// The channel itself
@@ -110,7 +110,7 @@ impl extension::Nomenclature for ExtensionId {}
     StrictDecode,
 )]
 #[display(Debug)]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[non_exhaustive]
 #[repr(u8)]
 pub enum Lifecycle {
@@ -160,7 +160,7 @@ impl Default for Lifecycle {
     LightningEncode,
     LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(LowerHex)]
 #[wrapper(FromStr, LowerHex, UpperHex)]
 pub struct ChannelId(
@@ -213,7 +213,7 @@ impl ChannelId {
     LightningEncode,
     LightningDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(LowerHex)]
 #[wrapper(FromStr, LowerHex, UpperHex)]
 pub struct TempChannelId(

@@ -153,7 +153,7 @@ impl FromStr for ZmqType {
 #[derive(
     Clone, PartialEq, Eq, Hash, Debug, Display, StrictEncode, StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub enum ZmqSocketAddr {
     #[display("inproc://{0}", alt = "zmq:{0}")]
     Inproc(String),

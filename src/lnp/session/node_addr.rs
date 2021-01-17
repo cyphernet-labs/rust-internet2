@@ -49,7 +49,7 @@ use crate::lnp::{AddrError, UrlString};
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display(inner)]
 pub enum NodeAddr {
     /// Local node using plain transport protocol [`LocalSocketAddr`]
@@ -167,7 +167,7 @@ impl TryFrom<NodeAddr> for ZmqSocketAddr {
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct RemoteNodeAddr {
     /// Node public key, used both as an ID and encryption key for per-session
     /// ECDH

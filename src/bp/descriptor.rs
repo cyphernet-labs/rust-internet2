@@ -68,7 +68,7 @@ use crate::strict_encoding::{StrictDecode, StrictEncode};
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[non_exhaustive]
 pub enum Category {
     /// Bare descriptors: `pk` and bare scripts, including `OP_RETURN`s.
@@ -195,7 +195,7 @@ impl Category {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Display, StrictEncode, StrictDecode)]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[non_exhaustive]
 pub enum Compact {
     #[display("bare({0})", alt = "bare({_0:#})")]
@@ -221,7 +221,7 @@ pub enum Compact {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Display, StrictEncode, StrictDecode)]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[non_exhaustive]
 pub enum Expanded {
     #[display("bare({0})", alt = "bare({_0:#})")]
@@ -361,7 +361,7 @@ impl From<Compact> for PubkeyScript {
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[non_exhaustive]
 pub enum SingleSig {
     /// Single known public key
@@ -499,7 +499,7 @@ impl FromStr for SingleSig {
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub enum OpcodeTemplate<Pk>
 where
     Pk: MiniscriptKey + StrictEncode + StrictDecode + FromStr,
@@ -562,7 +562,7 @@ where
     StrictDecode,
 )]
 #[wrap(Index, IndexMut, IndexFull, IndexFrom, IndexTo, IndexInclusive)]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct ScriptTemplate<Pk>(Vec<OpcodeTemplate<Pk>>)
 where
     Pk: MiniscriptKey + StrictEncode + StrictDecode + FromStr,
@@ -632,7 +632,7 @@ impl From<ScriptTemplate<bitcoin::PublicKey>> for Script {
     StrictDecode,
 )]
 #[non_exhaustive]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub enum ScriptConstruction {
     #[cfg_attr(feature = "serde", serde(rename = "script"))]
     #[display(inner)]
@@ -676,7 +676,7 @@ impl std::hash::Hash for ScriptConstruction {
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct ScriptSource {
     pub script: ScriptConstruction,
 
@@ -716,7 +716,7 @@ impl Display for ScriptSource {
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct MultiSig {
     pub threshold: Option<u8>,
 
@@ -781,7 +781,7 @@ impl MultiSig {
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct MuSigBranched {
     #[cfg_attr(feature = "serde", serde(with = "As::<Vec<DisplayFromStr>>"))]
     pub extra_keys: Vec<SingleSig>,
@@ -824,7 +824,7 @@ impl Display for MuSigBranched {
     StrictDecode,
 )]
 #[non_exhaustive]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub enum Template {
     #[display(inner)]
     SingleSig(
@@ -998,7 +998,7 @@ impl DeriveLockScript for Template {
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct Variants {
     pub bare: bool,
     pub hashed: bool,
@@ -1093,7 +1093,7 @@ impl Variants {
     StrictDecode,
 )]
 #[display("{variants}({template})")]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct Generator {
     pub template: Template,
 

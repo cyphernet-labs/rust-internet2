@@ -72,7 +72,7 @@ macro_rules! test_garbage_exhaustive {
                 cp[0] = byte as u8;
                 assert_eq!(
                     <$ty>::strict_decode(&cp[..]).unwrap_err(),
-                    lnpbp::strict_encoding::Error::EnumValueNotKnown($err.to_string(), byte)
+                    internet2::strict_encoding::Error::EnumValueNotKnown($err.to_string(), byte)
                 );
             }
         )+}

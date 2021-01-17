@@ -22,7 +22,7 @@ use settings::ConfigError;
 use tokio::task::JoinError;
 
 #[cfg(any(feature = "node", feature = "shell"))]
-use lnpbp::lnp;
+use internet2::lnp;
 
 #[cfg(feature = "node")]
 use crate::rpc;

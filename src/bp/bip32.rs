@@ -427,7 +427,7 @@ impl HardenedNormalSplit for DerivationPath {
     StrictEncode,
     StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 // [master_xpub]/branch_path=[branch_xpub]/terminal_path/index_ranges
 pub struct DerivationComponents {
     pub master_xpub: ExtendedPubKey,

@@ -1,18 +1,18 @@
 [package]
-name = "lnpbp"
-version = "0.3.0-alpha.2"
+name = "internet2"
+version = "0.3.0-alpha.3"
 license = "MIT"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
-description = "LNP/BP Core Library implementing LNPBP specifications & standards"
-repository = "https://github.com/LNP-BP/rust-lnpbp"
-homepage = "https://github.com/LNP-BP"
-keywords = ["bitcoin", "lightning", "lnp-bp", "layer-3", "cryptography"]
+description = "Rust implementation for the stack of Internet2 protocols"
+repository = "https://github.com/internet2-org/internet2"
+homepage = "https://github.com/internet2-org"
+keywords = ["internet2", "noise", "lnp-bp", "privacy", "cryptography"]
 readme = "README.md"
 edition = "2018"
 exclude = [".github", "derive", "contrib", "services"]
 
 [lib]
-name = "lnpbp"
+name = "internet2"
 path = "src/lib.rs"
 crate-type = ["dylib", "rlib", "staticlib"]
 
@@ -36,7 +36,7 @@ crate-type = ["dylib", "rlib", "staticlib"]
 # -----------------------------------------
 amplify = { version = "2.4", features = ["stringly_conversions"] }
 amplify_derive = "2.4.3"
-lnpbp_derive = { version = ">=0.3.0-alpha.2", path = "./derive" }
+internet2_derive = { version = ">=0.3.0-alpha.2", path = "./derive" }
 # Dependencies on core rust-bitcoin ecosystem projects
 # ----------------------------------------------------
 bitcoin = { version = "~0.26.0", features = ["rand"] }

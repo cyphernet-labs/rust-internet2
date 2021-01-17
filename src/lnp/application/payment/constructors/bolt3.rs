@@ -24,7 +24,7 @@ use crate::lnp::application::{channel, ChannelExtension, Extension, Messages};
 use crate::SECP256K1_PUBKEY_DUMB;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 struct Keyset {
     pub revocation_basepoint: PublicKey,
     pub payment_basepoint: PublicKey,
@@ -42,7 +42,7 @@ impl DumbDefault for Keyset {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct Bolt3 {
     local_amount: u64,
     remote_amount: u64,

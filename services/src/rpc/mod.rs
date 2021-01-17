@@ -19,8 +19,8 @@ pub mod server;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
-use lnpbp::lnp;
-use lnpbp::lnp::application::payment;
+use internet2::lnp;
+use internet2::lnp::application::payment;
 
 #[cfg(feature = "node")]
 use crate::error::RuntimeError;

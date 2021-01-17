@@ -21,7 +21,7 @@ use crate::SECP256K1;
 
 /// Local node private keys
 #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 pub struct LocalNode {
     private_key: secp256k1::SecretKey,
     ephemeral_private_key: secp256k1::SecretKey,

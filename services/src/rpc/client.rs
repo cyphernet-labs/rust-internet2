@@ -13,9 +13,9 @@
 
 use std::collections::HashMap;
 
-use lnpbp::lnp::rpc_connection::Api;
-use lnpbp::lnp::transport::zmqsocket::{ZmqSocketAddr, ZmqType};
-use lnpbp::lnp::{
+use internet2::lnp::rpc_connection::Api;
+use internet2::lnp::transport::zmqsocket::{ZmqSocketAddr, ZmqType};
+use internet2::lnp::{
     session, transport, CreateUnmarshaller, PlainTranscoder, Session,
     TypedEnum, Unmarshall, Unmarshaller,
 };

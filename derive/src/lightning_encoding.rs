@@ -15,7 +15,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use syn::spanned::Spanned;
 use syn::{Data, DataStruct, DeriveInput, Error, Fields, Index, Result};
 
-use crate::util::get_lnpbp_crate;
+use crate::util::get_encoding_crate;
 
 pub(crate) fn encode_inner(input: DeriveInput) -> Result<TokenStream2> {
     match input.data {
@@ -53,7 +53,7 @@ fn encode_inner_struct(
         input.generics.split_for_impl();
     let ident_name = &input.ident;
 
-    let import = get_lnpbp_crate(input);
+    let import = get_encoding_crate(input);
 
     let recurse = match data.fields {
         Fields::Named(ref fields) => fields
@@ -113,7 +113,7 @@ fn decode_inner_struct(
         input.generics.split_for_impl();
     let ident_name = &input.ident;
 
-    let import = get_lnpbp_crate(input);
+    let import = get_encoding_crate(input);
 
     let inner = match data.fields {
         Fields::Named(ref fields) => {

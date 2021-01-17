@@ -1,12 +1,12 @@
 [package]
-name = "lnpbp_derive"
-version = "0.3.0-alpha.2"
+name = "internet2_derive"
+version = "0.3.0-alpha.3"
 license = "MIT"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
-description = "LNP/BP Core Library derive macros"
-repository = "https://github.com/LNP-BP/rust-lnpbp"
-homepage = "https://github.com/LNP-BP"
-keywords = ["bitcoin", "lightning", "lnp-bp", "layer-3", "cryptography"]
+description = "Derivation macros for Internet2-based crates"
+repository = "https://github.com/internet2-org/internet2"
+homepage = "https://github.com/internet2-org"
+keywords = ["internet2", "noise", "lnp-bp", "privacy", "cryptography", "proc-macro"]
 readme = "../README.md"
 edition = "2018"
 
@@ -20,4 +20,4 @@ proc-macro2 = "~1.0.24"
 amplify = "2.4"
 
 [dev-dependencies]
-lnpbp = { path = ".." }
+internet2 = { path = ".." }

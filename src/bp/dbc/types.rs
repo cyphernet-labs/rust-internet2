@@ -35,7 +35,7 @@ pub trait Container: Sized {
 #[derive(
     Clone, PartialEq, Eq, Hash, Debug, Display, StrictEncode, StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[display("proof({pubkey}, {source}")]
 pub struct Proof {
     pub pubkey: secp256k1::PublicKey,

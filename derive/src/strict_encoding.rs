@@ -18,7 +18,7 @@ use syn::{
     Result,
 };
 
-use crate::util::get_lnpbp_crate;
+use crate::util::get_encoding_crate;
 
 pub(crate) fn encode_inner(input: DeriveInput) -> Result<TokenStream2> {
     match input.data {
@@ -52,7 +52,7 @@ fn encode_inner_struct(
         input.generics.split_for_impl();
     let ident_name = &input.ident;
 
-    let import = get_lnpbp_crate(input);
+    let import = get_encoding_crate(input);
 
     let recurse = match data.fields {
         Fields::Named(ref fields) => fields
@@ -112,7 +112,7 @@ fn decode_inner_struct(
         input.generics.split_for_impl();
     let ident_name = &input.ident;
 
-    let import = get_lnpbp_crate(input);
+    let import = get_encoding_crate(input);
 
     let inner = match data.fields {
         Fields::Named(ref fields) => {
@@ -175,7 +175,7 @@ fn encode_inner_enum(
         input.generics.split_for_impl();
     let ident_name = &input.ident;
 
-    let import = get_lnpbp_crate(input);
+    let import = get_encoding_crate(input);
 
     let mut inner: Vec<TokenStream2> = none!();
     for (idx, variant) in data.variants.iter().enumerate() {
@@ -258,7 +258,7 @@ fn decode_inner_enum(
         input.generics.split_for_impl();
     let ident_name = &input.ident;
 
-    let import = get_lnpbp_crate(input);
+    let import = get_encoding_crate(input);
 
     let mut inner: Vec<TokenStream2> = none!();
     for (idx, variant) in data.variants.iter().enumerate() {

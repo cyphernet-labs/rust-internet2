@@ -31,7 +31,7 @@ extern crate amplify;
 #[macro_use]
 extern crate amplify_derive;
 #[cfg_attr(any(feature = "client", feature = "node"), macro_use)]
-extern crate lnpbp_derive;
+extern crate internet2_derive;
 
 #[cfg(feature = "serde")]
 extern crate serde_crate as serde;

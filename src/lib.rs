@@ -62,7 +62,7 @@ pub extern crate miniscript;
 pub extern crate secp256k1zkp;
 
 #[macro_use]
-extern crate lnpbp_derive;
+extern crate internet2_derive;
 
 #[macro_use]
 pub mod test_helpers;

@@ -277,7 +277,7 @@ pub struct DefaultResolver;
 #[derive(
     Copy, Clone, PartialEq, Eq, Debug, Display, StrictEncode, StrictDecode,
 )]
-#[lnpbp_crate(crate)]
+#[encoding_crate(crate)]
 #[non_exhaustive]
 pub enum KeyApplication {
     /// xprv/xpub: keys that can be used for P2PKH and multisig P2SH

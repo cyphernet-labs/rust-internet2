@@ -51,10 +51,10 @@ macro_rules! err {
     };
 }
 
-pub(crate) fn get_lnpbp_crate(input: &DeriveInput) -> Path {
-    let name = "lnpbp_crate";
-    let example = "#[lnpbp_crate(crate_path)]";
-    let default = Path::from(Ident::new("lnpbp", input.span()));
+pub(crate) fn get_encoding_crate(input: &DeriveInput) -> Path {
+    let name = "encoding_crate";
+    let example = "#[encoding_crate(crate_path)]";
+    let default = Path::from(Ident::new("internet2", input.span()));
 
     let list = match attr_list(&input.attrs, name, example).ok().flatten() {
         Some(x) => x,

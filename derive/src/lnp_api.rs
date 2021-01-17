@@ -18,7 +18,7 @@ use syn::{
     Data, DataEnum, DeriveInput, Error, Fields, Ident, Lit, Path, Result,
 };
 
-use crate::util::{attr_list, get_lnpbp_crate, nested_one_named_value};
+use crate::util::{attr_list, get_encoding_crate, nested_one_named_value};
 
 const NAME: &'static str = "lnp_api";
 const EXAMPLE: &'static str =
@@ -44,7 +44,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
     let global_params = attr_list(&input.attrs, NAME, EXAMPLE)?
         .ok_or(attr_err!(input, "encoding type must be specified"))?;
-    let import = get_lnpbp_crate(input);
+    let import = get_encoding_crate(input);
     let global_encoding = EncodingSrategy::try_from(
         nested_one_named_value(&global_params, "encoding", EXAMPLE)?
             .ok_or(attr_err!(input, "encoding must be specified"))?

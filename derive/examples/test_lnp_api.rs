@@ -1,7 +1,7 @@
 #![allow(dead_code, bare_trait_objects)]
 
 #[macro_use]
-extern crate lnpbp_derive;
+extern crate internet2_derive;
 
 #[derive(Clone, Debug, LnpApi)]
 #[lnp_api(encoding = "strict")]
@@ -23,7 +23,7 @@ pub enum Reply {
 
 fn main() {
     use core::convert::TryFrom;
-    use lnpbp::lnp::{TypeId, TypedEnum};
+    use internet2::lnp::{TypeId, TypedEnum};
 
     let _ = Reply::Success().get_type();
     Reply::try_from_type(TypeId::try_from(0x0003).unwrap(), &Vec::<u8>::new())
