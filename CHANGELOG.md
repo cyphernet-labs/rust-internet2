@@ -7,6 +7,10 @@ v0.3.0-alpha.1
 - BIP32 & descriptor enhancements
 - Miniscript 4.0 migration
 
+v0.3.0-alpha.2
+--------------
+- RGB Core Library is extracted and externalized from LNP/BP Core Library
+
 v0.2.1, v0.2.2
 --------------
 - Fixing serde to use Bech32 encoding for ContractId and SchemaId types
