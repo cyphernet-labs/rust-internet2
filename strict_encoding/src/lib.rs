@@ -48,7 +48,7 @@ mod crypto;
 #[cfg(feature = "miniscript")]
 mod miniscript;
 mod primitives;
-mod strategies;
+pub mod strategies;
 
 pub use strategies::Strategy;
 
