@@ -1425,6 +1425,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
+name = "strict_encoding"
+version = "1.0.0-rc.1"
+dependencies = [
+ "amplify",
+ "amplify_derive",
+ "bitcoin",
+ "chrono",
+ "ed25519-dalek",
+ "grin_secp256k1zkp",
+ "miniscript",
+ "strict_encoding_derive",
+]
+
+[[package]]
+name = "strict_encoding_derive"
+version = "0.3.0"
+dependencies = [
+ "amplify",
+ "proc-macro2 1.0.24",
+ "quote 1.0.8",
+ "strict_encoding",
+ "syn 1.0.58",
+]
+
+[[package]]
 name = "stringly_conversions"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
