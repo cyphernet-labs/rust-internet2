@@ -1,12 +1,12 @@
 [package]
 name = "strict_encoding"
 version = "1.0.0-rc.1"
-license = "Apache2"
+license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Strict encoding: deterministic binary serialization for networking & client-side validation"
 repository = "https://github.com/LNP-BP/rust-lnpbp"
 homepage = "https://github.com/LNP-BP"
-keywords = ["strict-encoding", "lnp-bp", "client-side-validation", "networking", "bitcoin", "internet2"]
+keywords = ["lnp-bp", "strict-encoding", "networking", "bitcoin", "internet2"]
 categories = ["encoding", "parsing"]
 readme = "README.md"
 edition = "2018"
@@ -18,18 +18,17 @@ path = "src/lib.rs"
 crate-type = ["dylib", "rlib", "staticlib"]
 
 [dependencies]
-amplify = "2.4"
+amplify = "3"
 amplify_derive = "2.4.3"
-strict_encoding_derive = { version = "0.3.0", path = "./derive", optional = true }
-bitcoin = { version = "0.26", optional = true }
+strict_encoding_derive = { version = "1.0.0-rc.1", path = "./derive", optional = true }
+bitcoin = "0.26" # TODO: Replace on bitcoin encoding crate with 0.27 release
 miniscript = { version = "5", optional = true }
 ed25519-dalek = { version = "1", optional = true }
 grin_secp256k1zkp = { version = "0.7", optional = true }
 chrono = { version = "0.4", optional = true }
 
 [features]
-default = ["btc", "chrono", "derive"]
-all = ["btc", "crypto", "chrono", "derive"]
-btc = ["bitcoin", "miniscript"]
+default = ["chrono", "derive"]
+all = ["miniscript", "crypto", "chrono", "derive"]
 crypto = ["ed25519-dalek", "grin_secp256k1zkp"]
 derive = ["strict_encoding_derive"]

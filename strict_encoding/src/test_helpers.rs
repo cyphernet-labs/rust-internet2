@@ -15,7 +15,7 @@ use std::fmt::Debug;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
-use crate::strict_encoding::{Error, StrictDecode, StrictEncode};
+use crate::{Error, StrictDecode, StrictEncode};
 
 // TODO: (new) Move into derive macro
 #[macro_export]

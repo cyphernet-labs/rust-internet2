@@ -25,7 +25,7 @@ extern crate proc_macro;
 #[macro_use]
 mod util;
 
-mod strict_encoding;
+mod derive;
 
 use proc_macro::TokenStream;
 use syn::DeriveInput;
@@ -33,7 +33,7 @@ use syn::DeriveInput;
 #[proc_macro_derive(StrictEncode, attributes(strict_encoding_crate))]
 pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
-    strict_encoding::encode_inner(derive_input)
+    derive::encode_inner(derive_input)
         .unwrap_or_else(|e| e.to_compile_error())
         .into()
 }
@@ -41,7 +41,7 @@ pub fn derive_strict_encode(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(StrictDecode, attributes(strict_encoding_crate))]
 pub fn derive_strict_decode(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
-    strict_encoding::decode_inner(derive_input)
+    derive::decode_inner(derive_input)
         .unwrap_or_else(|e| e.to_compile_error())
         .into()
 }
