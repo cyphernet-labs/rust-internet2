@@ -27,9 +27,10 @@ pub mod websocket;
 pub mod zmqsocket;
 
 pub use socket_addr::{FramingProtocol, LocalSocketAddr, RemoteSocketAddr};
-use tokio::io::ErrorKind;
 #[cfg(feature = "zmq")]
 pub use zmqsocket::{ZmqSocketAddr, ZmqType, ZMQ_CONTEXT};
+
+use std::io::ErrorKind;
 
 /// Maximum size of the transport frame; chosen in compliance with LN specs
 pub const MAX_FRAME_SIZE: usize =

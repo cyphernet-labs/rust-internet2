@@ -22,8 +22,8 @@ pub mod transport;
 pub use application::rpc_connection;
 pub use presentation::payload::{TypeId, TypedEnum};
 pub use presentation::{
-    payload, tlv, CreateUnmarshaller, Payload, UnknownTypeError, Unmarshall,
-    UnmarshallFn, Unmarshaller,
+    encoding, payload, tlv, CreateUnmarshaller, Payload, UnknownTypeError,
+    Unmarshall, UnmarshallFn, Unmarshaller,
 };
 pub use session::{
     Accept, Connect, Decrypt, Encrypt, LocalNode, NodeAddr, NoiseDecryptor,

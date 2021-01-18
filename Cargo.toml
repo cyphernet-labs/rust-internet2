@@ -56,7 +56,6 @@ ed25519-dalek = { version = "~1.0.0", optional = true }
 serde_crate = { package = "serde", version = "~1.0.106", features = ["derive"], optional = true }
 serde_with = { version = "~1.5.1", features = ["hex"], optional = true }
 serde_with_macros = { version = "~1.2.0", optional = true } # Fix for the problem in 1.3.0
-tokio = { version = "~0.3.5", optional = true }
 lazy_static = "~1.4.0"
 # Networking deps
 # ---------------
@@ -76,7 +75,6 @@ regex = "1"
 grin_secp256k1zkp = { version = "~0.7.10", optional = true }
 # 2. Once async traits will get to rust compiler, this one will be also not
 #    needed
-async-trait = { version = "~0.1.30", optional = true }
 torut = { version = "~0.1.6", features = ["v2", "v3"] }
 
 [dev-dependencies]
@@ -101,23 +99,17 @@ openssl = { version = "~0.10", features = ["vendored"] }
 # Listings
 # --------
 #   By default we use LNP with Tor support and URL support
-default = ["lnp", "tor", "url"]
+default = ["tor", "url", "zmq"]
 all = [
-       # Library components
-       "lnp",
-       # Core rust
-       "serde", "tokio", "async",
+       # Serde
+       "serde",
        # Cryptographic optionals
        "keygen", "elgamal", "bulletproofs", "ed25519-dalek",
        # Networking
-       "tor", "url", "websockets", "vendored_openssl"]
-# High-level library components
-# -----------------------------
-lnp = ["async", "zmq"]
+       "tor", "url", "zmq", "websockets", "vendored_openssl"]
 # Exposing core rust componens
 # ----------------------------
 #   These also include re-assembly of necessary features from dependencies
-async = ["async-trait", "tokio"]
 serde = ["serde_crate", "serde_with", "serde_with_macros", "amplify/serde",
          "bitcoin/use-serde", "miniscript/serde"]
 # Optional cryptographic functionality

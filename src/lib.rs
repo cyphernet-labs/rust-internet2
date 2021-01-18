@@ -36,11 +36,6 @@ extern crate lazy_static;
 
 extern crate chacha20poly1305;
 
-// Support for node & node clients development (include API helpers)
-#[cfg(feature = "async")]
-#[macro_use]
-extern crate async_trait;
-
 #[cfg(feature = "serde")]
 #[macro_use]
 extern crate serde_with;
@@ -66,7 +61,6 @@ pub mod test_helpers;
 mod paradigms;
 #[macro_use]
 pub mod bp;
-#[cfg(feature = "lnp")]
 #[allow(dead_code, unused_variables)]
 // TODO: Remove attribute once LNP mod will be finalized
 pub mod lnp;

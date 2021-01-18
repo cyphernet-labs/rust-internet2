@@ -63,17 +63,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
-name = "async-trait"
-version = "0.1.42"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d3a45e77e34375a7923b1e8febb049bb011f064714a8e17a1a616fef01da13d"
-dependencies = [
- "proc-macro2 1.0.24",
- "quote 1.0.8",
- "syn 1.0.58",
-]
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -638,7 +627,6 @@ version = "0.3.0-alpha.3"
 dependencies = [
  "amplify",
  "amplify_derive",
- "async-trait",
  "bitcoin",
  "cc",
  "chacha20poly1305",
@@ -655,7 +643,6 @@ dependencies = [
  "serde_with",
  "serde_with_macros",
  "socket2",
- "tokio",
  "torut",
  "url",
  "zeromq-src 0.1.10+4.3.2 (git+https://github.com/LNP-BP/zeromq-src-rs?branch=fix/cmake)",
@@ -1364,7 +1351,6 @@ dependencies = [
  "log",
  "serde 1.0.119",
  "serde_with",
- "tokio",
  "toml 0.5.8",
  "zmq",
 ]
@@ -1418,12 +1404,6 @@ name = "signature"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f0242b8e50dd9accdd56170e94ca1ebd223b098eb9c83539a6e367d0f36ae68"
-
-[[package]]
-name = "slab"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
 name = "socket2"
@@ -1587,7 +1567,6 @@ dependencies = [
  "bytes",
  "memchr",
  "pin-project-lite",
- "slab",
 ]
 
 [[package]]

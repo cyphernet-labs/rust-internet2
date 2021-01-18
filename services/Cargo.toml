@@ -27,7 +27,6 @@ clap = { version = "=3.0.0-beta.2", optional = true }
 log = { version = "~0.4.8", optional = true, features = ["max_level_trace", "release_max_level_debug"] }
 env_logger = { version = "~0.7.1", optional = true }
 # Networking
-tokio = { version = "~0.3.5", features = ["rt"], optional = true }
 zmq = { version = "~0.9.2", optional = true }
 
 # Recommended set of features:
@@ -54,7 +53,7 @@ shell = ["dotenv", "clap", "settings", "amplify/parse_arg", "serde",
 # Besides server node can be run as a part of mobile app
 # and other types of clients; thus `server` != `node`.
 # This feature results in building with features not required for CLI
-node = ["serde", "internet2/keygen", "tokio", "zmq", "log", "env_logger"]
+node = ["serde", "internet2/keygen", "zmq", "log", "env_logger"]
 serde = ["serde_crate", "serde_with", "amplify/serde", "internet2/serde", "toml"]
 # TODO: Consider adding "rpc" feature which will be replacement for
 #       any("node", "client") and will hold the features common for both
