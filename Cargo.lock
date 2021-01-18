@@ -36,6 +36,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "amplify"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58a0bd5c3d6605f6f0cbf90d7af2cdd37215b1db193282753fd6bd1dce4b75b3"
+dependencies = [
+ "amplify_derive",
+]
+
+[[package]]
 name = "amplify_derive"
 version = "2.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -622,10 +631,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "inet2_addr"
+version = "0.3.0"
+dependencies = [
+ "amplify 3.0.0",
+ "amplify_derive",
+ "ed25519-dalek",
+ "parse_arg",
+ "serde 1.0.119",
+ "serde_json",
+ "serde_yaml",
+ "stringly_conversions",
+ "toml 0.5.8",
+ "torut",
+]
+
+[[package]]
+name = "inet2_derive"
+version = "0.3.0-alpha.3"
+dependencies = [
+ "amplify 2.4.0",
+ "internet2",
+ "proc-macro2 1.0.24",
+ "quote 1.0.8",
+ "syn 1.0.58",
+]
+
+[[package]]
 name = "internet2"
 version = "0.3.0-alpha.3"
 dependencies = [
- "amplify",
+ "amplify 2.4.0",
  "amplify_derive",
  "bitcoin",
  "cc",
@@ -633,7 +669,8 @@ dependencies = [
  "chrono",
  "ed25519-dalek",
  "grin_secp256k1zkp",
- "internet2_derive",
+ "inet2_addr",
+ "inet2_derive",
  "lazy_static",
  "miniscript",
  "openssl",
@@ -643,21 +680,11 @@ dependencies = [
  "serde_with",
  "serde_with_macros",
  "socket2",
+ "strict_encoding",
  "torut",
  "url",
  "zeromq-src 0.1.10+4.3.2 (git+https://github.com/LNP-BP/zeromq-src-rs?branch=fix/cmake)",
  "zmq",
-]
-
-[[package]]
-name = "internet2_derive"
-version = "0.3.0-alpha.3"
-dependencies = [
- "amplify",
- "internet2",
- "proc-macro2 1.0.24",
- "quote 1.0.8",
- "syn 1.0.58",
 ]
 
 [[package]]
@@ -1340,14 +1367,14 @@ dependencies = [
 name = "services4"
 version = "0.3.0-alpha.3"
 dependencies = [
- "amplify",
+ "amplify 2.4.0",
  "amplify_derive",
  "clap",
  "config",
  "dotenv",
  "env_logger",
+ "inet2_derive",
  "internet2",
- "internet2_derive",
  "log",
  "serde 1.0.119",
  "serde_with",
@@ -1428,7 +1455,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "strict_encoding"
 version = "1.0.0-rc.1"
 dependencies = [
- "amplify",
+ "amplify 2.4.0",
  "amplify_derive",
  "bitcoin",
  "chrono",
@@ -1440,9 +1467,9 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding_derive"
-version = "0.3.0"
+version = "1.0.0-rc.1"
 dependencies = [
- "amplify",
+ "amplify 2.4.0",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
  "strict_encoding",

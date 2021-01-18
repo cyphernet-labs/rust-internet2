@@ -4,12 +4,13 @@ version = "0.3.0-alpha.3"
 license = "Apache2"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Rust implementation for the stack of Internet2 protocols"
-repository = "https://github.com/internet2-org/internet2"
+repository = "https://github.com/internet2-org/rust-internet2"
 homepage = "https://github.com/internet2-org"
-keywords = ["internet2", "noise", "lnp-bp", "privacy", "cryptography"]
+keywords = ["internet2", "tor", "onion", "noise-xk", "lnp-bp", "privacy", "cryptography"]
+categories = ["cryptography", "encoding", "parsing", "web-programming"]
 readme = "README.md"
 edition = "2018"
-exclude = [".github", "derive", "contrib", "services"]
+exclude = [".github", "derive", "contrib", "services", "inet2_addr"]
 
 [lib]
 name = "internet2"
@@ -36,7 +37,9 @@ crate-type = ["dylib", "rlib", "staticlib"]
 # -----------------------------------------
 amplify = { version = "2.4", features = ["stringly_conversions"] }
 amplify_derive = "2.4.3"
-internet2_derive = { version = ">=0.3.0-alpha.2", path = "./derive" }
+strict_encoding = { version = "1.0.0-rc.1", path = "strict_encoding", features = ["derive"] }
+inet2_addr = { version = "0.3", path = "inet2_addr" }
+inet2_derive = { version = ">=0.3.0-alpha.2", path = "./derive" }
 # Dependencies on core rust-bitcoin ecosystem projects
 # ----------------------------------------------------
 bitcoin = { version = "~0.26.0", features = ["rand"] }
@@ -124,6 +127,6 @@ tor = ["amplify/tor"] # Exposes dependency feature
 vendored_openssl = ["torut/vendored_openssl"]
 
 [workspace]
-members = [".", "derive", "services", "strict_encoding", "strict_encoding/derive"]
-default-members = [".", "derive", "services"]
+members = [".", "derive", "inet2_addr", "services", "strict_encoding", "strict_encoding/derive"]
+default-members = [".", "derive", "services", "inet2_addr"]
 exclude = ["dep_test"]
