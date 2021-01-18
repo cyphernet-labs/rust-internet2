@@ -27,14 +27,23 @@
     missing_docs
 )]
 
+#[allow(unused_imports)]
+#[macro_use]
+extern crate amplify;
 #[macro_use]
 extern crate amplify_derive;
 #[cfg(feature = "stringly_conversions")]
 #[macro_use]
 extern crate stringly_conversions;
+#[cfg(feature = "strict_encoding")]
+#[macro_use]
+extern crate strict_encoding;
 #[cfg(feature = "serde")]
 #[macro_use]
 extern crate serde_crate as serde;
+
+#[cfg(feature = "strict_encoding")]
+mod encoding;
 
 // TODO: Move all uniform encodings into a trait
 
@@ -570,6 +579,7 @@ impl TryFrom<[u8; TORV3_PUBLIC_KEY_LENGTH]> for InetAddr {
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate")
 )]
+#[cfg_attr(feature = "strict_encoding", derive(StrictEncode, StrictDecode))]
 #[non_exhaustive]
 #[repr(u8)]
 pub enum Transport {
