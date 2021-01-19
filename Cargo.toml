@@ -1,21 +1,21 @@
 [package]
 name = "internet2"
 version = "0.3.0-alpha.3"
-license = "Apache2"
+license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Rust implementation for the stack of Internet2 protocols"
 repository = "https://github.com/internet2-org/rust-internet2"
 homepage = "https://github.com/internet2-org"
 keywords = ["internet2", "tor", "onion", "noise-xk", "lnp-bp", "privacy", "cryptography"]
-categories = ["cryptography", "encoding", "parsing", "web-programming"]
+categories = ["network-programming", "cryptography", "encoding"]
 readme = "README.md"
 edition = "2018"
-exclude = [".github", "derive", "contrib", "services", "inet2_addr"]
+exclude = [".github", "derive", "contrib", "microservices", "inet2_addr"]
 
 [lib]
 name = "internet2"
 path = "src/lib.rs"
-crate-type = ["dylib", "rlib", "staticlib"]
+crate-type = ["rlib", "staticlib"]
 
 # Dependencies
 # ============
@@ -35,21 +35,15 @@ crate-type = ["dylib", "rlib", "staticlib"]
 [dependencies]
 # Dependencies on other LNP/BP repositories
 # -----------------------------------------
-amplify = { version = "2.4", features = ["stringly_conversions"] }
+amplify = { version = "3", features = ["stringly_conversions"] }
 amplify_derive = "2.4.3"
-strict_encoding = { version = "1.0.0-rc.1", path = "strict_encoding", features = ["derive"] }
-inet2_addr = { version = "0.3", path = "inet2_addr" }
+strict_encoding = { version = "1.0.0-rc.6", features = ["derive"] }
+inet2_addr = { version = "0.4.0-rc.1", path = "inet2_addr" }
 inet2_derive = { version = ">=0.3.0-alpha.2", path = "./derive" }
 # Dependencies on core rust-bitcoin ecosystem projects
 # ----------------------------------------------------
 bitcoin = { version = "~0.26.0", features = ["rand"] }
-# <https://github.com/LNP-BP/LNPBPs/blob/master/lnpbp-0002.md#deterministic-public-key-extraction-from-bitcoin-script>
-# We have to fix version of miniscript as required by LNPBP-2 specification
-miniscript = { version = "~5.0.0", features = ["compiler"] }
 chacha20poly1305 = "~0.7.0"
-#   Used only as a part of RGB for encoding Ed25519 key data (for instance as
-#   a part of Tor address)
-ed25519-dalek = { version = "~1.0.0", optional = true }
 # Core rust projects
 # ------------------
 #   This strange naming is a workaround for cargo inability to define required
@@ -66,16 +60,12 @@ lazy_static = "~1.4.0"
 #   `lnp` mod and are turned on only if `lbp`, `zmq` or `url` features are used
 zmq = { version = "~0.9.2", optional = true }
 url = { version = "~2.1.1", optional = true }
-# Serializtion
-# ------------
+# Serialization
+# -------------
 #    Used in RGB data Bech32 encodings
-chrono = "~0.4.19"
 regex = "1"
 # Temporary-needed dependencies:
 # ------------------------------
-# 1. We need it for implementing strict encoding on it's types so they can be
-#    used in bulletproofs
-grin_secp256k1zkp = { version = "~0.7.10", optional = true }
 # 2. Once async traits will get to rust compiler, this one will be also not
 #    needed
 torut = { version = "~0.1.6", features = ["v2", "v3"] }
@@ -106,27 +96,20 @@ default = ["tor", "url", "zmq"]
 all = [
        # Serde
        "serde",
-       # Cryptographic optionals
-       "keygen", "elgamal", "bulletproofs", "ed25519-dalek",
        # Networking
        "tor", "url", "zmq", "websockets", "vendored_openssl"]
 # Exposing core rust componens
 # ----------------------------
 #   These also include re-assembly of necessary features from dependencies
 serde = ["serde_crate", "serde_with", "serde_with_macros", "amplify/serde",
-         "bitcoin/use-serde", "miniscript/serde"]
-# Optional cryptographic functionality
-# ------------------------------------
-bulletproofs = ["grin_secp256k1zkp"] # Auto-required and used only by RGB
-keygen = ["bitcoin/rand"]
-elgamal = [] # Provides ElGamal encryption module from this library
+         "bitcoin/use-serde"]
 # Networking
 # ----------
-websockets = [] # Used only by LNP
-tor = ["amplify/tor"] # Exposes dependency feature
+websockets = []
+tor = []
 vendored_openssl = ["torut/vendored_openssl"]
 
 [workspace]
-members = [".", "derive", "inet2_addr", "services", "strict_encoding", "strict_encoding/derive"]
-default-members = [".", "derive", "services", "inet2_addr"]
+members = [".", "derive", "inet2_addr", "microservices"]
+default-members = [".", "derive", "inet2_addr", "microservices"]
 exclude = ["dep_test"]

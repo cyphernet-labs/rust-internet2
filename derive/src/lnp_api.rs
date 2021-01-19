@@ -44,7 +44,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
     let global_params = attr_list(&input.attrs, NAME, EXAMPLE)?
         .ok_or(attr_err!(input, "encoding type must be specified"))?;
-    let import = get_encoding_crate(input);
+    let import = get_encoding_crate(input, "strict_encoding");
     let global_encoding = EncodingSrategy::try_from(
         nested_one_named_value(&global_params, "encoding", EXAMPLE)?
             .ok_or(attr_err!(input, "encoding must be specified"))?
@@ -96,11 +96,11 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         });
 
         unmarshaller.push(quote_spanned! { v.span() =>
-            map.insert(Self::#type_const, Self::#type_snake as #import::lnp::UnmarshallFn<_>);
+            map.insert(Self::#type_const, Self::#type_snake as ::internet2::UnmarshallFn<_>);
         });
 
         let unmarshall_empty = quote_spanned! { v.span() =>
-            fn #type_snake(_: &mut dyn ::std::io::Read) -> Result<::std::sync::Arc<dyn ::core::any::Any>, #import::lnp::presentation::Error> {
+            fn #type_snake(_: &mut dyn ::std::io::Read) -> Result<::std::sync::Arc<dyn ::core::any::Any>, ::internet2::presentation::Error> {
                 struct NoData;
                 Ok(::std::sync::Arc::new(NoData))
             }
@@ -132,7 +132,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                     let decode_fn = global_encoding.decode_fn(f.span());
 
                     unmarshall_fn.push(quote_spanned! { v.span() =>
-                        fn #type_snake(mut reader: &mut dyn ::std::io::Read) -> Result<::std::sync::Arc<dyn ::core::any::Any>, #import::lnp::presentation::Error> {
+                        fn #type_snake(mut reader: &mut dyn ::std::io::Read) -> Result<::std::sync::Arc<dyn ::core::any::Any>, ::internet2::presentation::Error> {
                             #decode_use
                             Ok(::std::sync::Arc::new(#payload_fisheye::#decode_fn(&mut reader)?))
                         }
@@ -196,11 +196,11 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     let get_payload = quote! { #( #get_payload )* };
 
     Ok(quote! {
-        impl #import::lnp::CreateUnmarshaller for #ident_name {
-            fn create_unmarshaller() -> #import::lnp::Unmarshaller<Self> {
+        impl ::internet2::CreateUnmarshaller for #ident_name {
+            fn create_unmarshaller() -> ::internet2::Unmarshaller<Self> {
                 let mut map = ::std::collections::BTreeMap::new();
                 #unmarshaller
-                #import::lnp::Unmarshaller::new(map)
+                ::internet2::Unmarshaller::new(map)
             }
         }
 
@@ -210,8 +210,8 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             #unmarshall_fn
         }
 
-        impl #import::lnp::TypedEnum for #ident_name {
-            fn try_from_type(type_id: #import::lnp::TypeId, data: &dyn ::core::any::Any) -> Result<Self, #import::lnp::UnknownTypeError> {
+        impl ::internet2::TypedEnum for #ident_name {
+            fn try_from_type(type_id: ::internet2::TypeId, data: &dyn ::core::any::Any) -> Result<Self, ::internet2::UnknownTypeError> {
                 use ::amplify::Wrapper;
 
                 const ERR: &'static str = "Internal API parsing inconsistency";
@@ -220,13 +220,13 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                     // Here we receive odd-numbered messages. However, in terms of RPC,
                     // there is no "upstream processor", so we return error (but do not
                     // break connection).
-                    _ => Err(#import::lnp::UnknownTypeError)?,
+                    _ => Err(::internet2::UnknownTypeError)?,
                 })
             }
 
-            fn get_type(&self) -> #import::lnp::TypeId {
+            fn get_type(&self) -> ::internet2::TypeId {
                 use ::amplify::Wrapper;
-                #import::lnp::TypeId::from_inner(match self {
+                ::internet2::TypeId::from_inner(match self {
                     #get_type
                 })
             }
@@ -259,10 +259,10 @@ impl EncodingSrategy {
     pub fn serialize_fn(&self, span: Span, import: &Path) -> TokenStream2 {
         match self {
             Self::Strict => {
-                quote_spanned!(span => #import::strict_encoding::strict_serialize(obj).expect(ERR))
+                quote_spanned!(span => #import::strict_serialize(obj).expect(ERR))
             }
             Self::Bitcoin => {
-                quote_spanned!(span => #import::bitcoin::consensus::encode::consensus_encode(obj))
+                quote_spanned!(span => #import::consensus::encode::consensus_encode(obj))
             }
             Self::Lightning => {
                 quote_spanned!(span => #import::lightning_encoding::lightning_serialize(obj))
@@ -295,10 +295,10 @@ impl EncodingSrategy {
     pub fn encode_use(&self, import: &Path) -> TokenStream2 {
         match self {
             Self::Strict => quote!(
-                use #import::strict_encoding::StrictEncode;
+                use #import::StrictEncode;
             ),
             Self::Bitcoin => quote!(
-                use #import::bitcoin::consensus::encode::Encode;
+                use #import::consensus::encode::Encode;
             ),
             Self::Lightning => quote!(
                 use #import::lightning_encoding::LightningEncode;
@@ -309,10 +309,10 @@ impl EncodingSrategy {
     pub fn decode_use(&self, import: &Path) -> TokenStream2 {
         match self {
             Self::Strict => quote!(
-                use #import::strict_encoding::StrictDecode;
+                use #import::StrictDecode;
             ),
             Self::Bitcoin => quote!(
-                use #import::bitcoin::consensus::encode::Decode;
+                use #import::consensus::encode::Decode;
             ),
             Self::Lightning => quote!(
                 use #import::lightning_encoding::LightningDecode;

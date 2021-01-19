@@ -53,7 +53,7 @@ fn encode_inner_struct(
         input.generics.split_for_impl();
     let ident_name = &input.ident;
 
-    let import = get_encoding_crate(input);
+    let import = get_encoding_crate(input, "internet2");
 
     let recurse = match data.fields {
         Fields::Named(ref fields) => fields
@@ -113,7 +113,7 @@ fn decode_inner_struct(
         input.generics.split_for_impl();
     let ident_name = &input.ident;
 
-    let import = get_encoding_crate(input);
+    let import = get_encoding_crate(input, "internet2");
 
     let inner = match data.fields {
         Fields::Named(ref fields) => {

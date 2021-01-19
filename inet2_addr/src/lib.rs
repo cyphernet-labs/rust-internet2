@@ -36,7 +36,6 @@ extern crate amplify_derive;
 #[macro_use]
 extern crate stringly_conversions;
 #[cfg(feature = "strict_encoding")]
-#[macro_use]
 extern crate strict_encoding;
 #[cfg(feature = "serde")]
 #[macro_use]
@@ -54,9 +53,7 @@ use std::net::{
 use std::num::ParseIntError;
 use std::str::FromStr;
 #[cfg(feature = "tor")]
-use torut::onion::{
-    OnionAddressV2, OnionAddressV3, TorPublicKeyV3, TORV3_PUBLIC_KEY_LENGTH,
-};
+use torut::onion::{OnionAddressV2, OnionAddressV3, TorPublicKeyV3};
 
 /// Address type do not support ONION address format and can be used only with
 /// IPv4 or IPv6 addresses
@@ -190,13 +187,6 @@ impl std::hash::Hash for InetAddr {
 }
 
 impl InetAddr {
-    const IPV4_TAG: u8 = 0;
-    const IPV6_TAG: u8 = 1;
-    #[cfg(feature = "tor")]
-    const TORV2_TAG: u8 = 2;
-    #[cfg(feature = "tor")]
-    const TORV3_TAG: u8 = 3;
-
     /// Returns an IPv6 address, constructed from IPv4 data; or, if Onion
     /// address is used, [`Option::None`]
     #[inline]
@@ -494,21 +484,6 @@ impl FromStr for Transport {
             "quic" => Transport::Quic,
             _ => Err(AddrParseError::UnknownProtocolError(s.to_owned()))?,
         })
-    }
-}
-
-impl fmt::Display for Transport {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Transport::Tcp => "tcp",
-                Transport::Udp => "udp",
-                Transport::Mtcp => "mtcp",
-                Transport::Quic => "quic",
-            }
-        )
     }
 }
 

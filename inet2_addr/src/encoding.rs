@@ -13,19 +13,13 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use std::io;
-use std::net::{
-    IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6,
-};
+use std::net::{Ipv4Addr, Ipv6Addr};
 #[cfg(feature = "tor")]
-use torut::onion::{
-    OnionAddressV2, OnionAddressV3, TorPublicKeyV3, TORV3_PUBLIC_KEY_LENGTH,
-};
+use torut::onion::{TorPublicKeyV3, TORV3_PUBLIC_KEY_LENGTH};
 
 use strict_encoding::net::{
     AddrFormat, DecodeError, RawAddr, Transport, Uniform, UniformAddr, ADDR_LEN,
 };
-use strict_encoding::{Error, StrictDecode, StrictEncode};
 
 use crate::{InetAddr, InetSocketAddr, InetSocketAddrExt};
 
@@ -62,10 +56,14 @@ impl Uniform for InetAddr {
             InetAddr::IPv6(ip) => ip.addr(),
             #[cfg(feature = "tor")]
             InetAddr::TorV2(tor) => {
-                buf[23..].copy_from_slice(tor.get_raw_bytes().as_ref())
+                buf[23..].copy_from_slice(tor.get_raw_bytes().as_ref());
+                buf
             }
             #[cfg(feature = "tor")]
-            InetAddr::Tor(tor) => buf[1..].copy_from_slice(&tor.to_bytes()),
+            InetAddr::Tor(tor) => {
+                buf[1..].copy_from_slice(&tor.to_bytes());
+                buf
+            }
         }
     }
 
@@ -138,7 +136,7 @@ impl Uniform for InetSocketAddr {
         if addr.transport.is_some() {
             return Err(DecodeError::ExcessiveData);
         }
-        Self::from_uniform_addr_lossy()
+        Self::from_uniform_addr_lossy(addr)
     }
 
     #[inline]
@@ -186,7 +184,7 @@ impl Uniform for InetSocketAddrExt {
     where
         Self: Sized,
     {
-        Self::from_uniform_addr_lossy()
+        Self::from_uniform_addr_lossy(addr)
     }
 
     #[inline]

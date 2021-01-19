@@ -1,7 +1,7 @@
 [package]
-name = "internet2_derive"
+name = "inet2_derive"
 version = "0.3.0-alpha.3"
-license = "Apache2"
+license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Derivation macros for Internet2-based crates"
 repository = "https://github.com/internet2-org/internet2"
@@ -20,4 +20,6 @@ proc-macro2 = "~1.0.24"
 amplify = "2.4"
 
 [dev-dependencies]
+amplify = "3.0.0"
 internet2 = { path = ".." }
+strict_encoding = "1.0.0-rc.6"
