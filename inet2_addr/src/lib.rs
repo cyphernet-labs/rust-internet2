@@ -45,8 +45,6 @@ extern crate serde_crate as serde;
 #[cfg(feature = "strict_encoding")]
 mod encoding;
 
-// TODO: Move all uniform encodings into a trait
-
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
@@ -192,11 +190,6 @@ impl std::hash::Hash for InetAddr {
 }
 
 impl InetAddr {
-    /// Length of the encoded address; equal to the maximal length of encoding
-    /// for different address types
-    #[cfg(feature = "tor")]
-    pub const UNIFORM_ADDR_LEN: usize = TORV3_PUBLIC_KEY_LENGTH + 1; //32usize
-
     const IPV4_TAG: u8 = 0;
     const IPV6_TAG: u8 = 1;
     #[cfg(feature = "tor")]
@@ -204,14 +197,9 @@ impl InetAddr {
     #[cfg(feature = "tor")]
     const TORV3_TAG: u8 = 3;
 
-    /// Length of the encoded address; equal to the maximal length of encoding
-    /// for different address types
-    #[cfg(not(feature = "tor"))]
-    pub const UNIFORM_ADDR_LEN: usize = 33;
-    #[inline]
-
     /// Returns an IPv6 address, constructed from IPv4 data; or, if Onion
     /// address is used, [`Option::None`]
+    #[inline]
     pub fn to_ipv6(&self) -> Option<Ipv6Addr> {
         match self {
             InetAddr::IPv4(ipv4_addr) => Some(ipv4_addr.to_ipv6_mapped()),
@@ -222,6 +210,7 @@ impl InetAddr {
     }
 
     /// Returns an IPv4 address, if any, or [`Option::None`]
+    #[inline]
     pub fn to_ipv4(&self) -> Option<Ipv6Addr> {
         match self {
             InetAddr::IPv4(ipv4_addr) => Some(ipv4_addr.to_ipv6_mapped()),
@@ -285,66 +274,6 @@ impl InetAddr {
             InetAddr::IPv4(_) | InetAddr::IPv6(_) | InetAddr::TorV2(_) => None,
             InetAddr::Tor(key) => Some(OnionAddressV3::from(key)),
         }
-    }
-
-    /// Decodes byte array containing uniform encoding of some internet address,
-    /// constructed with [`to_uniform_encoding()`]. If the address can't be
-    /// recognized, returns [`Option::None`]
-    pub fn from_uniform_encoding(data: &[u8]) -> Option<Self> {
-        if data.len() != Self::UNIFORM_ADDR_LEN {
-            None?
-        }
-
-        let mut slice = [0u8; Self::UNIFORM_ADDR_LEN];
-        slice.clone_from_slice(data);
-
-        match slice[0] {
-            Self::IPV4_TAG => {
-                let mut a = [0u8; 4];
-                a.clone_from_slice(&slice[29..]);
-                Some(InetAddr::IPv4(Ipv4Addr::from(a)))
-            }
-            Self::IPV6_TAG => {
-                let mut a = [0u8; 16];
-                a.clone_from_slice(&slice[17..]);
-                Some(InetAddr::IPv6(Ipv6Addr::from(a)))
-            }
-            #[cfg(feature = "tor")]
-            Self::TORV3_TAG => {
-                let mut a = [0u8; TORV3_PUBLIC_KEY_LENGTH];
-                a.clone_from_slice(&slice[1..]);
-                TorPublicKeyV3::from_bytes(&a).map(InetAddr::Tor).ok()
-            }
-            _ => None,
-        }
-    }
-
-    /// Encodes address into a uniform byte array for storage. Here, *uniform*
-    /// means that it can contain any possible internet address and have some
-    /// fixed length (equal to [`InetAddr::UNIFORM_ADDR_LEN`])
-    pub fn to_uniform_encoding(&self) -> [u8; Self::UNIFORM_ADDR_LEN] {
-        let mut buf = [0u8; Self::UNIFORM_ADDR_LEN];
-        match self {
-            InetAddr::IPv4(ipv4_addr) => {
-                buf[0] = Self::IPV4_TAG;
-                buf[29..].copy_from_slice(&ipv4_addr.octets())
-            }
-            InetAddr::IPv6(ipv6_addr) => {
-                buf[0] = Self::IPV6_TAG;
-                buf[17..].copy_from_slice(&ipv6_addr.octets())
-            }
-            #[cfg(feature = "tor")]
-            InetAddr::Tor(tor_pubkey) => {
-                buf[0] = Self::TORV3_TAG;
-                buf[1..].copy_from_slice(&tor_pubkey.to_bytes())
-            }
-            #[cfg(feature = "tor")]
-            InetAddr::TorV2(onion_addr) => {
-                buf[0] = Self::TORV2_TAG;
-                buf[23..].copy_from_slice(onion_addr.get_raw_bytes().as_ref())
-            }
-        }
-        buf
     }
 }
 
@@ -474,14 +403,6 @@ impl FromStr for InetAddr {
     }
 }
 
-impl TryFrom<Vec<u8>> for InetAddr {
-    type Error = UniformEncodingError;
-    #[inline]
-    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
-        InetAddr::try_from(&value[..])
-    }
-}
-
 // Yes, I checked that onion addresses don't need to optimize ownership of input
 // String.
 #[cfg(feature = "parse_arg")]
@@ -494,32 +415,6 @@ impl parse_arg::ParseArgFromStr for InetAddr {
         #[cfg(feature = "tor")]
         {
             write!(writer, "IPv4, IPv6, or Tor (onion) address")
-        }
-    }
-}
-
-impl TryFrom<&[u8]> for InetAddr {
-    type Error = UniformEncodingError;
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        match value.len() {
-            4 => {
-                let mut buf = [0u8; 4];
-                buf.clone_from_slice(value);
-                Ok(InetAddr::from(buf))
-            }
-            16 => {
-                let mut buf = [0u8; 16];
-                buf.clone_from_slice(value);
-                Ok(InetAddr::from(buf))
-            }
-            #[cfg(feature = "tor")]
-            32 => {
-                let mut buf = [0u8; 32];
-                buf.clone_from_slice(value);
-                InetAddr::try_from(buf)
-            }
-            // "Unsupported length of the byte string to read `InetAddr` from",
-            len => Err(UniformEncodingError::WrongLength(len)),
         }
     }
 }
@@ -542,20 +437,6 @@ impl From<[u16; 8]> for InetAddr {
     #[inline]
     fn from(value: [u16; 8]) -> Self {
         InetAddr::from(Ipv6Addr::from(value))
-    }
-}
-
-#[cfg(feature = "tor")]
-impl TryFrom<[u8; TORV3_PUBLIC_KEY_LENGTH]> for InetAddr {
-    type Error = UniformEncodingError;
-    #[inline]
-    fn try_from(
-        value: [u8; TORV3_PUBLIC_KEY_LENGTH],
-    ) -> Result<Self, Self::Error> {
-        let mut buf = [3u8; Self::UNIFORM_ADDR_LEN];
-        buf[1..].copy_from_slice(&value);
-        Self::from_uniform_encoding(&buf)
-            .ok_or(UniformEncodingError::InvalidFormat)
     }
 }
 
@@ -594,29 +475,6 @@ pub enum Transport {
     Dccp,
     Rudp,
     */
-}
-
-impl Transport {
-    /// Decodes byte containing uniform encoding of some transport id,
-    /// constructed with [`to_uniform_encoding()`]. If the address can't be
-    /// recognized, returns [`Option::None`]
-    #[inline]
-    pub fn from_uniform_encoding(data: u8) -> Option<Self> {
-        use Transport::*;
-        Some(match data {
-            a if a == Tcp as u8 => Tcp,
-            a if a == Udp as u8 => Udp,
-            a if a == Mtcp as u8 => Mtcp,
-            a if a == Quic as u8 => Quic,
-            _ => None?,
-        })
-    }
-
-    /// Encodes transport as a single byte
-    #[inline]
-    pub fn to_uniform_encoding(&self) -> u8 {
-        *self as u8
-    }
 }
 
 impl Default for Transport {
@@ -698,48 +556,6 @@ impl InetSocketAddr {
     #[inline]
     pub fn is_tor(&self) -> bool {
         self.address.is_tor()
-    }
-}
-
-impl InetSocketAddr {
-    /// Length of the encoded address; equal to the maximal length of encoding
-    /// for different address types
-    pub const UNIFORM_ADDR_LEN: usize = InetAddr::UNIFORM_ADDR_LEN + 2;
-
-    /// Decodes byte array containing uniform encoding of some socket address,
-    /// constructed with [`to_uniform_encoding()`]. If the address can't be
-    /// recognized, returns [`Option::None`]
-    #[inline]
-    pub fn from_uniform_encoding(data: &[u8]) -> Option<Self> {
-        if data.len() != Self::UNIFORM_ADDR_LEN {
-            None?
-        }
-
-        Some(Self {
-            address: {
-                let mut buf = [0u8; InetAddr::UNIFORM_ADDR_LEN];
-                buf.clone_from_slice(&data[..InetAddr::UNIFORM_ADDR_LEN]);
-                InetAddr::from_uniform_encoding(&buf)?
-            },
-            port: {
-                let mut buf = [0u8; 2];
-                buf.clone_from_slice(&data[InetAddr::UNIFORM_ADDR_LEN..]);
-                u16::from_be_bytes(buf)
-            },
-        })
-    }
-
-    /// Encodes address into a uniform byte array for storage. Here, *uniform*
-    /// means that it can contain any possible internet address and have some
-    /// fixed length (equal to [`InetSocketAddr::UNIFORM_ADDR_LEN`])
-    #[inline]
-    pub fn to_uniform_encoding(&self) -> [u8; Self::UNIFORM_ADDR_LEN] {
-        let mut buf = [0u8; Self::UNIFORM_ADDR_LEN];
-        buf[..InetAddr::UNIFORM_ADDR_LEN]
-            .copy_from_slice(&self.address.to_uniform_encoding());
-        buf[InetAddr::UNIFORM_ADDR_LEN..]
-            .copy_from_slice(&self.port.to_be_bytes());
-        buf
     }
 }
 
@@ -857,10 +673,6 @@ impl_try_from_stringly_standard!(InetSocketAddrExt);
 impl_into_stringly_standard!(InetSocketAddrExt);
 
 impl InetSocketAddrExt {
-    /// Length of the encoded address; equal to the maximal length of encoding
-    /// for different address types
-    pub const UNIFORM_ADDR_LEN: usize = InetSocketAddr::UNIFORM_ADDR_LEN + 1;
-
     /// Constructs [`InetSocketAddrExt`] for a given internet address and TCP
     /// port
     #[inline]
@@ -873,33 +685,6 @@ impl InetSocketAddrExt {
     #[inline]
     pub fn udp(address: InetAddr, port: u16) -> Self {
         Self(Transport::Udp, InetSocketAddr::new(address, port))
-    }
-
-    /// Decodes byte array containing uniform encoding of some socket address,
-    /// constructed with [`to_uniform_encoding()`]. If the address can't be
-    /// recognized, returns [`Option::None`]
-    #[inline]
-    pub fn from_uniform_encoding(data: &[u8]) -> Option<Self> {
-        if data.len() != Self::UNIFORM_ADDR_LEN {
-            None?
-        }
-        let mut buf = [0u8; InetSocketAddr::UNIFORM_ADDR_LEN];
-        buf.copy_from_slice(&data[1..]);
-        Some(Self(
-            Transport::from_uniform_encoding(data[0])?,
-            InetSocketAddr::from_uniform_encoding(&buf)?,
-        ))
-    }
-
-    /// Encodes address into a uniform byte array for storage. Here, *uniform*
-    /// means that it can contain any possible internet address and have some
-    /// fixed length (equal to [`InetSocketAddrExt::UNIFORM_ADDR_LEN`])
-    #[inline]
-    pub fn to_uniform_encoding(&self) -> [u8; Self::UNIFORM_ADDR_LEN] {
-        let mut buf = [0u8; Self::UNIFORM_ADDR_LEN];
-        buf[..1].copy_from_slice(&[self.0.to_uniform_encoding()]);
-        buf[1..].copy_from_slice(&self.1.to_uniform_encoding());
-        buf
     }
 }
 
@@ -966,12 +751,6 @@ mod test {
 
         assert!(!ip4.is_tor());
         assert!(!ip6.is_tor());
-
-        let uenc4 = ip4.to_uniform_encoding();
-        assert_eq!(InetAddr::from_uniform_encoding(&uenc4).unwrap(), ip4);
-        let uenc6 = ip6.to_uniform_encoding();
-        assert_ne!(uenc4.to_vec(), uenc6.to_vec());
-        assert_eq!(InetAddr::from_uniform_encoding(&uenc6).unwrap(), ip6);
     }
 
     #[test]
@@ -1032,12 +811,6 @@ mod test {
 
         assert!(!ip4.is_tor());
         assert!(!ip6.is_tor());
-
-        let uenc4 = ip4.to_uniform_encoding();
-        assert_eq!(InetSocketAddr::from_uniform_encoding(&uenc4).unwrap(), ip4);
-        let uenc6 = ip6.to_uniform_encoding();
-        assert_ne!(uenc4.to_vec(), uenc6.to_vec());
-        assert_eq!(InetSocketAddr::from_uniform_encoding(&uenc6).unwrap(), ip6);
     }
 
     #[test]
@@ -1065,17 +838,5 @@ mod test {
         );
         assert_eq!(format!("{}", ip4), "tcp://127.0.0.1:6865");
         assert_eq!(format!("{}", ip6), "udp://::1:6865");
-
-        let uenc4 = ip4.to_uniform_encoding();
-        assert_eq!(
-            InetSocketAddrExt::from_uniform_encoding(&uenc4).unwrap(),
-            ip4
-        );
-        let uenc6 = ip6.to_uniform_encoding();
-        assert_ne!(uenc4.to_vec(), uenc6.to_vec());
-        assert_eq!(
-            InetSocketAddrExt::from_uniform_encoding(&uenc6).unwrap(),
-            ip6
-        );
     }
 }
