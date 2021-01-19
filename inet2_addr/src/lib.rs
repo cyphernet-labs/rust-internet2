@@ -96,19 +96,6 @@ pub enum AddrParseError {
     NeedsTorFeature,
 }
 
-/// Errors during decoding address from uniformally-encoded byte string
-#[derive(
-    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error,
-)]
-#[display(doc_comments)]
-pub enum UniformEncodingError {
-    /// Wrong byte string length {_0}
-    WrongLength(usize),
-
-    /// Byte string contains unrecognizable uniform-encoded address data
-    InvalidFormat,
-}
-
 /// A universal address covering IPv4, IPv6 and Tor in a single byte sequence
 /// of 32 bytes.
 ///
@@ -572,28 +559,31 @@ impl TryFrom<[u8; TORV3_PUBLIC_KEY_LENGTH]> for InetAddr {
     }
 }
 
-/// Transport protocols that may be part of `TransportAddr`
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// Transport protocols that may be part of [`InetSocketAddrExt`]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Display)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde_crate", rename = "lowercase")
 )]
-#[cfg_attr(feature = "strict_encoding", derive(StrictEncode, StrictDecode))]
 #[non_exhaustive]
 #[repr(u8)]
 pub enum Transport {
     /// Normal TCP
+    #[display("tcp")]
     Tcp = 1,
 
     /// Normal UDP
+    #[display("udp")]
     Udp = 2,
 
     /// Multipath TCP version
+    #[display("mtcp")]
     Mtcp = 3,
 
     /// More efficient UDP version under developent by Google and consortium of
     /// other internet companies
+    #[display("quic")]
     Quic = 4,
     /* There are other rarely used protocols. Do not see any reason to add
      * them to the crate for now, but it may appear in the future,

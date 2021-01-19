@@ -14,121 +14,204 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use std::io;
+use std::net::{
+    IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6,
+};
+#[cfg(feature = "tor")]
+use torut::onion::{
+    OnionAddressV2, OnionAddressV3, TorPublicKeyV3, TORV3_PUBLIC_KEY_LENGTH,
+};
+
+use strict_encoding::net::{
+    AddrFormat, DecodeError, RawAddr, Transport, Uniform, UniformAddr, ADDR_LEN,
+};
 use strict_encoding::{Error, StrictDecode, StrictEncode};
 
 use crate::{InetAddr, InetSocketAddr, InetSocketAddrExt};
 
-/* Inapplicable: can't impl external traits on external types.
-   `InetAddr` & `InetSocketAddr` must be used instead
+impl strict_encoding::Strategy for InetAddr {
+    type Strategy = strict_encoding::strategies::UsingUniformAddr;
+}
 
-use std::net::{IpAddr, SocketAddr};
-use std::convert::TryFrom;
+impl strict_encoding::Strategy for InetSocketAddr {
+    type Strategy = strict_encoding::strategies::UsingUniformAddr;
+}
 
-impl StrictEncode for IpAddr {
+impl strict_encoding::Strategy for InetSocketAddrExt {
+    type Strategy = strict_encoding::strategies::UsingUniformAddr;
+}
+
+impl Uniform for InetAddr {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&InetAddr::from(*self).to_uniform_encoding())?)
+    fn addr_format(&self) -> AddrFormat {
+        match self {
+            InetAddr::IPv4(_) => AddrFormat::IpV4,
+            InetAddr::IPv6(_) => AddrFormat::IpV6,
+            #[cfg(feature = "tor")]
+            InetAddr::TorV2(_) => AddrFormat::OnionV2,
+            #[cfg(feature = "tor")]
+            InetAddr::Tor(_) => AddrFormat::OnionV3,
+        }
+    }
+
+    #[inline]
+    fn addr(&self) -> RawAddr {
+        let mut buf = [0u8; ADDR_LEN];
+        match self {
+            InetAddr::IPv4(ip) => ip.addr(),
+            InetAddr::IPv6(ip) => ip.addr(),
+            #[cfg(feature = "tor")]
+            InetAddr::TorV2(tor) => {
+                buf[23..].copy_from_slice(tor.get_raw_bytes().as_ref())
+            }
+            #[cfg(feature = "tor")]
+            InetAddr::Tor(tor) => buf[1..].copy_from_slice(&tor.to_bytes()),
+        }
+    }
+
+    #[inline]
+    fn port(&self) -> Option<u16> {
+        None
+    }
+
+    #[inline]
+    fn transport(&self) -> Option<Transport> {
+        None
+    }
+
+    #[inline]
+    fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
+    where
+        Self: Sized,
+    {
+        if addr.port.is_some() || addr.transport.is_some() {
+            return Err(DecodeError::ExcessiveData);
+        }
+        Self::from_uniform_addr_lossy(addr)
+    }
+
+    #[inline]
+    fn from_uniform_addr_lossy(addr: UniformAddr) -> Result<Self, DecodeError>
+    where
+        Self: Sized,
+    {
+        Ok(match addr.addr_format {
+            AddrFormat::IpV4 => {
+                InetAddr::IPv4(Ipv4Addr::from_uniform_addr_lossy(addr)?)
+            }
+            AddrFormat::IpV6 => {
+                InetAddr::IPv6(Ipv6Addr::from_uniform_addr_lossy(addr)?)
+            }
+            #[cfg(feature = "tor")]
+            AddrFormat::OnionV3 => InetAddr::Tor(tor_from_raw_addr(addr.addr)?),
+            _ => Err(DecodeError::UnsupportedAddrFormat)?,
+        })
     }
 }
 
-impl StrictEncode for SocketAddr {
+impl Uniform for InetSocketAddr {
     #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&InetSocketAddr::from(*self).to_uniform_encoding())?)
+    fn addr_format(&self) -> AddrFormat {
+        self.address.addr_format()
+    }
+
+    #[inline]
+    fn addr(&self) -> RawAddr {
+        self.address.addr()
+    }
+
+    #[inline]
+    fn port(&self) -> Option<u16> {
+        Some(self.port)
+    }
+
+    #[inline]
+    fn transport(&self) -> Option<Transport> {
+        None
+    }
+
+    #[inline]
+    fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
+    where
+        Self: Sized,
+    {
+        if addr.transport.is_some() {
+            return Err(DecodeError::ExcessiveData);
+        }
+        Self::from_uniform_addr_lossy()
+    }
+
+    #[inline]
+    fn from_uniform_addr_lossy(addr: UniformAddr) -> Result<Self, DecodeError>
+    where
+        Self: Sized,
+    {
+        if let Some(port) = addr.port {
+            let address = InetAddr::from_uniform_addr_lossy(addr)?;
+            Ok(InetSocketAddr { address, port })
+        } else {
+            Err(DecodeError::InsufficientData)
+        }
     }
 }
 
-impl StrictDecode for IpAddr {
+impl Uniform for InetSocketAddrExt {
     #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; InetAddr::UNIFORM_ADDR_LEN];
-        d.read_exact(&mut buf)?;
-        let res = InetAddr::from_uniform_encoding(&buf)
-            .map(IpAddr::try_from)
-            .ok_or(Error::DataIntegrityError(s!(
-                "InetAddr uniform encoding failure"
-            )))?;
-        Ok(res.map_err(|_| {
-            Error::DataIntegrityError(s!(
-                "Found Onion address when IP address was expected"
-            ))
-        })?)
+    fn addr_format(&self) -> AddrFormat {
+        self.1.addr_format()
+    }
+
+    #[inline]
+    fn addr(&self) -> RawAddr {
+        self.1.addr()
+    }
+
+    #[inline]
+    fn port(&self) -> Option<u16> {
+        Some(self.1.port)
+    }
+
+    #[inline]
+    fn transport(&self) -> Option<Transport> {
+        Some(match self.0 {
+            crate::Transport::Tcp => Transport::Tcp,
+            crate::Transport::Udp => Transport::Udp,
+            crate::Transport::Mtcp => Transport::Mtcp,
+            crate::Transport::Quic => Transport::Quic,
+        })
+    }
+
+    #[inline]
+    fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
+    where
+        Self: Sized,
+    {
+        Self::from_uniform_addr_lossy()
+    }
+
+    #[inline]
+    fn from_uniform_addr_lossy(addr: UniformAddr) -> Result<Self, DecodeError>
+    where
+        Self: Sized,
+    {
+        if let Some(transport) = addr.transport {
+            let address = InetSocketAddr::from_uniform_addr_lossy(addr)?;
+            let transport = match transport {
+                Transport::Tcp => crate::Transport::Tcp,
+                Transport::Udp => crate::Transport::Udp,
+                Transport::Mtcp => crate::Transport::Mtcp,
+                Transport::Quic => crate::Transport::Quic,
+            };
+            Ok(InetSocketAddrExt(transport, address))
+        } else {
+            Err(DecodeError::InsufficientData)
+        }
     }
 }
 
-impl StrictDecode for SocketAddr {
-    #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; InetSocketAddr::UNIFORM_ADDR_LEN];
-        d.read_exact(&mut buf)?;
-        let res = InetSocketAddr::from_uniform_encoding(&buf)
-            .map(SocketAddr::try_from)
-            .ok_or(Error::DataIntegrityError(s!(
-                "InetSocketAddr uniform encoding failure"
-            )))?;
-        Ok(res.map_err(|_| {
-            Error::DataIntegrityError(s!(
-                "Found Onion address when IP address was expected"
-            ))
-        })?)
-    }
-}
-*/
-
-impl StrictEncode for InetAddr {
-    #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.to_uniform_encoding())?)
-    }
-}
-
-impl StrictEncode for InetSocketAddr {
-    #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.to_uniform_encoding())?)
-    }
-}
-
-impl StrictEncode for InetSocketAddrExt {
-    #[inline]
-    fn strict_encode<E: io::Write>(&self, mut e: E) -> Result<usize, Error> {
-        Ok(e.write(&self.to_uniform_encoding())?)
-    }
-}
-
-impl StrictDecode for InetAddr {
-    #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; Self::UNIFORM_ADDR_LEN];
-        d.read_exact(&mut buf)?;
-        Ok(Self::from_uniform_encoding(&buf).ok_or(
-            Error::DataIntegrityError(s!("InetAddr uniform encoding failure")),
-        )?)
-    }
-}
-
-impl StrictDecode for InetSocketAddr {
-    #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; Self::UNIFORM_ADDR_LEN];
-        d.read_exact(&mut buf)?;
-        Ok(Self::from_uniform_encoding(&buf).ok_or(
-            Error::DataIntegrityError(s!(
-                "InetSocketAddr uniform encoding failure"
-            )),
-        )?)
-    }
-}
-
-impl StrictDecode for InetSocketAddrExt {
-    #[inline]
-    fn strict_decode<D: io::Read>(mut d: D) -> Result<Self, Error> {
-        let mut buf = [0u8; Self::UNIFORM_ADDR_LEN];
-        d.read_exact(&mut buf)?;
-        Ok(Self::from_uniform_encoding(&buf).ok_or(
-            Error::DataIntegrityError(s!(
-                "InetSocketAddrExt uniform encoding failure"
-            )),
-        )?)
-    }
+#[cfg(feature = "tor")]
+fn tor_from_raw_addr(raw: RawAddr) -> Result<TorPublicKeyV3, DecodeError> {
+    let mut a = [0u8; TORV3_PUBLIC_KEY_LENGTH];
+    a.copy_from_slice(&raw[1..]);
+    TorPublicKeyV3::from_bytes(&a).map_err(|_| DecodeError::InvalidPubkey)
 }

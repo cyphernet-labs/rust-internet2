@@ -1,13 +1,13 @@
 [package]
 name = "inet2_addr"
-version = "0.4.0-rc.1"
+version = "0.4.0-rc.2"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Internet2 addresses with support for Tor v2, v3"
 repository = "https://github.com/internet2-org/rust-internet2"
 homepage = "https://github.com/internet2-org"
 keywords = ["internet2", "tor", "onion", "lnp-bp", "privacy"]
-categories = ["cryptography", "encoding", "parsing", "web-programming"]
+categories = ["network-programming", "cryptography", "encoding"]
 readme = "README.md"
 edition = "2018"
 
@@ -19,7 +19,7 @@ crate-type = ["dylib", "rlib", "staticlib"]
 [dependencies]
 amplify = "3"
 amplify_derive = "2.4"
-strict_encoding = { version = "1.0.0-rc.2", optional = true }
+strict_encoding = { version = "1.0.0-rc.6", optional = true }
 stringly_conversions = { version = "0.1.1", optional = true, features = ["alloc"] }
 torut = { version = "0.1.7", features = ["v2", "v3"], optional = true }
 ed25519-dalek = { version = "1", optional = true }
