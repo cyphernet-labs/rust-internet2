@@ -607,52 +607,60 @@ mod collections {
     }
 }
 
-/*
+mod _inet {
+    use super::*;
+    use inet2_addr::{InetAddr, InetSocketAddr, InetSocketAddrExt};
+    use std::net::{
+        IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6,
+    };
+
+    impl Strategy for IpAddr {
+        type Strategy = strategies::AsStrict;
+    }
+
+    impl Strategy for Ipv4Addr {
+        type Strategy = strategies::AsStrict;
+    }
+
+    impl Strategy for Ipv6Addr {
+        type Strategy = strategies::AsStrict;
+    }
+
+    impl Strategy for SocketAddr {
+        type Strategy = strategies::AsStrict;
+    }
+
+    impl Strategy for SocketAddrV4 {
+        type Strategy = strategies::AsStrict;
+    }
+
+    impl Strategy for SocketAddrV6 {
+        type Strategy = strategies::AsStrict;
+    }
+
+    impl Strategy for InetAddr {
+        type Strategy = strategies::AsStrict;
+    }
+
+    impl Strategy for InetSocketAddr {
+        type Strategy = strategies::AsStrict;
+    }
+
+    impl Strategy for InetSocketAddrExt {
+        type Strategy = strategies::AsStrict;
+    }
+}
+
+#[cfg(feature = "lnpbp")]
 mod _lnpbp {
     use super::*;
-    use lnpbp::AssetId;
+    use lnpbp::chain::AssetId;
 
     impl Strategy for AssetId {
         type Strategy = strategies::AsBitcoinHash;
     }
-}
 
-use crate::ChannelId;
-// With ChannelId we have a special situation when zero-based channel id
-// represents "all channels" and is encoded in LNP as an Option::None
-impl LightningEncode for Option<ChannelId> {
-    fn lightning_encode<E: io::Write>(
-        &self,
-        mut e: E,
-    ) -> Result<usize, io::Error> {
-        match self {
-            Some(id) => id.lightning_encode(e),
-            None => {
-                e.write_all(&[0u8; 32])?;
-                Ok(32)
-            }
-        }
-    }
-}
-
-impl LightningDecode for Option<ChannelId> {
-    fn lightning_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-        let channel_id = ChannelId::lightning_decode(d)?;
-        if channel_id.into_inner() == [0u8; 32].into() {
-            Ok(None)
-        } else {
-            Ok(Some(channel_id))
-        }
-    }
-}
-*/
-
-// TODO: Replace this temporary solution with proper TLV processing
-/*
-mod temp_before_tlv {
-    use super::*;
-    use crate::bp::chain::AssetId;
-
+    // TODO: Remove after proper TLV implementation
     impl LightningEncode for Option<AssetId> {
         fn lightning_encode<E: io::Write>(
             &self,
@@ -671,4 +679,21 @@ mod temp_before_tlv {
         }
     }
 }
-*/
+
+#[cfg(feature = "descriptor-wallet")]
+mod _wallet {
+    use super::*;
+    use wallet::{HashLock, HashPreimage, Slice32};
+
+    impl Strategy for Slice32 {
+        type Strategy = strategies::AsWrapped;
+    }
+
+    impl Strategy for HashPreimage {
+        type Strategy = strategies::AsWrapped;
+    }
+
+    impl Strategy for HashLock {
+        type Strategy = strategies::AsWrapped;
+    }
+}

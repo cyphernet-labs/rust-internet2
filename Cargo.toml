@@ -1,12 +1,12 @@
 [package]
 name = "internet2"
-version = "0.3.0-alpha.3"
+version = "0.3.0-rc.4"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Rust implementation for the stack of Internet2 protocols"
 repository = "https://github.com/internet2-org/rust-internet2"
 homepage = "https://github.com/internet2-org"
-keywords = ["internet2", "tor", "onion", "noise-xk", "lnp-bp", "privacy", "cryptography"]
+keywords = ["internet2", "tor", "noise-xk", "privacy", "cryptography"]
 categories = ["network-programming", "cryptography", "encoding"]
 readme = "README.md"
 edition = "2018"
@@ -38,8 +38,10 @@ crate-type = ["rlib", "staticlib"]
 amplify = { version = "3", features = ["stringly_conversions"] }
 amplify_derive = "2.4.3"
 strict_encoding = { version = "1.0.0-rc.6", features = ["derive"] }
-inet2_addr = { version = "0.4.0-rc.1", path = "inet2_addr" }
-inet2_derive = { version = ">=0.3.0-alpha.2", path = "./derive" }
+inet2_addr = { version = "0.4.0-rc.2", path = "inet2_addr", features = ["strict_encoding", "stringly_conversions"] }
+inet2_derive = { version = "0.3.0-alpha.3", path = "./derive", optional = true }
+lnpbp = { version = "0.3.0-beta.1", optional = true }
+descriptor-wallet = { version = "0.3.0-rc.5", optional = true }
 # Dependencies on core rust-bitcoin ecosystem projects
 # ----------------------------------------------------
 bitcoin = { version = "~0.26.0", features = ["rand"] }
@@ -92,8 +94,8 @@ openssl = { version = "~0.10", features = ["vendored"] }
 # Listings
 # --------
 #   By default we use LNP with Tor support and URL support
-default = ["tor", "url", "zmq"]
-all = [
+default = ["tor", "url", "zmq", "derive", "bitcoin-ext"]
+all = ["derive", "bitcoin-ext",
        # Serde
        "serde",
        # Networking
@@ -102,11 +104,13 @@ all = [
 # ----------------------------
 #   These also include re-assembly of necessary features from dependencies
 serde = ["serde_crate", "serde_with", "serde_with_macros", "amplify/serde",
-         "bitcoin/use-serde"]
+         "bitcoin/use-serde", "inet2_addr/serde"]
+derive = ["inet2_derive"]
+bitcoin-ext = ["descriptor-wallet", "lnpbp"]
 # Networking
 # ----------
 websockets = []
-tor = []
+tor = ["inet2_addr/tor"]
 vendored_openssl = ["torut/vendored_openssl"]
 
 [workspace]

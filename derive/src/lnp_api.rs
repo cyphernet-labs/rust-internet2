@@ -44,12 +44,19 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
     let global_params = attr_list(&input.attrs, NAME, EXAMPLE)?
         .ok_or(attr_err!(input, "encoding type must be specified"))?;
-    let import = get_encoding_crate(input, "strict_encoding");
     let global_encoding = EncodingSrategy::try_from(
         nested_one_named_value(&global_params, "encoding", EXAMPLE)?
             .ok_or(attr_err!(input, "encoding must be specified"))?
             .lit,
     )?;
+    let import = get_encoding_crate(
+        input,
+        match global_encoding {
+            EncodingSrategy::Strict => "strict_encoding",
+            EncodingSrategy::Bitcoin => "bitcoin",
+            EncodingSrategy::Lightning => "internet2",
+        },
+    );
     let encode_use = global_encoding.encode_use(&import);
     let decode_use = global_encoding.decode_use(&import);
     let encode_fn = global_encoding.encode_fn();
