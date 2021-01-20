@@ -199,6 +199,7 @@ impl Uniform for InetSocketAddrExt {
                 Transport::Udp => crate::Transport::Udp,
                 Transport::Mtcp => crate::Transport::Mtcp,
                 Transport::Quic => crate::Transport::Quic,
+                _ => unimplemented!(),
             };
             Ok(InetSocketAddrExt(transport, address))
         } else {

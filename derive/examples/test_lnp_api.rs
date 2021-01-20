@@ -2,8 +2,6 @@
 
 #[macro_use]
 extern crate inet2_derive;
-#[macro_use]
-extern crate strict_encoding;
 
 #[derive(Clone, Debug, LnpApi)]
 #[lnp_api(encoding = "strict")]

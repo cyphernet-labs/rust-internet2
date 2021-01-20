@@ -1,6 +1,6 @@
 [package]
 name = "internet2"
-version = "0.3.0-rc.4"
+version = "0.3.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Rust implementation for the stack of Internet2 protocols"
@@ -37,9 +37,9 @@ crate-type = ["rlib", "staticlib"]
 # -----------------------------------------
 amplify = { version = "3", features = ["stringly_conversions"] }
 amplify_derive = "2.4.3"
-strict_encoding = { version = "1.0.0-rc.6", features = ["derive"] }
-inet2_addr = { version = "0.4.0-rc.2", path = "inet2_addr", features = ["strict_encoding", "stringly_conversions"] }
-inet2_derive = { version = "0.3.0-alpha.3", path = "./derive", optional = true }
+strict_encoding = { version = "1", features = ["derive"] }
+inet2_addr = { version = "0.4", features = ["strict_encoding", "stringly_conversions"] }
+inet2_derive = { version = "0.3", optional = true }
 lnpbp = { version = "0.3.0-beta.1", optional = true }
 descriptor-wallet = { version = "0.3.0-rc.5", optional = true }
 # Dependencies on core rust-bitcoin ecosystem projects
@@ -71,9 +71,6 @@ regex = "1"
 # 2. Once async traits will get to rust compiler, this one will be also not
 #    needed
 torut = { version = "~0.1.6", features = ["v2", "v3"] }
-
-[dev-dependencies]
-serde_json = "~1.0.60"
 
 [target.'cfg(target_os="android")'.dependencies]
 cc = { version = "=1.0.41" }
