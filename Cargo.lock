@@ -665,7 +665,7 @@ name = "inet2_derive"
 version = "0.3.2"
 dependencies = [
  "amplify",
- "internet2 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "internet2 0.3.3",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
  "strict_encoding",
@@ -682,30 +682,6 @@ dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
  "syn 1.0.58",
-]
-
-[[package]]
-name = "internet2"
-version = "0.3.3"
-dependencies = [
- "amplify",
- "amplify_derive",
- "bitcoin",
- "chacha20poly1305",
- "descriptor-wallet",
- "inet2_addr 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "inet2_derive 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static",
- "lnpbp",
- "openssl",
- "serde 1.0.120",
- "serde_with",
- "serde_with_macros",
- "strict_encoding",
- "torut",
- "url",
- "zeromq-src 0.1.10+4.3.2 (git+https://github.com/LNP-BP/zeromq-src-rs?branch=fix/cmake)",
- "zmq",
 ]
 
 [[package]]
@@ -728,6 +704,30 @@ dependencies = [
  "serde_with_macros",
  "strict_encoding",
  "url",
+ "zmq",
+]
+
+[[package]]
+name = "internet2"
+version = "0.3.4"
+dependencies = [
+ "amplify",
+ "amplify_derive",
+ "bitcoin",
+ "chacha20poly1305",
+ "descriptor-wallet",
+ "inet2_addr 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "inet2_derive 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static",
+ "lnpbp",
+ "openssl",
+ "serde 1.0.120",
+ "serde_with",
+ "serde_with_macros",
+ "strict_encoding",
+ "torut",
+ "url",
+ "zeromq-src 0.1.10+4.3.2 (git+https://github.com/LNP-BP/zeromq-src-rs?branch=fix/cmake)",
  "zmq",
 ]
 
@@ -843,7 +843,7 @@ dependencies = [
  "clap",
  "config",
  "env_logger",
- "internet2 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "internet2 0.3.3",
  "log",
  "serde 1.0.120",
  "serde_with",

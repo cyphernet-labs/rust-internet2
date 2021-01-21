@@ -26,7 +26,7 @@ use inet2_addr::{InetSocketAddr, NoOnionSupportError};
 use serde_with::{As, DisplayFromStr};
 #[cfg(feature = "url")]
 use std::convert::TryFrom;
-#[cfg(any(feature = "url", all(feature = "zmq", feature = "tor")))]
+#[cfg(any(feature = "url", feature = "zmq"))]
 use std::convert::TryInto;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
@@ -213,7 +213,9 @@ impl RemoteSocketAddr {
             #[cfg(all(feature = "zmq", feature = "tor"))]
             FramingProtocol::Zmtp => Self::Zmq(addr.try_into()?),
             #[cfg(all(feature = "zmq", not(feature = "tor")))]
-            FramingProtocol::Zmtp => Self::Zmq(addr.into()),
+            FramingProtocol::Zmtp => {
+                Self::Zmq(addr.try_into().map_err(|_| NoOnionSupportError)?)
+            }
             FramingProtocol::Http => Self::Http(addr),
             #[cfg(feature = "websocket")]
             FramingProtocol::Websocket => Self::Websocket(addr),
@@ -359,8 +361,14 @@ impl TryFrom<Url> for RemoteSocketAddr {
         let inet_socket_addr = InetSocketAddr::new(inet_addr, port);
         Ok(match url.scheme() {
             "lnp" => RemoteSocketAddr::Ftcp(inet_socket_addr),
-            #[cfg(feature = "zmq")]
+            #[cfg(all(feature = "zmq", feature = "tor"))]
             "lnpz" => RemoteSocketAddr::Zmq(inet_socket_addr.try_into()?),
+            #[cfg(all(feature = "zmq", not(feature = "tor")))]
+            "lnpz" => RemoteSocketAddr::Zmq(
+                inet_socket_addr
+                    .try_into()
+                    .map_err(|_| AddrError::NoOnionSupport)?,
+            ),
             "lnph" => RemoteSocketAddr::Http(inet_socket_addr),
             #[cfg(feature = "websocket")]
             "lnpws" => RemoteSocketAddr::Websocket(inet_socket_addr),
