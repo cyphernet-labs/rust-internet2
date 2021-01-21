@@ -352,11 +352,6 @@ pub mod strategies {
     impl Strategy for secp256k1::Signature {
         type Strategy = AsStrict;
     }
-
-    #[cfg(feature = "rgb")]
-    impl Strategy for crate::rgb::Consignment {
-        type Strategy = AsStrict;
-    }
 }
 pub use strategies::Strategy;
 
@@ -694,6 +689,24 @@ mod _wallet {
     }
 
     impl Strategy for HashLock {
+        type Strategy = strategies::AsWrapped;
+    }
+}
+
+#[cfg(feature = "rgb")]
+mod _rgb {
+    use super::*;
+    use rgb::{Consignment, Schema, Transition};
+
+    impl Strategy for Consignment {
+        type Strategy = strategies::AsStrict;
+    }
+
+    impl Strategy for Transition {
+        type Strategy = strategies::AsStrict;
+    }
+
+    impl Strategy for Schema {
         type Strategy = strategies::AsWrapped;
     }
 }

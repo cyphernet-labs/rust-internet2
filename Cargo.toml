@@ -1,6 +1,6 @@
 [package]
 name = "internet2"
-version = "0.3.4"
+version = "0.3.5"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Rust implementation for the stack of Internet2 protocols"
@@ -41,6 +41,7 @@ strict_encoding = { version = "1", default-features = false, features = ["derive
 inet2_addr = { version = "0.4", features = ["strict_encoding", "stringly_conversions"] }
 inet2_derive = { version = "0.3", default-features = false, optional = true }
 lnpbp = { version = "0.3.0-beta.1", default-features = false, optional = true }
+rgb-core = { version = "0.3.0-beta.3", optional = true }
 descriptor-wallet = { version = "0.3.0-rc.5", default-features = false, optional = true }
 # Dependencies on core rust-bitcoin ecosystem projects
 # ----------------------------------------------------
@@ -82,7 +83,7 @@ openssl = { version = "0.10", features = ["vendored"], optional = true }
 # --------
 #   By default we use LNP with Tor support and URL support
 default = ["tor", "url", "zmq", "derive", "bitcoin-ext"]
-all = ["derive", "bitcoin-ext",
+all = ["derive", "bitcoin-ext", "lnpbp", "rgb",
        # Serde
        "serde", "keygen",
        # Networking
@@ -91,9 +92,10 @@ all = ["derive", "bitcoin-ext",
 # ----------------------------
 #   These also include re-assembly of necessary features from dependencies
 serde = ["serde_crate", "serde_with", "serde_with_macros", "amplify/serde",
-         "bitcoin/use-serde", "inet2_addr/serde"]
+         "bitcoin/use-serde", "inet2_addr/serde", "rgb-core/serde", "descriptor-wallet/serde"]
 derive = ["inet2_derive"]
 bitcoin-ext = ["descriptor-wallet", "lnpbp"]
+rgb = ["rgb-core"]
 keygen = ["bitcoin/rand"]
 # Networking
 # ----------

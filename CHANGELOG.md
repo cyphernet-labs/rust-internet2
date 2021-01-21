@@ -1,6 +1,10 @@
 Change Log
 ==========
 
+v0.3.5
+------
+- Feature for RGB support (`rgb`)
+
 v0.3.0-alpha.1
 --------------
 - Serde encoding fixes (proper use of `serde_as` for wrapped types)
