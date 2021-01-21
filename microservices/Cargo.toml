@@ -1,6 +1,6 @@
 [package]
 name = "microservices"
-version = "0.3.2"
+version = "0.3.3"
 license = "Apache-2.0"
 authors = ["Dr Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "LNP/BP support crate for devloping microservices"
@@ -19,6 +19,7 @@ crate-type = ["rlib", "staticlib"]
 # LNP/BP libraries
 amplify = "3"
 amplify_derive = "2.4"
+lnp-core = { version = "0.3.0-beta.3", optional = true }
 internet2 = { version = "0.3.3", default-features = false, features = ["derive"]}
 strict_encoding = { version = "1", default-features = false, features = ["derive"] }
 # Serialization & parsing
@@ -41,7 +42,7 @@ zmq_crate = { package = "zmq", version = "0.9", optional = true }
 # 5. Simple cli utility app: `shell`
 [features]
 default = ["client", "tor"]
-all = ["server", "cli", "tor", "serde"]
+all = ["server", "cli", "tor", "serde", "peer"]
 
 # Server is a standalone application that runs daemon
 server = ["node", "shell"]
@@ -65,7 +66,8 @@ shell = ["clap", "settings", "amplify/parse_arg", "serde", "_config"]
 _config = []
 _rpc = []
 
-serde = ["serde_crate", "serde_with", "amplify/serde", "internet2/serde", "toml"]
+serde = ["serde_crate", "serde_with", "amplify/serde", "internet2/serde", "toml", "lnp-core/serde"]
+peer = ["lnp-core"]
 zmq = ["zmq_crate", "internet2/zmq"]
 tor = ["internet2/tor"]
 vendored_openssl = ["internet2/vendored_openssl"]

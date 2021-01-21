@@ -11,8 +11,8 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use internet2::application::{Messages, PeerReceiver, RecvMessage};
 use internet2::presentation;
+use lnp::{Messages, PeerReceiver, RecvMessage};
 
 use crate::node::TryService;
 

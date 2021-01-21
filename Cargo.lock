@@ -840,6 +840,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
 
 [[package]]
+name = "lnp-core"
+version = "0.3.0-beta.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8fbbe654df76762219c48a559b17ad25bd6957a17da6694a093835d1b73cc1e"
+dependencies = [
+ "amplify",
+ "amplify_derive",
+ "bitcoin",
+ "descriptor-wallet",
+ "internet2 0.3.3",
+ "lazy_static",
+ "lnpbp",
+ "serde 1.0.120",
+ "serde_with",
+ "strict_encoding",
+]
+
+[[package]]
 name = "lnpbp"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -894,7 +912,7 @@ dependencies = [
 
 [[package]]
 name = "microservices"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "amplify",
  "amplify_derive",
@@ -902,6 +920,7 @@ dependencies = [
  "config",
  "env_logger",
  "internet2 0.3.3",
+ "lnp-core",
  "log",
  "serde 1.0.120",
  "serde_with",
