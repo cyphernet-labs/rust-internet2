@@ -12,8 +12,10 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use crate::transport::Error;
+#[cfg(feature = "zmq")]
+use crate::zmqsocket;
 use crate::{
-    session, zmqsocket, LocalNode, LocalSocketAddr, NodeAddr, RemoteNodeAddr,
+    session, LocalNode, LocalSocketAddr, NodeAddr, RemoteNodeAddr,
     RemoteSocketAddr, Session,
 };
 
@@ -27,6 +29,9 @@ pub trait Accept {
 
 impl Connect for LocalSocketAddr {
     fn connect(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
+        #[cfg(not(feature = "zmq"))]
+        unimplemented!();
+        #[cfg(feature = "zmq")]
         Ok(Box::new(match self {
             LocalSocketAddr::Zmq(locator) => {
                 session::Raw::with_zmq_unencrypted(
@@ -43,6 +48,9 @@ impl Connect for LocalSocketAddr {
 
 impl Accept for LocalSocketAddr {
     fn accept(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
+        #[cfg(not(feature = "zmq"))]
+        unimplemented!();
+        #[cfg(feature = "zmq")]
         Ok(Box::new(match self {
             LocalSocketAddr::Zmq(locator) => {
                 session::Raw::with_zmq_unencrypted(
@@ -58,7 +66,7 @@ impl Accept for LocalSocketAddr {
 }
 
 impl Connect for RemoteNodeAddr {
-    fn connect(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
+    fn connect(&self, _: &LocalNode) -> Result<Box<dyn Session>, Error> {
         Ok(match self.remote_addr {
             RemoteSocketAddr::Ftcp(inet) => {
                 Box::new(session::Raw::connect_ftcp_unencrypted(inet)?)
@@ -84,7 +92,7 @@ impl Connect for RemoteNodeAddr {
 }
 
 impl Accept for RemoteNodeAddr {
-    fn accept(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
+    fn accept(&self, _: &LocalNode) -> Result<Box<dyn Session>, Error> {
         Ok(match self.remote_addr {
             RemoteSocketAddr::Ftcp(inet) => {
                 Box::new(session::Raw::accept_ftcp_unencrypted(inet)?)

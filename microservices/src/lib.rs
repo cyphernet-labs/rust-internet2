@@ -26,7 +26,7 @@
     //missing_docs
 )]
 
-#[cfg_attr(any(feature = "client", feature = "node"), macro_use)]
+#[cfg_attr(feature = "_rpc", macro_use)]
 extern crate amplify;
 #[macro_use]
 extern crate amplify_derive;
@@ -34,28 +34,34 @@ extern crate amplify_derive;
 extern crate strict_encoding;
 
 #[cfg(feature = "serde")]
+#[allow(unused_imports)]
+#[macro_use]
 extern crate serde_crate as serde;
 #[cfg(feature = "serde")]
 #[cfg_attr(feature = "shell", macro_use)]
 extern crate serde_with;
 
 #[cfg(feature = "clap")]
-#[cfg_attr(feature = "cli", macro_use)]
-extern crate clap;
-#[cfg(feature = "log")]
 #[macro_use]
+extern crate clap;
+#[cfg_attr(feature = "_rpc", macro_use)]
 extern crate log;
+#[cfg(feature = "zmq")]
+extern crate zmq_crate as zmq;
 
 pub mod error;
-#[cfg(any(feature = "client", feature = "node"))]
+#[cfg(feature = "_rpc")]
 pub mod esb;
-#[cfg(feature = "cli")]
-pub mod format;
+mod format;
 #[cfg(feature = "node")]
 pub mod node;
 // #[cfg(feature = "node")]
 // pub mod peer;
-#[cfg(any(feature = "client", feature = "node"))]
+#[cfg(feature = "_rpc")]
 pub mod rpc;
 #[cfg(feature = "shell")]
 pub mod shell;
+
+pub use format::{
+    BinaryFormat, FileFormat, FormatParseError, StructuredFormat,
+};

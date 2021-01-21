@@ -15,7 +15,6 @@ use amplify::{Bipolar, Wrapper};
 use core::cmp::Ordering;
 #[cfg(feature = "url")]
 use core::convert::TryFrom;
-#[cfg(feature = "url")]
 use core::str::FromStr;
 #[cfg(feature = "serde")]
 use serde_with::{As, DisplayFromStr};
@@ -25,7 +24,9 @@ use std::net::SocketAddr;
 use url::Url;
 
 use super::{Duplex, RecvFrame, RoutedFrame, SendFrame};
-use crate::{transport, AddrError, UrlString};
+#[cfg(feature = "url")]
+use crate::AddrError;
+use crate::{transport, UrlString};
 
 lazy_static! {
     pub static ref ZMQ_CONTEXT: zmq::Context = zmq::Context::new();
@@ -271,6 +272,15 @@ impl FromStr for ZmqSocketAddr {
     }
 }
 
+#[cfg(not(feature = "url"))]
+impl FromStr for ZmqSocketAddr {
+    type Err = crate::AddrError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        panic!("Parsing ZmqSocketAddr from string requires url feature")
+    }
+}
+
 #[cfg(feature = "url")]
 impl From<ZmqSocketAddr> for Url {
     fn from(addr: ZmqSocketAddr) -> Self {
@@ -483,7 +493,8 @@ impl RecvFrame for WrappedSocket {
         Ok(data)
     }
 
-    fn recv_raw(&mut self, len: usize) -> Result<Vec<u8>, transport::Error> {
+    fn recv_raw(&mut self, _len: usize) -> Result<Vec<u8>, transport::Error> {
+        // NB: Here we can't guarantee the actual amount of bytes we receive
         Ok(self.socket.recv_bytes(0)?)
     }
 

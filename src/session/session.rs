@@ -18,8 +18,10 @@ use inet2_addr::InetSocketAddr;
 use super::{Decrypt, Encrypt, Transcode};
 use crate::session::PlainTranscoder;
 use crate::transport::{
-    ftcp, zmqsocket, Duplex, Error, RecvFrame, RoutedFrame, SendFrame,
+    ftcp, Duplex, Error, RecvFrame, RoutedFrame, SendFrame,
 };
+#[cfg(feature = "zmq")]
+use crate::zmqsocket;
 
 // Generics prevents us from using session as `&dyn` reference, so we have
 // to avoid `where Self: Input + Output` and generic parameters, unlike with
@@ -56,10 +58,10 @@ pub trait Output {
     fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error>;
     fn send_routed_message(
         &mut self,
-        source: &[u8],
-        route: &[u8],
-        dest: &[u8],
-        raw: &[u8],
+        _source: &[u8],
+        _route: &[u8],
+        _dest: &[u8],
+        _raw: &[u8],
     ) -> Result<usize, Error> {
         // We panic here because this is a program architecture design
         // error and developer must be notified about it; the program using
@@ -203,6 +205,7 @@ impl Raw<PlainTranscoder, ftcp::Connection> {
     }
 }
 
+#[cfg(feature = "zmq")]
 impl Raw<PlainTranscoder, zmqsocket::Connection> {
     pub fn with_zmq_unencrypted(
         zmq_type: zmqsocket::ZmqType,
@@ -231,6 +234,7 @@ impl Raw<PlainTranscoder, zmqsocket::Connection> {
     }
 }
 
+#[cfg(feature = "zmq")]
 impl<T> Raw<T, zmqsocket::Connection>
 where
     T: Transcode,
@@ -284,6 +288,7 @@ mod test {
     use super::*;
 
     #[test]
+    #[cfg(feature = "zmq")]
     fn test_zmq_no_encryption() {
         let locator = zmqsocket::ZmqSocketAddr::Inproc(s!("test"));
         let mut rx = Raw::with_zmq_unencrypted(

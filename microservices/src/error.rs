@@ -13,15 +13,10 @@
 
 use std::fmt::Debug;
 use std::hash::Hash;
-#[cfg(any(feature = "node", feature = "shell"))]
+#[cfg(feature = "_config")]
 use std::io;
 
-#[cfg(feature = "shell")]
-use settings::ConfigError;
-#[cfg(feature = "tokio")]
-use tokio::task::JoinError;
-
-#[cfg(any(feature = "node", feature = "shell"))]
+#[cfg(feature = "_config")]
 use internet2::transport;
 
 #[cfg(feature = "node")]
@@ -31,7 +26,7 @@ use crate::rpc;
 pub trait Error: std::error::Error + Sized + Clone {}
 
 /// Error happening during config initiliaztion
-#[cfg(any(feature = "node", feature = "shell"))]
+#[cfg(feature = "_config")]
 #[derive(Clone, Debug, Display, Error, From)]
 #[display(doc_comments)]
 #[non_exhaustive] // All feature-gated enum types must be non-exhaustive
@@ -47,7 +42,7 @@ pub enum ConfigInitError {
     Toml(toml::ser::Error),
 }
 
-#[cfg(any(feature = "node", feature = "shell"))]
+#[cfg(feature = "_config")]
 impl From<io::Error> for ConfigInitError {
     fn from(err: io::Error) -> Self {
         Self::Io(err.to_string())
@@ -57,7 +52,7 @@ impl From<io::Error> for ConfigInitError {
 /// Errors which may happen during bootstrap phase of an application or a
 /// daemon, with a support for application-specific errors added as a generic
 /// parameter and [`BootstrapError:AppLevel`] variant
-#[cfg(any(feature = "node", feature = "shell"))]
+#[cfg(feature = "_config")]
 #[derive(Debug, Display, Error, From)]
 #[display(doc_comments)]
 #[non_exhaustive] // All feature-gated enum types must be non-exhaustive
@@ -69,7 +64,7 @@ where
     /// {0}
     #[cfg(feature = "shell")] // `node` may have no shell, so we feature-gate this
     #[from]
-    Config(ConfigError),
+    Config(settings::ConfigError),
 
     /// Error during initialization of the configuration file:
     /// {0}
@@ -87,30 +82,24 @@ where
     #[from]
     ArgParse(String),
 
-    /// ZeroMQ socket error:
-    /// {0}
+    /// ZeroMQ socket error: {0}
     #[cfg(feature = "zmq")]
     #[from]
     Zmq(zmq::Error),
 
-    /// Error reported by tokio multithreading library:
-    /// {0}
-    #[cfg(feature = "tokio")] // `cli` most likely be a single-threaded
-    #[from]
-    Multithread(JoinError),
+    /// Error reported by multi-thread engine: {0}
+    Multithread,
 
-    /// Error connecting to LNP service:
-    /// {0}
+    /// Error connecting to LNP service: {0}
     #[from]
     Transport(transport::Error),
 
-    /// Application-level error:
-    /// {0}
+    /// Application-level error: {0}
     #[from]
     AppLevel(AppLevelError),
 }
 
-#[cfg(any(feature = "node", feature = "shell"))]
+#[cfg(feature = "_config")]
 impl<E> From<&str> for BootstrapError<E>
 where
     E: Error,
@@ -120,7 +109,7 @@ where
     }
 }
 
-#[cfg(any(feature = "node", feature = "shell"))]
+#[cfg(feature = "_config")]
 impl<E> From<io::Error> for BootstrapError<E>
 where
     E: Error,
@@ -136,22 +125,21 @@ where
 #[cfg(feature = "node")]
 #[derive(Clone, Debug, Display, Error, From)]
 #[display(doc_comments)]
+#[non_exhaustive]
 pub enum RuntimeError<AppLevelError>
 where
     AppLevelError: Error,
 {
-    /// Error with ZMQ socket:
-    /// {0}
+    /// Error with ZMQ socket: {0}
+    #[cfg(feature = "zmq")]
     #[from]
     Zmq(zmq::Error),
 
-    /// RPC error during communications with the remote peer:
-    /// {0}
+    /// RPC error during communications with the remote peer: {0}
     #[from]
     Rpc(rpc::Error),
 
-    /// Application-level runtime error:
-    /// {0}
+    /// Application-level runtime error: {0}
     #[from]
     AppLevel(AppLevelError),
 }

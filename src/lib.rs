@@ -44,7 +44,9 @@ extern crate serde_with;
 #[cfg(feature = "serde")]
 extern crate serde_crate as serde;
 
+#[cfg(feature = "derive")]
 pub extern crate inet2_derive;
+#[cfg(feature = "derive")]
 pub use inet2_derive::{LightningDecode, LightningEncode, LnpApi};
 
 pub mod addr {
@@ -68,9 +70,13 @@ pub use session::{
     NoiseEncryptor, NoiseTranscoder, PartialNodeAddr, PlainTranscoder,
     RemoteNodeAddr, Session, Split, ToNodeAddr, ToRemoteNodeAddr, Transcode,
 };
+#[cfg(feature = "websockets")]
+pub use transport::websocket;
+#[cfg(feature = "zmq")]
+pub use transport::zmqsocket;
 pub use transport::{
-    ftcp, websocket, zmqsocket, Duplex, FramingProtocol, LocalSocketAddr,
-    RemoteSocketAddr, RoutedFrame,
+    ftcp, Duplex, FramingProtocol, LocalSocketAddr, RemoteSocketAddr,
+    RoutedFrame,
 };
 
 pub const LNP_MSG_MAX_LEN: usize = core::u16::MAX as usize;

@@ -15,7 +15,9 @@ use core::convert::{TryFrom, TryInto};
 use core::fmt::{self, Debug, Display, Formatter};
 #[cfg(feature = "serde")]
 use serde_with::{As, DisplayFromStr};
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
+#[cfg(feature = "zmq")]
+use std::net::SocketAddr;
 use std::str::FromStr;
 #[cfg(feature = "url")]
 use url::Url;
@@ -27,6 +29,10 @@ use crate::transport::{LocalSocketAddr, RemoteSocketAddr};
 #[cfg(feature = "zmq")]
 use crate::zmqsocket::{ZmqSocketAddr, ZmqType};
 use crate::{AddrError, UrlString};
+
+#[cfg(not(feature = "zmq"))]
+#[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
+pub struct ZmqType;
 
 /// Node address which can be represent by either some local address without
 /// encryption information (i.e. node public key) or remote node address
@@ -134,7 +140,7 @@ impl TryFrom<NodeAddr> for ZmqSocketAddr {
         Ok(match value {
             NodeAddr::Local(LocalSocketAddr::Zmq(locator)) => locator,
             NodeAddr::Remote(RemoteNodeAddr {
-                node_id,
+                node_id: _,
                 remote_addr: RemoteSocketAddr::Zmq(addr),
             }) => ZmqSocketAddr::Tcp(addr),
             _ => Err(AddrError::Unsupported("ZMQ socket"))?,
@@ -519,9 +525,11 @@ impl PartialNodeAddr {
             PartialNodeAddr::Posix(path) => {
                 (None, None, None, Some(path.clone()), None)
             }
+            #[cfg(feature = "zmq")]
             PartialNodeAddr::ZmqIpc(path, api) => {
                 (None, None, None, Some(path.clone()), Some(*api))
             }
+            #[cfg(feature = "zmq")]
             PartialNodeAddr::ZmqInproc(name, api) => {
                 (None, None, None, Some(name.clone()), Some(*api))
             }
@@ -633,12 +641,22 @@ impl FromStr for PartialNodeAddr {
     }
 }
 
+#[cfg(not(feature = "url"))]
+impl FromStr for PartialNodeAddr {
+    type Err = AddrError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        panic!("Parsing PartialNodeAddr from string requires url feature")
+    }
+}
+
 impl UrlString for PartialNodeAddr {
     fn url_scheme(&self) -> &'static str {
         match self {
             PartialNodeAddr::Native(..) => "lnp",
             PartialNodeAddr::Udp(..) => "lnpu",
             PartialNodeAddr::Posix(..) => "lnp",
+            #[cfg(feature = "zmq")]
             PartialNodeAddr::ZmqIpc(..) | PartialNodeAddr::ZmqInproc(..) => {
                 "lnpz"
             }
@@ -812,11 +830,11 @@ impl TryFrom<Url> for PartialNodeAddr {
             }
             "lnpt" => {
                 // In this URL scheme we must not use IP address
-                if let Ok(pubkey) = pubkey {
+                if let Ok(_) = pubkey {
                     Err(AddrError::UnexpectedHost)?
                 }
                 // In this URL scheme we must not use IP address
-                if let Some(port) = port {
+                if let Some(_) = port {
                     Err(AddrError::UnexpectedPort)?
                 }
                 if let Some(host) = host {
@@ -893,7 +911,7 @@ impl TryFrom<PartialNodeAddr> for RemoteNodeAddr {
                 })
             }
             #[cfg(feature = "zmq")]
-            PartialNodeAddr::ZmqTcpEncrypted(pubkey, api, ip, Some(port)) => {
+            PartialNodeAddr::ZmqTcpEncrypted(pubkey, _, ip, Some(port)) => {
                 Ok(RemoteNodeAddr {
                     node_id: pubkey,
                     remote_addr: RemoteSocketAddr::Zmq(SocketAddr::new(
@@ -944,7 +962,7 @@ impl From<RemoteNodeAddr> for PartialNodeAddr {
                 addr.address,
                 Some(addr.port),
             ),
-            RemoteSocketAddr::Smtp(addr) => {
+            RemoteSocketAddr::Smtp(_) => {
                 PartialNodeAddr::Text(node_addr.node_id)
             }
         }
@@ -957,7 +975,7 @@ impl TryFrom<PartialNodeAddr> for ZmqSocketAddr {
 
     fn try_from(socket_addr: PartialNodeAddr) -> Result<Self, Self::Error> {
         Ok(match socket_addr {
-            PartialNodeAddr::ZmqIpc(path, ty) => {
+            PartialNodeAddr::ZmqIpc(path, _) => {
                 ZmqSocketAddr::Ipc(path)
             }
             PartialNodeAddr::ZmqTcpUnencrypted(_, ip, Some(port)) |

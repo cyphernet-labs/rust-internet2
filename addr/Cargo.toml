@@ -20,7 +20,7 @@ crate-type = ["dylib", "rlib", "staticlib"]
 amplify = "3"
 amplify_derive = "2.4"
 strict_encoding = { version = "1", optional = true }
-stringly_conversions = { version = "0.1.1", optional = true, features = ["alloc"] }
+stringly_conversions_crate = { package = "stringly_conversions", version = "0.1.1", optional = true, features = ["alloc"] }
 torut = { version = "0.1.7", features = ["v2", "v3"], optional = true }
 ed25519-dalek = { version = "1", optional = true }
 parse_arg = { version = "0.1.4", optional = true }
@@ -37,7 +37,8 @@ default = ["stringly_conversions"]
 serde = ["serde_crate", "torut/serialize",
     "serde_yaml", "serde_json", "toml",
     "stringly_conversions",
-    "stringly_conversions/alloc",
-    "stringly_conversions/serde_str_helpers"]
+    "stringly_conversions_crate/alloc",
+    "stringly_conversions_crate/serde_str_helpers"]
 tor = ["torut/v3", "torut/v2", "ed25519-dalek", "parse_arg"]
 vendored_openssl = ["torut/vendored_openssl"]
+stringly_conversions = ["stringly_conversions_crate", "amplify/stringly_conversions"]

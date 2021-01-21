@@ -23,6 +23,8 @@ mod transcoders;
 
 pub use init::{Accept, Connect};
 pub use local_node::LocalNode;
+#[cfg(not(feature = "zmq"))]
+pub use node_addr::ZmqType;
 pub use node_addr::{
     NodeAddr, PartialNodeAddr, RemoteNodeAddr, ToNodeAddr, ToRemoteNodeAddr,
 };

@@ -135,8 +135,9 @@ pub trait RecvFrame {
     /// I/O error type
     fn recv_frame(&mut self) -> Result<Vec<u8>, Error>;
 
-    /// Receive `len` number of bytes and pack them as a frame. Should be used
-    /// with caution!
+    /// Try to eceive `len` number of bytes and pack them as a frame.
+    /// The actual amount of bytes received may differ for some protocols,
+    /// like ZMQ, so the function should be used with caution!
     ///
     /// # Errors
     /// Returns only [`Error::SocketError`] if the overlaid protocol errors with
@@ -242,10 +243,10 @@ pub trait SendFrame {
     #[allow(dead_code)]
     fn send_routed(
         &mut self,
-        source: &[u8],
-        route: &[u8],
-        address: &[u8],
-        data: &[u8],
+        _source: &[u8],
+        _route: &[u8],
+        _address: &[u8],
+        _data: &[u8],
     ) -> Result<usize, Error> {
         // We panic here because this is a program architecture design
         // error and developer must be notified about it; the program using

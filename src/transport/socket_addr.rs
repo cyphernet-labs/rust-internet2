@@ -19,11 +19,15 @@
 //! [`NodeAddress`](NodeAddr)).
 
 use core::cmp::Ordering;
-use inet2_addr::{InetAddr, InetSocketAddr, NoOnionSupportError};
-#[cfg(feature = "serde")]
+#[cfg(feature = "url")]
+use inet2_addr::InetAddr;
+use inet2_addr::{InetSocketAddr, NoOnionSupportError};
+#[cfg(all(feature = "serde", feature = "zmq"))]
 use serde_with::{As, DisplayFromStr};
 #[cfg(feature = "url")]
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
+#[cfg(any(feature = "url", all(feature = "zmq", feature = "tor")))]
+use std::convert::TryInto;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 #[cfg(feature = "url")]
@@ -206,8 +210,10 @@ impl RemoteSocketAddr {
     ) -> Result<Self, NoOnionSupportError> {
         Ok(match proto {
             FramingProtocol::FramedRaw => Self::Ftcp(addr),
-            #[cfg(feature = "zmq")]
+            #[cfg(all(feature = "zmq", feature = "tor"))]
             FramingProtocol::Zmtp => Self::Zmq(addr.try_into()?),
+            #[cfg(all(feature = "zmq", not(feature = "tor")))]
+            FramingProtocol::Zmtp => Self::Zmq(addr.into()),
             FramingProtocol::Http => Self::Http(addr),
             #[cfg(feature = "websocket")]
             FramingProtocol::Websocket => Self::Websocket(addr),
@@ -251,12 +257,30 @@ impl FromStr for LocalSocketAddr {
     }
 }
 
+#[cfg(not(feature = "url"))]
+impl FromStr for LocalSocketAddr {
+    type Err = AddrError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        panic!("Parsing LocalSocketAddr from string requires url feature")
+    }
+}
+
 #[cfg(feature = "url")]
 impl FromStr for RemoteSocketAddr {
     type Err = AddrError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Url::parse(s)?.try_into()
+    }
+}
+
+#[cfg(not(feature = "url"))]
+impl FromStr for RemoteSocketAddr {
+    type Err = AddrError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        panic!("Parsing RemoteSocketAddr from string requires url feature")
     }
 }
 
@@ -296,6 +320,7 @@ impl UrlString for RemoteSocketAddr {
     }
 }
 
+#[cfg(feature = "url")]
 impl TryFrom<Url> for LocalSocketAddr {
     type Error = AddrError;
 

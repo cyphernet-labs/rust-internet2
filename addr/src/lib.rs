@@ -34,7 +34,7 @@ extern crate amplify;
 extern crate amplify_derive;
 #[cfg(feature = "stringly_conversions")]
 #[macro_use]
-extern crate stringly_conversions;
+extern crate stringly_conversions_crate as stringly_conversions;
 #[cfg(feature = "strict_encoding")]
 extern crate strict_encoding;
 #[cfg(feature = "serde")]
@@ -45,6 +45,7 @@ extern crate serde_crate as serde;
 mod encoding;
 
 use std::cmp::Ordering;
+#[cfg(feature = "tor")]
 use std::convert::TryFrom;
 use std::fmt;
 use std::net::{
