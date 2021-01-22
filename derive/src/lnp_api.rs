@@ -247,9 +247,10 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
             fn serialize(&self) -> Vec<u8> {
                 #encode_use
+                use ::std::io::Write;
                 let mut e = vec![];
                 let _ = self.get_type().#encode_fn(&mut e);
-                let _ = self.get_payload().#encode_fn(&mut e);
+                e.extend(self.get_payload());
                 e
             }
         }

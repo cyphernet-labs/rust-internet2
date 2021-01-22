@@ -708,24 +708,24 @@ dependencies = [
 [[package]]
 name = "inet2_derive"
 version = "0.3.2"
-dependencies = [
- "amplify",
- "internet2 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "proc-macro2 1.0.24",
- "quote 1.0.8",
- "strict_encoding",
- "syn 1.0.58",
-]
-
-[[package]]
-name = "inet2_derive"
-version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f26ec35956b6895f4ee884b35034ae6d06521df6df7109530c87092c480e78d"
 dependencies = [
  "amplify",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
+ "syn 1.0.58",
+]
+
+[[package]]
+name = "inet2_derive"
+version = "0.3.4"
+dependencies = [
+ "amplify",
+ "internet2 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proc-macro2 1.0.24",
+ "quote 1.0.8",
+ "strict_encoding",
  "syn 1.0.58",
 ]
 
@@ -748,7 +748,7 @@ dependencies = [
  "chacha20poly1305",
  "descriptor-wallet",
  "inet2_addr 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "inet2_derive 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "inet2_derive 0.3.2",
  "lazy_static",
  "lnpbp",
  "openssl",
@@ -775,7 +775,7 @@ dependencies = [
  "chacha20poly1305",
  "descriptor-wallet",
  "inet2_addr 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "inet2_derive 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "inet2_derive 0.3.2",
  "lazy_static",
  "lnpbp",
  "rgb-core",
