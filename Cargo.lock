@@ -423,9 +423,9 @@ dependencies = [
 
 [[package]]
 name = "descriptor-wallet"
-version = "0.3.0"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be824a9c51233ac02952d1557b76fe706231ae09209325a78128864db2b8c31b"
+checksum = "f449c0fd13646e09eb39e0434cf0bfdfa0a61a7ada55141b3c5f6b698b3f7604"
 dependencies = [
  "amplify",
  "amplify_derive",
@@ -842,9 +842,9 @@ checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
 
 [[package]]
 name = "lnp-core"
-version = "0.3.0-beta.3"
+version = "0.3.0-beta.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8fbbe654df76762219c48a559b17ad25bd6957a17da6694a093835d1b73cc1e"
+checksum = "edd66680cfdabf4756589806490267d5add57794eaf97079ca68f74390c59f67"
 dependencies = [
  "amplify",
  "amplify_derive",
@@ -913,7 +913,7 @@ dependencies = [
 
 [[package]]
 name = "microservices"
-version = "0.3.5"
+version = "0.3.6"
 dependencies = [
  "amplify",
  "amplify_derive",
