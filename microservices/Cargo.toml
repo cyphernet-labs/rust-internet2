@@ -1,6 +1,6 @@
 [package]
 name = "microservices"
-version = "0.3.3"
+version = "0.3.5"
 license = "Apache-2.0"
 authors = ["Dr Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "LNP/BP support crate for devloping microservices"
@@ -20,7 +20,7 @@ crate-type = ["rlib", "staticlib"]
 amplify = "3"
 amplify_derive = "2.4"
 lnp-core = { version = "0.3.0-beta.3", optional = true }
-internet2 = { version = "0.3.3", default-features = false, features = ["derive"]}
+internet2 = { version = "0.3.6", default-features = false, features = ["derive"]}
 strict_encoding = { version = "1", default-features = false, features = ["derive"] }
 # Serialization & parsing
 serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }

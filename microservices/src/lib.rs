@@ -59,9 +59,13 @@ pub mod node;
 pub mod peer;
 #[cfg(feature = "_rpc")]
 pub mod rpc;
+#[cfg(feature = "_rpc")]
+pub mod rpc_connection;
 #[cfg(feature = "shell")]
 pub mod shell;
 
 pub use format::{
     BinaryFormat, FileFormat, FormatParseError, StructuredFormat,
 };
+#[cfg(feature = "_rpc")]
+pub use rpc_connection::RpcConnection;

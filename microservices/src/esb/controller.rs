@@ -13,7 +13,6 @@
 
 use std::collections::HashMap;
 
-use internet2::rpc_connection::Request;
 use internet2::transport::zmqsocket;
 use internet2::{session, PlainTranscoder, Session, Unmarshall, Unmarshaller};
 
@@ -21,6 +20,7 @@ use super::{BusId, Error, ServiceAddress};
 use crate::esb::BusConfig;
 #[cfg(feature = "node")]
 use crate::node::TryService;
+use crate::rpc_connection::Request;
 
 /// Trait for types handling specific set of ESB RPC API requests structured as
 /// a single type implementing [`Request`].

@@ -11,8 +11,13 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+mod peer_connection;
+pub use peer_connection::{
+    PeerConnection, PeerReceiver, PeerSender, RecvMessage, SendMessage,
+};
+
 use internet2::presentation;
-use lnp::{Messages, PeerReceiver, RecvMessage};
+use lnp::Messages;
 
 use crate::node::TryService;
 

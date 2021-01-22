@@ -53,12 +53,10 @@ pub mod addr {
     pub use inet2_addr::*;
 }
 
-pub mod application;
 pub mod presentation;
 pub mod session;
 pub mod transport;
 
-pub use application::rpc_connection;
 pub use presentation::encoding as lightning_encoding;
 pub use presentation::payload::{TypeId, TypedEnum};
 pub use presentation::{

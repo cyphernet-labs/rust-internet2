@@ -15,15 +15,14 @@
 //! with it. Relies on transport layer (BOLT-8-based) protocol.
 
 use amplify::Bipolar;
-
-use crate::application::Messages;
-use crate::presentation::{Error, LightningEncode, Unmarshall};
-use crate::session::{
+use internet2::presentation::{Error, LightningEncode, Unmarshall};
+use internet2::session::{
     self, Accept, Connect, LocalNode, PlainTranscoder, Session, Split,
     ToNodeAddr,
 };
-use crate::transport::{ftcp, zmqsocket};
-use crate::{LIGHTNING_P2P_DEFAULT_PORT, LNPWP_UNMARSHALLER};
+use internet2::transport::{ftcp, zmqsocket};
+use internet2::LIGHTNING_P2P_DEFAULT_PORT;
+use lnp::{Messages, LNPWP_UNMARSHALLER};
 
 pub trait RecvMessage {
     fn recv_message(&mut self) -> Result<Messages, Error>;
@@ -115,7 +114,8 @@ impl Bipolar for PeerConnection {
     type Left = PeerReceiver;
     type Right = PeerSender;
 
-    fn join(left: Self::Left, right: Self::Right) -> Self {
+    fn join(_left: Self::Left, _right: Self::Right) -> Self {
+        // TODO: Implement
         unimplemented!()
     }
 

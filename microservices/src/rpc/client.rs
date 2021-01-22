@@ -13,7 +13,6 @@
 
 use std::collections::HashMap;
 
-use internet2::rpc_connection::Api;
 use internet2::transport::zmqsocket::{ZmqSocketAddr, ZmqType};
 use internet2::{
     session, transport, CreateUnmarshaller, PlainTranscoder, Session,
@@ -21,6 +20,7 @@ use internet2::{
 };
 
 use super::{EndpointId, Error};
+use crate::rpc_connection::Api;
 
 pub struct RpcClient<E, A>
 where

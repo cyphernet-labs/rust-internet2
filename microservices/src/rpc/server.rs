@@ -13,7 +13,6 @@
 
 use std::collections::HashMap;
 
-use internet2::rpc_connection::Api;
 use internet2::transport::zmqsocket;
 use internet2::{
     session, transport, CreateUnmarshaller, PlainTranscoder, Session,
@@ -22,6 +21,7 @@ use internet2::{
 
 use super::{EndpointId, Error, Failure};
 use crate::node::TryService;
+use crate::rpc_connection::Api;
 
 /// Trait for types handling specific set of RPC API requests structured as a
 /// single type implementing [`Request`]. They must return a corresponding reply

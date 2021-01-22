@@ -13,9 +13,9 @@
 
 use std::fmt::{Debug, Display};
 
-use crate::presentation::{payload, CreateUnmarshaller, Error};
-use crate::session::{Connect, Session};
-use crate::{LocalNode, ToNodeAddr};
+use internet2::presentation::{payload, CreateUnmarshaller, Error};
+use internet2::session::{Connect, Session};
+use internet2::{LocalNode, ToNodeAddr};
 
 /// Marker trait for LNP RPC requests
 pub trait Request:
@@ -38,6 +38,7 @@ pub trait Api {
     type Reply: Reply;
 }
 
+#[allow(dead_code)]
 pub struct RpcConnection<A>
 where
     A: Api,
