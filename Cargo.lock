@@ -423,9 +423,9 @@ dependencies = [
 
 [[package]]
 name = "descriptor-wallet"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f449c0fd13646e09eb39e0434cf0bfdfa0a61a7ada55141b3c5f6b698b3f7604"
+checksum = "1b77341a3eb199357eca3f73ba48b260b72034168b52184c2b015b8203267d18"
 dependencies = [
  "amplify",
  "amplify_derive",
@@ -710,7 +710,7 @@ name = "inet2_derive"
 version = "0.3.2"
 dependencies = [
  "amplify",
- "internet2 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "internet2 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
  "strict_encoding",
@@ -740,7 +740,7 @@ dependencies = [
 
 [[package]]
 name = "internet2"
-version = "0.3.6"
+version = "0.3.7"
 dependencies = [
  "amplify",
  "amplify_derive",
@@ -765,9 +765,9 @@ dependencies = [
 
 [[package]]
 name = "internet2"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "941e6bc3a680d86dcaa194bbf8467474d7a39e1f26289055d04c5e2775a6c81e"
+checksum = "865cca07c3fd4c6e33a17afa8b8c9bd60f6cc1198ad0aeb41760b6ce56736847"
 dependencies = [
  "amplify",
  "amplify_derive",
@@ -842,15 +842,15 @@ checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
 
 [[package]]
 name = "lnp-core"
-version = "0.3.0-beta.4"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edd66680cfdabf4756589806490267d5add57794eaf97079ca68f74390c59f67"
+checksum = "24a2a15e302e50aea8929b0df7aaadf75048af6c5e75694b58d19b17dd5c2af1"
 dependencies = [
  "amplify",
  "amplify_derive",
  "bitcoin",
  "descriptor-wallet",
- "internet2 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "internet2 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static",
  "lnpbp",
  "serde 1.0.120",
@@ -913,14 +913,14 @@ dependencies = [
 
 [[package]]
 name = "microservices"
-version = "0.3.6"
+version = "0.3.7"
 dependencies = [
  "amplify",
  "amplify_derive",
  "clap",
  "config",
  "env_logger",
- "internet2 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "internet2 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "lnp-core",
  "log",
  "serde 1.0.120",
@@ -1358,9 +1358,9 @@ checksum = "b5eb417147ba9860a96cfe72a0b93bf88fee1744b5636ec99ab20c1aa9376581"
 
 [[package]]
 name = "rgb-core"
-version = "0.3.0-beta.3"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a80aa5565c157cb6135bdeb5e1b7d7d648b0866fb5a0cb05c3dc6e948412d8c"
+checksum = "7aba08a3bad932cf993ae824d37e1dec93cc5a9f3b4a299118a60229467bef47"
 dependencies = [
  "amplify",
  "amplify_derive",

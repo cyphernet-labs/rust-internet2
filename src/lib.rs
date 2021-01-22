@@ -97,7 +97,7 @@ pub trait UrlString {
     fn to_url_string(&self) -> String;
 }
 
-use inet2_addr::NoOnionSupportError;
+pub use inet2_addr::NoOnionSupportError;
 
 /// Error extracting transport-level address types ([`FramingProtocol`],
 /// [`LocalAddr`], [`RemoteAddr`]) and session-level node types ([`NodeAddr`],
