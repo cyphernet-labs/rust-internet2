@@ -20,11 +20,12 @@ use std::collections::BTreeMap;
 use std::io::{self, Read};
 use std::sync::Arc;
 
+use strict_encoding::{self, StrictDecode, StrictEncode};
+
 use super::tlv;
 use super::{
     Error, EvenOdd, LightningEncode, UnknownTypeError, Unmarshall, UnmarshallFn,
 };
-use crate::strict_encoding::StrictDecode;
 
 /// Message type field value
 #[derive(
@@ -96,6 +97,16 @@ impl Extract for Payload {
     }
 }
 
+impl StrictEncode for Payload {
+    fn strict_encode<E: io::Write>(
+        &self,
+        mut e: E,
+    ) -> Result<usize, strict_encoding::Error> {
+        Ok(self.type_id.to_inner().strict_encode(&mut e)?
+            + e.write(&self.payload)?)
+    }
+}
+
 impl LightningEncode for Payload {
     fn lightning_encode<E: io::Write>(
         &self,
@@ -159,7 +170,7 @@ where
                 let mut payload = Vec::new();
                 reader
                     .read_to_end(&mut payload)
-                    .map_err(|e| Error::LightningEncoding(e.into()))?;
+                    .map_err(|e| Error::Encoding(e.into()))?;
                 Ok(Arc::new(T::try_from_type(
                     type_id,
                     &Payload { type_id, payload },

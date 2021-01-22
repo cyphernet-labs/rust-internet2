@@ -11,8 +11,6 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use strict_encoding;
-
 use super::encoding;
 use crate::transport;
 
@@ -33,15 +31,10 @@ pub enum Error {
     /// unknown LNP protocol version
     UnknownProtocolVersion,
 
-    /// Error in strict encoded data in LNP message
+    /// Error in data encoding in LNP message
     #[display(inner)]
     #[from]
-    StrictEncoding(strict_encoding::Error),
-
-    /// Error in lightning-encoded data in LNP message
-    #[display(inner)]
-    #[from]
-    LightningEncoding(encoding::Error),
+    Encoding(encoding::Error),
 
     /// unknown data type in LNP message
     #[from(UnknownTypeError)]
@@ -81,8 +74,7 @@ impl From<Error> for u8 {
             Error::NoData => 2,
             Error::NoEncoder => 3,
             Error::UnknownProtocolVersion => 4,
-            Error::StrictEncoding(_) => 5,
-            Error::LightningEncoding(_) => 6,
+            Error::Encoding(_) => 6,
             Error::UnknownDataType => 7,
             Error::InvalidValue => 8,
             Error::MessageEvenType => 9,
