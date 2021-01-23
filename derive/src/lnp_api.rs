@@ -82,7 +82,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         let type_lit: Lit = nested_one_named_value(&meta, "type", EXAMPLE)?
             .ok_or(attr_err!(v, "type must be specified"))?
             .lit;
-        let type_id: u64 = match type_lit {
+        let type_id: u16 = match type_lit {
             Lit::Int(i) => i
                 .base10_parse()
                 .or_else(|_| Err(attr_err!(i, "`type` must be an integer")))?,
@@ -99,7 +99,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         );
 
         msg_const.push(quote_spanned! { v.span() =>
-            const #type_const: u64 = #type_id;
+            const #type_const: u16 = #type_id;
         });
 
         unmarshaller.push(quote_spanned! { v.span() =>

@@ -11,18 +11,18 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use amplify::{AsAny, Wrapper};
+use amplify::AsAny;
 use core::any::Any;
 use core::borrow::Borrow;
 use core::convert::TryInto;
 use core::marker::PhantomData;
-use core::ops::Range;
 use std::collections::BTreeMap;
 use std::io::{self, Read};
 use std::sync::Arc;
 
 use bitcoin::consensus::encode::{
-    Decodable, Encodable as ConsensusEncode, VarInt,
+    self as consensus_encoding, Decodable, Decodable as ConsensusDecode,
+    Encodable as ConsensusEncode,
 };
 use strict_encoding::{self, StrictDecode, StrictEncode};
 
@@ -61,43 +61,47 @@ pub enum EncodingType {
 )]
 #[display(inner)]
 #[wrapper(LowerHex, UpperHex, Octal, FromStr)]
-pub struct TypeId(u64);
+pub struct TypeId(u16);
 
-impl StrictEncode for TypeId {
-    fn strict_encode<E: io::Write>(
+impl strict_encoding::Strategy for TypeId {
+    type Strategy = strict_encoding::strategies::Wrapped;
+}
+
+impl LightningEncode for TypeId {
+    fn lightning_encode<E: io::Write>(
         &self,
-        e: E,
-    ) -> Result<usize, strict_encoding::Error> {
-        if self.0 > std::u16::MAX as u64 {
-            return Err(strict_encoding::Error::ValueOutOfRange(
-                "message type id",
-                Range {
-                    start: 0,
-                    end: std::u16::MAX as u128 + 1,
-                },
-                self.0 as u128,
-            ));
-        }
-        let id = self.0 as u16;
-        id.strict_encode(e)
+        mut e: E,
+    ) -> Result<usize, io::Error> {
+        e.write(&self.0.to_be_bytes())
     }
 }
 
-impl StrictDecode for TypeId {
-    fn strict_decode<D: io::Read>(
-        d: D,
-    ) -> Result<Self, strict_encoding::Error> {
-        Ok(TypeId(u16::strict_decode(d)? as u64))
+impl LightningDecode for TypeId {
+    fn lightning_decode<D: io::Read>(
+        mut d: D,
+    ) -> Result<Self, lightning_encoding::Error> {
+        let mut id = [0u8; 2];
+        d.read_exact(&mut id)?;
+        Ok(Self(u16::from_be_bytes(id)))
     }
-}
-
-impl lightning_encoding::Strategy for TypeId {
-    type Strategy = lightning_encoding::strategies::AsWrapped;
 }
 
 impl ConsensusEncode for TypeId {
-    fn consensus_encode<W: io::Write>(&self, e: W) -> Result<usize, io::Error> {
-        VarInt(self.to_inner()).consensus_encode(e)
+    fn consensus_encode<W: io::Write>(
+        &self,
+        mut e: W,
+    ) -> Result<usize, io::Error> {
+        Ok(e.write(&self.0.to_le_bytes())?)
+    }
+}
+
+impl ConsensusDecode for TypeId {
+    fn consensus_decode<D: io::Read>(
+        mut d: D,
+    ) -> Result<Self, consensus_encoding::Error> {
+        let mut id = [0u8; 2];
+        d.read_exact(&mut id)?;
+        Ok(Self(u16::from_le_bytes(id)))
     }
 }
 
@@ -228,9 +232,7 @@ where
         let type_id = match self.encoding {
             EncodingType::Lightning => TypeId::lightning_decode(&mut reader)?,
             EncodingType::Strict => TypeId::strict_decode(&mut reader)?,
-            EncodingType::Bitcoin => {
-                TypeId(VarInt::consensus_decode(&mut reader)?.0)
-            }
+            EncodingType::Bitcoin => TypeId::consensus_decode(&mut reader)?,
         };
         match self.known_types.get(&type_id) {
             None if type_id.is_even() => Err(Error::MessageEvenType),
@@ -254,7 +256,7 @@ where
     T: TypedEnum,
 {
     pub fn new(
-        known_types: BTreeMap<u64, UnmarshallFn<Error>>,
+        known_types: BTreeMap<u16, UnmarshallFn<Error>>,
         encoding: EncodingType,
     ) -> Self {
         Self {
