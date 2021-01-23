@@ -199,7 +199,7 @@ impl Uniform for InetSocketAddrExt {
                 Transport::Udp => crate::Transport::Udp,
                 Transport::Mtcp => crate::Transport::Mtcp,
                 Transport::Quic => crate::Transport::Quic,
-                _ => unimplemented!(),
+                _ => return Err(DecodeError::UnknownTransport),
             };
             Ok(InetSocketAddrExt(transport, address))
         } else {
