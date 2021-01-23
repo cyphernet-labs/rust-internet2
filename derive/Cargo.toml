@@ -1,6 +1,6 @@
 [package]
 name = "inet2_derive"
-version = "0.3.4"
+version = "0.3.6"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Derivation macros for Internet2-based crates"
@@ -21,5 +21,6 @@ amplify = "3"
 
 [dev-dependencies]
 amplify = "3"
-internet2 = "0.3"
+internet2 = { path = ".." }
 strict_encoding = "1"
+bitcoin = "0.26"

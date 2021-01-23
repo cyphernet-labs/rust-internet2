@@ -23,7 +23,7 @@ pub use encoding::{
     UnmarshallFn,
 };
 pub use error::{Error, UnknownTypeError};
-pub use payload::{Payload, Unmarshaller};
+pub use payload::{EncodingType, Payload, Unmarshaller};
 
 use amplify::Wrapper;
 use core::ops::Rem;

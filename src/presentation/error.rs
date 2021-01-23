@@ -19,6 +19,11 @@ use crate::transport;
 #[display(doc_comments)]
 #[non_exhaustive]
 pub enum Error {
+    /// I/O error while processing the data: {0}
+    #[from]
+    #[from(std::io::Error)]
+    Io(amplify::IoError),
+
     /// invalid connection endpoint data
     InvalidEndpoint,
 
@@ -31,10 +36,20 @@ pub enum Error {
     /// unknown LNP protocol version
     UnknownProtocolVersion,
 
-    /// Error in data encoding in LNP message
+    /// Error in lightning-encoded data from LNP message
     #[display(inner)]
     #[from]
-    Encoding(encoding::Error),
+    LightningEncoding(encoding::Error),
+
+    /// Error in strict-encoded data from LNP message
+    #[display(inner)]
+    #[from]
+    StrictEncoding(strict_encoding::Error),
+
+    /// Error in consensus-encoded data from LNP message
+    #[display(inner)]
+    #[from(bitcoin::consensus::encode::Error)]
+    ConsensusEncoding,
 
     /// unknown data type in LNP message
     #[from(UnknownTypeError)]
@@ -70,20 +85,23 @@ pub enum Error {
 impl From<Error> for u8 {
     fn from(err: Error) -> Self {
         match err {
-            Error::InvalidEndpoint => 0,
-            Error::NoData => 2,
-            Error::NoEncoder => 3,
-            Error::UnknownProtocolVersion => 4,
-            Error::Encoding(_) => 6,
-            Error::UnknownDataType => 7,
-            Error::InvalidValue => 8,
-            Error::MessageEvenType => 9,
-            Error::BadLengthDescriptor => 10,
-            Error::TlvStreamWrongOrder => 11,
-            Error::TlvStreamDuplicateItem => 12,
-            Error::TlvRecordEvenType => 13,
-            Error::TlvRecordInvalidLen => 14,
-            Error::Transport(_) => 15,
+            Error::InvalidEndpoint => 0x00,
+            Error::Io(_) => 0x01,
+            Error::NoData => 0x10,
+            Error::NoEncoder => 0x11,
+            Error::UnknownProtocolVersion => 0x12,
+            Error::LightningEncoding(_) => 0x20,
+            Error::StrictEncoding(_) => 0x21,
+            Error::ConsensusEncoding => 0x22,
+            Error::UnknownDataType => 0x23,
+            Error::InvalidValue => 0x24,
+            Error::MessageEvenType => 0x30,
+            Error::BadLengthDescriptor => 0x31,
+            Error::TlvStreamWrongOrder => 0x32,
+            Error::TlvStreamDuplicateItem => 0x33,
+            Error::TlvRecordEvenType => 0x34,
+            Error::TlvRecordInvalidLen => 0x35,
+            Error::Transport(_) => 0xF0,
         }
     }
 }

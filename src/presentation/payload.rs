@@ -16,16 +16,33 @@ use core::any::Any;
 use core::borrow::Borrow;
 use core::convert::TryInto;
 use core::marker::PhantomData;
+use core::ops::Range;
 use std::collections::BTreeMap;
 use std::io::{self, Read};
 use std::sync::Arc;
 
+use bitcoin::consensus::encode::{
+    Decodable, Encodable as ConsensusEncode, VarInt,
+};
 use strict_encoding::{self, StrictDecode, StrictEncode};
 
-use super::tlv;
-use super::{
-    Error, EvenOdd, LightningEncode, UnknownTypeError, Unmarshall, UnmarshallFn,
+use super::encoding::{
+    self as lightning_encoding, LightningDecode, LightningEncode,
 };
+use super::tlv;
+use super::{Error, EvenOdd, UnknownTypeError, Unmarshall, UnmarshallFn};
+
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display)]
+pub enum EncodingType {
+    #[display("lightning-encoding")]
+    Lightning,
+
+    #[display("strict-encoding")]
+    Strict,
+
+    #[display("consensus-encoding")]
+    Bitcoin,
+}
 
 /// Message type field value
 #[derive(
@@ -44,7 +61,45 @@ use super::{
 )]
 #[display(inner)]
 #[wrapper(LowerHex, UpperHex, Octal, FromStr)]
-pub struct TypeId(u16);
+pub struct TypeId(u64);
+
+impl StrictEncode for TypeId {
+    fn strict_encode<E: io::Write>(
+        &self,
+        e: E,
+    ) -> Result<usize, strict_encoding::Error> {
+        if self.0 > std::u16::MAX as u64 {
+            return Err(strict_encoding::Error::ValueOutOfRange(
+                "message type id",
+                Range {
+                    start: 0,
+                    end: std::u16::MAX as u128 + 1,
+                },
+                self.0 as u128,
+            ));
+        }
+        let id = self.0 as u16;
+        id.strict_encode(e)
+    }
+}
+
+impl StrictDecode for TypeId {
+    fn strict_decode<D: io::Read>(
+        d: D,
+    ) -> Result<Self, strict_encoding::Error> {
+        Ok(TypeId(u16::strict_decode(d)? as u64))
+    }
+}
+
+impl lightning_encoding::Strategy for TypeId {
+    type Strategy = lightning_encoding::strategies::AsWrapped;
+}
+
+impl ConsensusEncode for TypeId {
+    fn consensus_encode<W: io::Write>(&self, e: W) -> Result<usize, io::Error> {
+        VarInt(self.to_inner()).consensus_encode(e)
+    }
+}
 
 impl EvenOdd for TypeId {}
 
@@ -102,8 +157,7 @@ impl StrictEncode for Payload {
         &self,
         mut e: E,
     ) -> Result<usize, strict_encoding::Error> {
-        Ok(self.type_id.to_inner().strict_encode(&mut e)?
-            + e.write(&self.payload)?)
+        Ok(self.type_id.strict_encode(&mut e)? + e.write(&self.payload)?)
     }
 }
 
@@ -112,8 +166,16 @@ impl LightningEncode for Payload {
         &self,
         mut e: E,
     ) -> Result<usize, io::Error> {
-        Ok(self.type_id.to_inner().lightning_encode(&mut e)?
-            + e.write(&self.payload)?)
+        Ok(self.type_id.lightning_encode(&mut e)? + e.write(&self.payload)?)
+    }
+}
+
+impl ConsensusEncode for Payload {
+    fn consensus_encode<W: io::Write>(
+        &self,
+        mut e: W,
+    ) -> Result<usize, io::Error> {
+        Ok(self.type_id.consensus_encode(&mut e)? + e.write(&self.payload)?)
     }
 }
 
@@ -147,6 +209,7 @@ where
     T: TypedEnum,
 {
     known_types: BTreeMap<TypeId, UnmarshallFn<Error>>,
+    encoding: EncodingType,
     _phantom: PhantomData<T>,
 }
 
@@ -162,15 +225,18 @@ where
         data: &dyn Borrow<[u8]>,
     ) -> Result<Self::Data, Self::Error> {
         let mut reader = io::Cursor::new(data.borrow());
-        let type_id =
-            TypeId(u16::strict_decode(&mut reader).map_err(|_| Error::NoData)?);
+        let type_id = match self.encoding {
+            EncodingType::Lightning => TypeId::lightning_decode(&mut reader)?,
+            EncodingType::Strict => TypeId::strict_decode(&mut reader)?,
+            EncodingType::Bitcoin => {
+                TypeId(VarInt::consensus_decode(&mut reader)?.0)
+            }
+        };
         match self.known_types.get(&type_id) {
             None if type_id.is_even() => Err(Error::MessageEvenType),
             None => {
                 let mut payload = Vec::new();
-                reader
-                    .read_to_end(&mut payload)
-                    .map_err(|e| Error::Encoding(e.into()))?;
+                reader.read_to_end(&mut payload)?;
                 Ok(Arc::new(T::try_from_type(
                     type_id,
                     &Payload { type_id, payload },
@@ -187,12 +253,16 @@ impl<T> Unmarshaller<T>
 where
     T: TypedEnum,
 {
-    pub fn new(known_types: BTreeMap<u16, UnmarshallFn<Error>>) -> Self {
+    pub fn new(
+        known_types: BTreeMap<u64, UnmarshallFn<Error>>,
+        encoding: EncodingType,
+    ) -> Self {
         Self {
             known_types: known_types
                 .into_iter()
                 .map(|(t, f)| (TypeId(t), f))
                 .collect(),
+            encoding,
             _phantom: PhantomData,
         }
     }

@@ -82,7 +82,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         let type_lit: Lit = nested_one_named_value(&meta, "type", EXAMPLE)?
             .ok_or(attr_err!(v, "type must be specified"))?
             .lit;
-        let type_id: u16 = match type_lit {
+        let type_id: u64 = match type_lit {
             Lit::Int(i) => i
                 .base10_parse()
                 .or_else(|_| Err(attr_err!(i, "`type` must be an integer")))?,
@@ -99,7 +99,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         );
 
         msg_const.push(quote_spanned! { v.span() =>
-            const #type_const: u16 = #type_id;
+            const #type_const: u64 = #type_id;
         });
 
         unmarshaller.push(quote_spanned! { v.span() =>
@@ -202,12 +202,18 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     let get_type = quote! { #( #get_type )* };
     let get_payload = quote! { #( #get_payload )* };
 
+    let encoding_type = match global_encoding {
+        EncodingSrategy::Strict => quote! { Strict },
+        EncodingSrategy::Bitcoin => quote! { Bitcoin },
+        EncodingSrategy::Lightning => quote! { Lightning },
+    };
+
     Ok(quote! {
         impl ::internet2::CreateUnmarshaller for #ident_name {
             fn create_unmarshaller() -> ::internet2::Unmarshaller<Self> {
                 let mut map = ::std::collections::BTreeMap::new();
                 #unmarshaller
-                ::internet2::Unmarshaller::new(map)
+                ::internet2::Unmarshaller::new(map, ::internet2::presentation::EncodingType::#encoding_type)
             }
         }
 

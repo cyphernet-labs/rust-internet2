@@ -678,7 +678,7 @@ mod _lnpbp {
 #[cfg(feature = "descriptor-wallet")]
 mod _wallet {
     use super::*;
-    use wallet::{HashLock, HashPreimage, Slice32};
+    use wallet::{features, HashLock, HashPreimage, Slice32};
 
     impl Strategy for Slice32 {
         type Strategy = strategies::AsWrapped;
@@ -690,6 +690,10 @@ mod _wallet {
 
     impl Strategy for HashLock {
         type Strategy = strategies::AsWrapped;
+    }
+
+    impl Strategy for features::FlagVec {
+        type Strategy = strategies::AsStrict;
     }
 }
 
