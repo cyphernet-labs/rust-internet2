@@ -4,28 +4,31 @@
 extern crate inet2_derive;
 
 #[derive(Clone, Debug, LnpApi)]
-#[lnp_api(encoding = "strict")]
+#[lnp_api(encoding = "lightning")]
 #[non_exhaustive]
-pub enum Reply {
+pub enum Message {
     #[lnp_api(type = 0x0001)]
-    Failure(String),
+    Hello(String),
 
     /// Some attribute
     #[lnp_api(type = 0x0003)]
-    Success(),
+    Empty(),
 
     #[lnp_api(type = 0x0005)]
-    SuccessNoArgs,
+    NoArgs,
 
     #[lnp_api(type = 0x0103)]
-    Keylist(Vec<u8>),
+    AddKeys(Vec<bitcoin::PublicKey>),
 }
 
 fn main() {
     use core::convert::TryFrom;
     use internet2::{TypeId, TypedEnum};
 
-    let _ = Reply::Success().get_type();
-    Reply::try_from_type(TypeId::try_from(0x0003).unwrap(), &Vec::<u8>::new())
-        .unwrap();
+    let _ = Message::Empty().get_type();
+    Message::try_from_type(
+        TypeId::try_from(0x0003).unwrap(),
+        &Vec::<u8>::new(),
+    )
+    .unwrap();
 }
