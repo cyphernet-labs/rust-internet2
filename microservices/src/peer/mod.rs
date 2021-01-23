@@ -60,7 +60,7 @@ where
             match self.run() {
                 Ok(_) => trace!("Peer message processing complete"),
                 Err(err) => {
-                    trace!("Peer connection generated {:?}", err);
+                    trace!("Peer connection generated {}", err);
                     self.handler.handle_err(err)?;
                 }
             }

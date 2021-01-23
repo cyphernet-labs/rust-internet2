@@ -82,31 +82,41 @@ impl PeerConnection {
 
 impl RecvMessage for PeerConnection {
     fn recv_message(&mut self) -> Result<Messages, Error> {
+        debug!("Awaiting incoming messages from the remote peer");
         let payload = self.session.recv_raw_message()?;
-        Ok((&*LNPWP_UNMARSHALLER.unmarshall(&payload)?).clone())
+        trace!("Incoming data from the remote peer: {:?}", payload);
+        let message = &*LNPWP_UNMARSHALLER.unmarshall(&payload)?;
+        debug!("Message from the remote peer: {}", message);
+        Ok(message.clone())
     }
 }
 
 impl SendMessage for PeerConnection {
     fn send_message(&mut self, message: Messages) -> Result<usize, Error> {
-        Ok(self
-            .session
-            .send_raw_message(&message.lightning_serialize())?)
+        debug!("Sending LN message to the remote peer: {}", message);
+        let data = &message.lightning_serialize();
+        trace!("Lightning-encoded message representation: {:?}", data);
+        Ok(self.session.send_raw_message(data)?)
     }
 }
 
 impl RecvMessage for PeerReceiver {
     fn recv_message(&mut self) -> Result<Messages, Error> {
+        debug!("Awaiting incoming messages from the remote peer");
         let payload = self.receiver.recv_raw_message()?;
-        Ok((&*LNPWP_UNMARSHALLER.unmarshall(&payload)?).clone())
+        trace!("Incoming data from the remote peer: {:?}", payload);
+        let message = &*LNPWP_UNMARSHALLER.unmarshall(&payload)?;
+        debug!("Message from the remote peer: {}", message);
+        Ok(message.clone())
     }
 }
 
 impl SendMessage for PeerSender {
     fn send_message(&mut self, message: Messages) -> Result<usize, Error> {
-        Ok(self
-            .sender
-            .send_raw_message(&message.lightning_serialize())?)
+        debug!("Sending LN message to the remote peer: {}", message);
+        let data = &message.lightning_serialize();
+        trace!("Lightning-encoded message representation: {:?}", data);
+        Ok(self.sender.send_raw_message(data)?)
     }
 }
 
