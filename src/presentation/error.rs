@@ -11,7 +11,6 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use super::encoding;
 use crate::transport;
 
 /// Presentation-level LNP error types
@@ -39,7 +38,7 @@ pub enum Error {
     /// Error in lightning-encoded data from LNP message
     #[display(inner)]
     #[from]
-    LightningEncoding(encoding::Error),
+    LightningEncoding(lightning_encoding::Error),
 
     /// Error in strict-encoded data from LNP message
     #[display(inner)]

@@ -57,10 +57,8 @@ pub mod presentation;
 pub mod session;
 pub mod transport;
 
-pub use presentation::encoding as lightning_encoding;
-pub use presentation::payload::{TypeId, TypedEnum};
 pub use presentation::{
-    encoding, payload, tlv, CreateUnmarshaller, Payload, UnknownTypeError,
+    tlv, CreateUnmarshaller, Payload, TypeId, TypedEnum, UnknownTypeError,
     Unmarshall, UnmarshallFn, Unmarshaller,
 };
 pub use session::{
@@ -77,7 +75,7 @@ pub use transport::{
     RoutedFrame,
 };
 
-pub const LNP_MSG_MAX_LEN: usize = core::u16::MAX as usize;
+pub const LNP_MSG_MAX_LEN: usize = std::u16::MAX as usize;
 
 pub const LIGHTNING_P2P_DEFAULT_PORT: u16 = 9735;
 

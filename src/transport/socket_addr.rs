@@ -18,12 +18,12 @@
 //! structures like [`NodeLocator`](NodeLocator) and
 //! [`NodeAddress`](NodeAddr)).
 
-use core::cmp::Ordering;
 #[cfg(feature = "url")]
 use inet2_addr::InetAddr;
 use inet2_addr::{InetSocketAddr, NoOnionSupportError};
 #[cfg(all(feature = "serde", feature = "zmq"))]
 use serde_with::{As, DisplayFromStr};
+use std::cmp::Ordering;
 #[cfg(feature = "url")]
 use std::convert::TryFrom;
 #[cfg(any(feature = "url", feature = "zmq"))]

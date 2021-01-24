@@ -23,32 +23,15 @@ extern crate proc_macro;
 #[macro_use]
 mod util;
 
-mod lightning_encoding;
-mod lnp_api;
+mod api;
 
 use proc_macro::TokenStream;
 use syn::DeriveInput;
 
-#[proc_macro_derive(LnpApi, attributes(lnp_api, encoding_crate))]
-pub fn derive_lnp_api(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Api, attributes(api))]
+pub fn derive_api(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
-    lnp_api::inner(derive_input)
-        .unwrap_or_else(|e| e.to_compile_error())
-        .into()
-}
-
-#[proc_macro_derive(LightningEncode, attributes(encoding_crate, tlv))]
-pub fn derive_lightning_encode(input: TokenStream) -> TokenStream {
-    let derive_input = parse_macro_input!(input as DeriveInput);
-    lightning_encoding::encode_inner(derive_input)
-        .unwrap_or_else(|e| e.to_compile_error())
-        .into()
-}
-
-#[proc_macro_derive(LightningDecode, attributes(encoding_crate, tlv))]
-pub fn derive_lightning_decode(input: TokenStream) -> TokenStream {
-    let derive_input = parse_macro_input!(input as DeriveInput);
-    lightning_encoding::decode_inner(derive_input)
+    api::inner(derive_input)
         .unwrap_or_else(|e| e.to_compile_error())
         .into()
 }

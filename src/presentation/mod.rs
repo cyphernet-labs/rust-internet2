@@ -11,22 +11,19 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-mod big_size;
-pub mod encoding;
 mod error;
-pub mod payload;
+pub mod message;
 pub mod tlv;
+mod unmarshall;
 
-pub use big_size::BigSize;
-pub use encoding::{
-    CreateUnmarshaller, LightningDecode, LightningEncode, Unmarshall,
-    UnmarshallFn,
-};
 pub use error::{Error, UnknownTypeError};
-pub use payload::{EncodingType, Payload, Unmarshaller};
+pub use message::{Payload, TypeId, TypedEnum};
+pub use unmarshall::{
+    CreateUnmarshaller, Unmarshall, UnmarshallFn, Unmarshaller,
+};
 
 use amplify::Wrapper;
-use core::ops::Rem;
+use std::ops::Rem;
 
 pub trait EvenOdd
 where
@@ -43,4 +40,16 @@ where
     fn is_even(&self) -> bool {
         self.to_inner() % 2.into() == 0.into()
     }
+}
+
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display)]
+pub enum EncodingType {
+    #[display("lightning-encoding")]
+    Lightning,
+
+    #[display("strict-encoding")]
+    Strict,
+
+    #[display("consensus-encoding")]
+    Bitcoin,
 }

@@ -4,21 +4,20 @@ extern crate inet2_derive;
 use internet2::{CreateUnmarshaller, TypedEnum, Unmarshall};
 use std::str::FromStr;
 
-#[derive(Clone, PartialEq, Eq, Debug, LnpApi)]
-#[lnp_api(encoding = "lightning")]
-#[non_exhaustive]
+#[derive(Clone, PartialEq, Eq, Debug, Api)]
+#[api(encoding = "strict")]
 pub enum Request {
-    #[lnp_api(type = 0x0001)]
+    #[api(type = 0x0001)]
     Hello(String),
 
     /// Some attribute
-    #[lnp_api(type = 0x0003)]
+    #[api(type = 0x0003)]
     Empty(),
 
-    #[lnp_api(type = 0x0005)]
+    #[api(type = 0x0005)]
     NoArgs,
 
-    #[lnp_api(type = 0x0103)]
+    #[api(type = 0x0103)]
     AddKeys(Vec<bitcoin::PublicKey>),
 }
 
@@ -28,19 +27,19 @@ fn roundtrip() {
 
     let message = Request::Hello("world".to_owned());
     let payload = message.serialize();
-    assert_eq!(payload, b"\x00\x01\x05world".to_vec());
+    assert_eq!(payload, b"\x01\x00\x05\x00world".to_vec());
     let roundtrip = &*unmarshaller.unmarshall(&payload).unwrap();
     assert_eq!(&message, roundtrip);
 
     let message = Request::Empty();
     let payload = message.serialize();
-    assert_eq!(payload, b"\x00\x03".to_vec());
+    assert_eq!(payload, b"\x03\x00".to_vec());
     let roundtrip = &*unmarshaller.unmarshall(&payload).unwrap();
     assert_eq!(&message, roundtrip);
 
     let message = Request::NoArgs;
     let payload = message.serialize();
-    assert_eq!(payload, b"\x00\x05".to_vec());
+    assert_eq!(payload, b"\x05\x00".to_vec());
     let roundtrip = &*unmarshaller.unmarshall(&payload).unwrap();
     assert_eq!(&message, roundtrip);
 
@@ -54,7 +53,7 @@ fn roundtrip() {
     .collect();
     let message = Request::AddKeys(keys.clone());
     let payload = message.serialize();
-    let mut expect = b"\x01\x03\x02".to_vec();
+    let mut expect = b"\x03\x01\x02\x00".to_vec();
     expect.extend(keys.iter().map(bitcoin::PublicKey::to_bytes).flatten());
     assert_eq!(payload, expect);
     let roundtrip = &*unmarshaller.unmarshall(&payload).unwrap();

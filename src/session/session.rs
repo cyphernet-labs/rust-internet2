@@ -12,8 +12,8 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use amplify::Bipolar;
-use core::any::Any;
 use inet2_addr::InetSocketAddr;
+use std::any::Any;
 
 use super::{Decrypt, Encrypt, Transcode};
 use crate::session::PlainTranscoder;

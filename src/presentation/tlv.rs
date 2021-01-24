@@ -12,14 +12,15 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use amplify::Wrapper;
-use core::any::Any;
-use core::borrow::Borrow;
+use std::any::Any;
+use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::io;
 use std::sync::Arc;
 
-use super::{BigSize, Error, EvenOdd, Unmarshall, UnmarshallFn};
-use crate::lightning_encoding::{self, LightningDecode};
+use lightning_encoding::{self, BigSize, LightningDecode};
+
+use super::{Error, EvenOdd, Unmarshall, UnmarshallFn};
 
 pub type Map = BTreeMap<Type, RawRecord>;
 

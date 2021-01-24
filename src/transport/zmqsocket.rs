@@ -12,14 +12,14 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use amplify::{Bipolar, Wrapper};
-use core::cmp::Ordering;
-#[cfg(feature = "url")]
-use core::convert::TryFrom;
-use core::str::FromStr;
 #[cfg(feature = "serde")]
 use serde_with::{As, DisplayFromStr};
+use std::cmp::Ordering;
+#[cfg(feature = "url")]
+use std::convert::TryFrom;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::net::SocketAddr;
+use std::str::FromStr;
 #[cfg(feature = "url")]
 use url::Url;
 

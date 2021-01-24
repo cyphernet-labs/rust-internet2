@@ -15,11 +15,11 @@
 //! from TCP stream
 
 use amplify::Bipolar;
-use core::convert::TryFrom;
-use core::time::Duration;
 use inet2_addr::InetSocketAddr;
+use std::convert::TryFrom;
 use std::io::{Read, Write};
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use super::{Duplex, Error, RecvFrame, SendFrame};
 

@@ -11,10 +11,10 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use core::convert::{TryFrom, TryInto};
-use core::fmt::{self, Debug, Display, Formatter};
 #[cfg(feature = "serde")]
 use serde_with::{As, DisplayFromStr};
+use std::convert::{TryFrom, TryInto};
+use std::fmt::{self, Debug, Display, Formatter};
 use std::net::IpAddr;
 #[cfg(feature = "zmq")]
 use std::net::SocketAddr;
@@ -595,7 +595,7 @@ impl PartialNodeAddr {
 }
 
 impl Display for PartialNodeAddr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> ::core::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> ::std::fmt::Result {
         if !f.alternate() {
             self.node_id()
                 .map(|id| write!(f, "{}", id))

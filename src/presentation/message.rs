@@ -12,37 +12,19 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use amplify::AsAny;
-use core::any::Any;
-use core::borrow::Borrow;
-use core::convert::TryInto;
-use core::marker::PhantomData;
-use std::collections::BTreeMap;
-use std::io::{self, Read};
+use std::any::Any;
+use std::convert::TryInto;
+use std::io;
 use std::sync::Arc;
 
 use bitcoin::consensus::encode::{
-    self as consensus_encoding, Decodable, Decodable as ConsensusDecode,
+    self as consensus_encoding, Decodable as ConsensusDecode,
     Encodable as ConsensusEncode,
 };
-use strict_encoding::{self, StrictDecode, StrictEncode};
+use lightning_encoding::{self, LightningDecode, LightningEncode};
+use strict_encoding::{self, StrictEncode};
 
-use super::encoding::{
-    self as lightning_encoding, LightningDecode, LightningEncode,
-};
-use super::tlv;
-use super::{Error, EvenOdd, UnknownTypeError, Unmarshall, UnmarshallFn};
-
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display)]
-pub enum EncodingType {
-    #[display("lightning-encoding")]
-    Lightning,
-
-    #[display("strict-encoding")]
-    Strict,
-
-    #[display("consensus-encoding")]
-    Bitcoin,
-}
+use super::{tlv, EvenOdd, UnknownTypeError};
 
 /// Message type field value
 #[derive(
@@ -204,68 +186,6 @@ where
         Payload {
             type_id: msg.get_type(),
             payload: msg.get_payload(),
-        }
-    }
-}
-
-pub struct Unmarshaller<T>
-where
-    T: TypedEnum,
-{
-    known_types: BTreeMap<TypeId, UnmarshallFn<Error>>,
-    encoding: EncodingType,
-    _phantom: PhantomData<T>,
-}
-
-impl<T> Unmarshall for Unmarshaller<T>
-where
-    T: TypedEnum,
-{
-    type Data = Arc<T>;
-    type Error = Error;
-
-    fn unmarshall(
-        &self,
-        data: &dyn Borrow<[u8]>,
-    ) -> Result<Self::Data, Self::Error> {
-        let mut reader = io::Cursor::new(data.borrow());
-        let type_id = match self.encoding {
-            EncodingType::Lightning => TypeId::lightning_decode(&mut reader)?,
-            EncodingType::Strict => TypeId::strict_decode(&mut reader)?,
-            EncodingType::Bitcoin => TypeId::consensus_decode(&mut reader)?,
-        };
-        match self.known_types.get(&type_id) {
-            None if type_id.is_even() => Err(Error::MessageEvenType),
-            None => {
-                let mut payload = Vec::new();
-                reader.read_to_end(&mut payload)?;
-                Ok(Arc::new(T::try_from_type(
-                    type_id,
-                    &Payload { type_id, payload },
-                )?))
-            }
-            Some(parser) => parser(&mut reader).and_then(|data| {
-                Ok(Arc::new(T::try_from_type(type_id, &*data)?))
-            }),
-        }
-    }
-}
-
-impl<T> Unmarshaller<T>
-where
-    T: TypedEnum,
-{
-    pub fn new(
-        known_types: BTreeMap<u16, UnmarshallFn<Error>>,
-        encoding: EncodingType,
-    ) -> Self {
-        Self {
-            known_types: known_types
-                .into_iter()
-                .map(|(t, f)| (TypeId(t), f))
-                .collect(),
-            encoding,
-            _phantom: PhantomData,
         }
     }
 }

@@ -11,8 +11,8 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use core::convert::TryFrom;
 use proc_macro2::{Span, TokenStream as TokenStream2};
+use std::convert::TryFrom;
 use syn::spanned::Spanned;
 use syn::{
     Data, DataEnum, DeriveInput, Error, Fields, Ident, Lit, Path, Result,
@@ -20,21 +20,21 @@ use syn::{
 
 use crate::util::{attr_list, get_encoding_crate, nested_one_named_value};
 
-const NAME: &'static str = "lnp_api";
+const NAME: &'static str = "api";
 const EXAMPLE: &'static str =
-    "#[lnp_api(encoding=\"strict|bitcoin|lightning\")]";
+    "#[api(encoding=\"strict|bitcoin|lightning\", encoding_crate=path::to::crate)]";
 
 pub(crate) fn inner(input: DeriveInput) -> Result<TokenStream2> {
     match input.data {
         Data::Struct(_) => Err(Error::new_spanned(
             &input,
-            "Deriving LnpApi can be done only with enums, not with structs",
+            "Deriving API can be done only with enums, not with structs",
         )),
         Data::Enum(ref data) => inner_enum(&input, data),
         //strict_encode_inner_enum(&input, &data),
         Data::Union(_) => Err(Error::new_spanned(
             &input,
-            "Deriving LnpApi can be done only with enums, not with unions",
+            "Deriving API can be done only with enums, not with unions",
         )),
     }
 }
@@ -54,14 +54,14 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         match global_encoding {
             EncodingSrategy::Strict => "strict_encoding",
             EncodingSrategy::Bitcoin => "bitcoin",
-            EncodingSrategy::Lightning => "internet2",
+            EncodingSrategy::Lightning => "lightning_encoding",
         },
     );
     let encode_use = global_encoding.encode_use(&import);
     let decode_use = global_encoding.decode_use(&import);
     let encode_fn = global_encoding.encode_fn();
 
-    let example = "#[lnp_api(type=1000)]";
+    let example = "#[api(type=1000)]";
     let mut msg_const = vec![];
     let mut unmarshaller = vec![];
     let mut unmarshall_fn = vec![];
@@ -69,15 +69,14 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     let mut get_type = vec![];
     let mut get_payload = vec![];
     for v in &data.variants {
-        let meta =
-            attr_list(&v.attrs, "lnp_api", example)?.ok_or(Error::new(
-                v.span(),
-                format!(
+        let meta = attr_list(&v.attrs, "api", example)?.ok_or(Error::new(
+            v.span(),
+            format!(
                 "Attribute macro canonical form `{}` violation: {}",
                 example,
-                "`lnp_api` attribute is required for each message enum case",
+                "`api` attribute is required for each message enum case",
             ),
-            ))?;
+        ))?;
 
         let type_lit: Lit = nested_one_named_value(&meta, "type", EXAMPLE)?
             .ok_or(attr_err!(v, "type must be specified"))?
@@ -107,7 +106,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         });
 
         let unmarshall_empty = quote_spanned! { v.span() =>
-            fn #type_snake(_: &mut dyn ::std::io::Read) -> Result<::std::sync::Arc<dyn ::core::any::Any>, ::internet2::presentation::Error> {
+            fn #type_snake(_: &mut dyn ::std::io::Read) -> Result<::std::sync::Arc<dyn ::std::any::Any>, ::internet2::presentation::Error> {
                 struct NoData;
                 Ok(::std::sync::Arc::new(NoData))
             }
@@ -117,7 +116,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
             Fields::Named(_) => {
                 err!(
                     v,
-                    "LNP API does not support requests represented by named enums"
+                    "API does not support requests represented by named enums"
                 )
             }
             Fields::Unnamed(args) => {
@@ -125,7 +124,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 if fields.len() > 1 {
                     err!(
                         v,
-                        "each LNP API message enum variant must contain not more than a single argument"     
+                        "each API message enum variant must contain not more than a single argument"     
                    );
                 }
                 if let Some(f) = fields.first() {
@@ -139,7 +138,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                     let decode_fn = global_encoding.decode_fn(f.span());
 
                     unmarshall_fn.push(quote_spanned! { v.span() =>
-                        fn #type_snake(mut reader: &mut dyn ::std::io::Read) -> Result<::std::sync::Arc<dyn ::core::any::Any>, ::internet2::presentation::Error> {
+                        fn #type_snake(mut reader: &mut dyn ::std::io::Read) -> Result<::std::sync::Arc<dyn ::std::any::Any>, ::internet2::presentation::Error> {
                             #decode_use
                             Ok(::std::sync::Arc::new(#payload_fisheye::#decode_fn(&mut reader)?))
                         }
@@ -224,7 +223,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
         }
 
         impl ::internet2::TypedEnum for #ident_name {
-            fn try_from_type(type_id: ::internet2::TypeId, data: &dyn ::core::any::Any) -> Result<Self, ::internet2::UnknownTypeError> {
+            fn try_from_type(type_id: ::internet2::TypeId, data: &dyn ::std::any::Any) -> Result<Self, ::internet2::UnknownTypeError> {
                 use ::amplify::Wrapper;
 
                 const ERR: &'static str = "Internal API parsing inconsistency";
@@ -279,7 +278,7 @@ impl EncodingSrategy {
                 quote_spanned!(span => #import::consensus::encode::consensus_encode(obj))
             }
             Self::Lightning => {
-                quote_spanned!(span => #import::lightning_encoding::lightning_serialize(obj))
+                quote_spanned!(span => #import::lightning_serialize(obj))
             }
         }
     }
@@ -315,7 +314,7 @@ impl EncodingSrategy {
                 use #import::consensus::encode::Encode;
             ),
             Self::Lightning => quote!(
-                use #import::lightning_encoding::LightningEncode;
+                use #import::LightningEncode;
             ),
         }
     }
@@ -329,7 +328,7 @@ impl EncodingSrategy {
                 use #import::consensus::encode::Decode;
             ),
             Self::Lightning => quote!(
-                use #import::lightning_encoding::LightningDecode;
+                use #import::LightningDecode;
             ),
         }
     }
@@ -341,7 +340,7 @@ impl TryFrom<Lit> for EncodingSrategy {
     fn try_from(value: Lit) -> Result<Self> {
         let err = Error::new(
             value.span(),
-            "Wrong encoding strategy for LNP API; allowed strategies: strict, bitcoin, lightning",
+            "Wrong encoding strategy for API; allowed strategies: strict, bitcoin, lightning",
         );
         Ok(match value {
             Lit::Str(s) => match s.value().to_lowercase().as_ref() {
