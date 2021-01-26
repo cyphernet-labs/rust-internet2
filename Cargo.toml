@@ -27,7 +27,7 @@ amplify_derive = "2.4.4"
 strict_encoding = { version = "1", default-features = false, features = ["derive"] }
 lightning_encoding = "0.3.11"
 inet2_addr = { version = "0.4", features = ["strict_encoding", "stringly_conversions"] }
-inet2_derive = { version = "0.3", default-features = false, optional = true }
+inet2_derive = { version = "0.4", default-features = false, optional = true }
 # Dependencies on core rust-bitcoin & cryptography
 # ------------------------------------------------
 bitcoin = { version = "0.26", default-features = false, features = ["rand"] }

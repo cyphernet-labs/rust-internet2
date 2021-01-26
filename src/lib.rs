@@ -47,7 +47,7 @@ extern crate serde_crate as serde;
 #[cfg(feature = "derive")]
 pub extern crate inet2_derive;
 #[cfg(feature = "derive")]
-pub use inet2_derive::{LightningDecode, LightningEncode, LnpApi};
+pub use inet2_derive::Api;
 
 pub mod addr {
     pub use inet2_addr::*;
