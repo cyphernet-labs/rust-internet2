@@ -23,5 +23,5 @@ amplify = "3"
 amplify = "3"
 internet2 = { path = ".." }
 strict_encoding = "1"
-lightning_encoding = "0.3"
+lightning_encoding = "0.4.0-alpha.2"
 bitcoin = "0.26"

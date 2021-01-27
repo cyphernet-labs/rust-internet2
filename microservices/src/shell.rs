@@ -126,9 +126,9 @@ impl LogLevel {
 /// by any other form of API handling.
 pub trait Exec {
     /// Runtime context data type, that is provided for execution context.
-    type Runtime: Sized;
+    type Client: Sized;
     /// Error type that may result from the execution
     type Error: Error;
     /// Main execution routine
-    fn exec(&self, runtime: &mut Self::Runtime) -> Result<(), Self::Error>;
+    fn exec(self, client: &mut Self::Client) -> Result<(), Self::Error>;
 }

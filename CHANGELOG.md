@@ -1,6 +1,10 @@
 Change Log
 ==========
 
+v0.4.0-alpha.1
+--------------
+- Lightning encoding moved into a separate crate within LNP Core Lib
+
 v0.3.5
 ------
 - Feature for RGB support (`rgb`)
