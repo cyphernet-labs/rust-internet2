@@ -38,6 +38,8 @@ pub type Map = BTreeMap<Type, RawRecord>;
     Debug,
     Display,
     From,
+    StrictEncode,
+    StrictDecode,
 )]
 #[display(inner)]
 #[wrapper(LowerHex, UpperHex, Octal, FromStr)]
@@ -45,7 +47,18 @@ pub struct Type(u64);
 
 /// Unknown TLV record represented by raw bytes
 #[derive(
-    Wrapper, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, From,
+    Wrapper,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Default,
+    Debug,
+    From,
+    StrictEncode,
+    StrictDecode,
 )]
 pub struct RawRecord(Vec<u8>);
 
