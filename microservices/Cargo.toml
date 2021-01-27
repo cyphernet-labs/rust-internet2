@@ -19,8 +19,8 @@ crate-type = ["rlib", "staticlib"]
 # LNP/BP libraries
 amplify = "3"
 amplify_derive = "2.4"
-lnp-core = { version = "0.3", optional = true }
-internet2 = { version = "0.3.7", default-features = false, features = ["derive"]}
+lnp-core = { git = "https://github.com/LNP-BP/lnp-core", optional = true }
+internet2 = { git = "https://github.com/internet2-org/rust-internet2", default-features = false, features = ["derive"]}
 strict_encoding = { version = "1", default-features = false, features = ["derive"] }
 # Serialization & parsing
 serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
