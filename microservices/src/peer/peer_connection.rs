@@ -15,13 +15,14 @@
 //! with it. Relies on transport layer (BOLT-8-based) protocol.
 
 use amplify::Bipolar;
-use internet2::presentation::{Error, LightningEncode, Unmarshall};
+use internet2::presentation::{Error, Unmarshall};
 use internet2::session::{
     self, Accept, Connect, LocalNode, PlainTranscoder, Session, Split,
     ToNodeAddr,
 };
 use internet2::transport::{ftcp, zmqsocket};
 use internet2::LIGHTNING_P2P_DEFAULT_PORT;
+use lightning_encoding::LightningEncode;
 use lnp::{Messages, LNPWP_UNMARSHALLER};
 
 pub trait RecvMessage {

@@ -23,5 +23,5 @@ amplify = "3"
 amplify = "3"
 internet2 = { path = ".." }
 strict_encoding = "1"
-lightning_encoding = "0.4.0-alpha.2"
+lightning_encoding = { git = "https://github.com/LNP-BP/lnp-core" }
 bitcoin = "0.26"

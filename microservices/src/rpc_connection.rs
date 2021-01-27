@@ -13,21 +13,15 @@
 
 use std::fmt::{Debug, Display};
 
-use internet2::presentation::{payload, CreateUnmarshaller, Error};
+use internet2::presentation::{CreateUnmarshaller, Error, TypedEnum};
 use internet2::session::{Connect, Session};
 use internet2::{LocalNode, ToNodeAddr};
 
 /// Marker trait for LNP RPC requests
-pub trait Request:
-    Debug + Display + payload::TypedEnum + CreateUnmarshaller
-{
-}
+pub trait Request: Debug + Display + TypedEnum + CreateUnmarshaller {}
 
 /// Marker trait for LNP RPC replies
-pub trait Reply:
-    Debug + Display + payload::TypedEnum + CreateUnmarshaller
-{
-}
+pub trait Reply: Debug + Display + TypedEnum + CreateUnmarshaller {}
 
 /// RPC API pair, connecting [`Request`] type with [`Reply`]
 pub trait Api {

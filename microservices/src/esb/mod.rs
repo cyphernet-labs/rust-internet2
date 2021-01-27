@@ -71,7 +71,7 @@ pub enum Error {
     UnexpectedServerResponse,
 
     /// message serialization or structure error: {0}
-    #[from(presentation::encoding::Error)]
+    #[from(lightning_encoding::Error)]
     Presentation(presentation::Error),
 
     /// transport-level protocol error: {0}
