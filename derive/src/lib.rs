@@ -28,7 +28,15 @@ mod api;
 use proc_macro::TokenStream;
 use syn::DeriveInput;
 
-#[proc_macro_derive(Api, attributes(api))]
+#[proc_macro_derive(
+    Api,
+    attributes(
+        api,
+        bitcoin_encoding_crate,
+        strict_encoding_crate,
+        lightning_encoding_crate
+    )
+)]
 pub fn derive_api(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     api::inner(derive_input)

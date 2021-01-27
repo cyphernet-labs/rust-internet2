@@ -21,8 +21,7 @@ use syn::{
 use crate::util::{attr_list, get_encoding_crate, nested_one_named_value};
 
 const NAME: &'static str = "api";
-const EXAMPLE: &'static str =
-    "#[api(encoding=\"strict|bitcoin|lightning\", encoding_crate=path::to::crate)]";
+const EXAMPLE: &'static str = "#[api(encoding=\"strict|bitcoin|lightning\")]";
 
 pub(crate) fn inner(input: DeriveInput) -> Result<TokenStream2> {
     match input.data {
@@ -51,6 +50,11 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     )?;
     let import = get_encoding_crate(
         input,
+        match global_encoding {
+            EncodingSrategy::Strict => "strict_encoding_crate",
+            EncodingSrategy::Bitcoin => "bitcoin_encoding_crate",
+            EncodingSrategy::Lightning => "lightning_encoding_crate",
+        },
         match global_encoding {
             EncodingSrategy::Strict => "strict_encoding",
             EncodingSrategy::Bitcoin => "bitcoin",

@@ -51,16 +51,19 @@ macro_rules! err {
     };
 }
 
-pub(crate) fn get_encoding_crate(input: &DeriveInput, default: &str) -> Path {
-    let name = "encoding_crate";
-    let example = "#[encoding_crate(crate_path)]";
+pub(crate) fn get_encoding_crate(
+    input: &DeriveInput,
+    name: &str,
+    default: &str,
+) -> Path {
+    let example = format!("#[{}(crate_path)]", name);
     let default = Path::from(Ident::new(default, input.span()));
 
-    let list = match attr_list(&input.attrs, name, example).ok().flatten() {
+    let list = match attr_list(&input.attrs, name, &example).ok().flatten() {
         Some(x) => x,
         None => return default,
     };
-    nested_one_path(&list, name, example)
+    nested_one_path(&list, name, &example)
         .ok()
         .flatten()
         .unwrap_or(default)
