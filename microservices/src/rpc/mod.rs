@@ -28,6 +28,11 @@ use crate::error::RuntimeError;
 pub trait EndpointId: Copy + Eq + Hash + Display {}
 
 /// Information about server-side failure returned through RPC API
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 #[derive(
     Clone, PartialEq, Eq, Hash, Debug, Display, StrictEncode, StrictDecode,
 )]

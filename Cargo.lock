@@ -978,7 +978,7 @@ dependencies = [
 
 [[package]]
 name = "microservices"
-version = "0.4.0-alpha.1"
+version = "0.4.0-beta"
 dependencies = [
  "amplify",
  "amplify_derive",
