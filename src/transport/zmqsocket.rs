@@ -155,13 +155,13 @@ impl FromStr for ZmqType {
     Clone, PartialEq, Eq, Hash, Debug, Display, StrictEncode, StrictDecode,
 )]
 pub enum ZmqSocketAddr {
-    #[display("inproc://{0}", alt = "zmq:{0}")]
+    #[display("zmq:{0}", alt = "inproc://{0}")]
     Inproc(String),
 
-    #[display("ipc://{0}", alt = "lnpz:{0}")]
+    #[display("lnpz:{0}", alt = "ipc://{0}")]
     Ipc(String),
 
-    #[display("tcp://{0}", alt = "lnpz://{0}")]
+    #[display("lnpz://{0}", alt = "tcp://{0}")]
     Tcp(
         #[cfg_attr(feature = "serde", serde(with = "As::<DisplayFromStr>"))]
         SocketAddr,
@@ -192,13 +192,13 @@ impl UrlString for ZmqSocketAddr {
     }
 
     fn to_url_string(&self) -> String {
-        format!("{:#}", self)
+        format!("{:}", self)
     }
 }
 
 impl ZmqSocketAddr {
     pub fn zmq_socket_string(&self) -> String {
-        format!("{:}", self)
+        format!("{:#}", self)
     }
 }
 
