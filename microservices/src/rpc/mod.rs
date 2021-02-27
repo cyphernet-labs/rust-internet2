@@ -36,9 +36,9 @@ pub trait EndpointId: Copy + Eq + Hash + Display {}
 #[derive(
     Clone, PartialEq, Eq, Hash, Debug, Display, StrictEncode, StrictDecode,
 )]
-#[display("Server returned failure #{code}: {info})", alt = "#{code}: {info}")]
+#[display("{info}", alt = "Server returned failure #{code}: {info}")]
 pub struct Failure {
-    /// Failure #{}
+    /// Failure code
     pub code: u16,
 
     /// Detailed information about the failure
