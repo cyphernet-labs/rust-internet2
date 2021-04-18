@@ -23,14 +23,21 @@ use internet2::session::{
 use internet2::transport::{ftcp, zmqsocket};
 use internet2::LIGHTNING_P2P_DEFAULT_PORT;
 use lightning_encoding::LightningEncode;
-use lnp::{Messages, LNPWP_UNMARSHALLER};
+use std::fmt::Display;
 
 pub trait RecvMessage {
-    fn recv_message(&mut self) -> Result<Messages, Error>;
+    fn recv_message<D>(&mut self, d: &D) -> Result<D::Data, Error>
+    where
+        D: Unmarshall,
+        <D as Unmarshall>::Data: Display,
+        <D as Unmarshall>::Error: Into<Error>;
 }
 
 pub trait SendMessage {
-    fn send_message(&mut self, message: Messages) -> Result<usize, Error>;
+    fn send_message(
+        &mut self,
+        message: impl LightningEncode + Display,
+    ) -> Result<usize, Error>;
 }
 
 pub struct PeerConnection {
@@ -82,18 +89,26 @@ impl PeerConnection {
 }
 
 impl RecvMessage for PeerConnection {
-    fn recv_message(&mut self) -> Result<Messages, Error> {
+    fn recv_message<D>(&mut self, d: &D) -> Result<D::Data, Error>
+    where
+        D: Unmarshall,
+        <D as Unmarshall>::Data: Display,
+        <D as Unmarshall>::Error: Into<Error>,
+    {
         debug!("Awaiting incoming messages from the remote peer");
         let payload = self.session.recv_raw_message()?;
         trace!("Incoming data from the remote peer: {:?}", payload);
-        let message = &*LNPWP_UNMARSHALLER.unmarshall(&payload)?;
+        let message: D::Data = d.unmarshall(&payload).map_err(Into::into)?;
         debug!("Message from the remote peer: {}", message);
-        Ok(message.clone())
+        Ok(message)
     }
 }
 
 impl SendMessage for PeerConnection {
-    fn send_message(&mut self, message: Messages) -> Result<usize, Error> {
+    fn send_message(
+        &mut self,
+        message: impl LightningEncode + Display,
+    ) -> Result<usize, Error> {
         debug!("Sending LN message to the remote peer: {}", message);
         let data = &message.lightning_serialize();
         trace!("Lightning-encoded message representation: {:?}", data);
@@ -102,18 +117,26 @@ impl SendMessage for PeerConnection {
 }
 
 impl RecvMessage for PeerReceiver {
-    fn recv_message(&mut self) -> Result<Messages, Error> {
+    fn recv_message<D>(&mut self, d: &D) -> Result<D::Data, Error>
+    where
+        D: Unmarshall,
+        <D as Unmarshall>::Data: Display,
+        <D as Unmarshall>::Error: Into<Error>,
+    {
         debug!("Awaiting incoming messages from the remote peer");
         let payload = self.receiver.recv_raw_message()?;
         trace!("Incoming data from the remote peer: {:?}", payload);
-        let message = &*LNPWP_UNMARSHALLER.unmarshall(&payload)?;
+        let message: D::Data = d.unmarshall(&payload).map_err(Into::into)?;
         debug!("Message from the remote peer: {}", message);
-        Ok(message.clone())
+        Ok(message)
     }
 }
 
 impl SendMessage for PeerSender {
-    fn send_message(&mut self, message: Messages) -> Result<usize, Error> {
+    fn send_message(
+        &mut self,
+        message: impl LightningEncode + Display,
+    ) -> Result<usize, Error> {
         debug!("Sending LN message to the remote peer: {}", message);
         let data = &message.lightning_serialize();
         trace!("Lightning-encoded message representation: {:?}", data);

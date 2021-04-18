@@ -22,6 +22,6 @@ amplify = "3"
 [dev-dependencies]
 amplify = "3"
 internet2 = { path = ".." }
-lnpbp = { git = "https://github.com/LNP-BP/rust-lnpbp" }
-lightning_encoding = { git = "https://github.com/LNP-BP/lnp-core" }
+lightning_encoding = "0.4.0-beta.1"
+lnpbp = { version = "0.4" }
 bitcoin = "0.26"

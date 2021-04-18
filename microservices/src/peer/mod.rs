@@ -15,42 +15,53 @@ mod peer_connection;
 pub use peer_connection::{
     PeerConnection, PeerReceiver, PeerSender, RecvMessage, SendMessage,
 };
-
-use internet2::presentation;
-use lnp::Messages;
-
+use internet2::presentation::{Error, CreateUnmarshaller, Unmarshaller, Unmarshall, TypedEnum} ;
 use crate::node::TryService;
+use std::fmt::{Display, Debug};
 
 /// Trait for types handling specific LNPWP messages.
 pub trait Handler {
-    type Error: crate::error::Error + From<presentation::Error>;
+    type Error: crate::error::Error + From<Error>;
 
     /// Function that processes specific peer message
-    fn handle(&mut self, message: Messages) -> Result<(), Self::Error>;
+    fn handle(&mut self, message: impl CreateUnmarshaller) -> Result<(), Self::Error>;
 
     fn handle_err(&mut self, error: Self::Error) -> Result<(), Self::Error>;
 }
 
-pub struct Listener<H>
+pub struct Listener<H, T>
 where
     H: Handler,
+    T: TypedEnum,
+    Unmarshaller<T>: Unmarshall,
+    <Unmarshaller<T> as Unmarshall>::Data: CreateUnmarshaller + Display + Debug,
+    <Unmarshaller<T> as Unmarshall>::Error: Into<Error>,
 {
     receiver: PeerReceiver,
     handler: H,
+    unmarshall: Unmarshaller<T>,
 }
 
-impl<H> Listener<H>
+impl<H, T> Listener<H, T>
 where
     H: Handler,
+    T: TypedEnum,
+    Unmarshaller<T>: Unmarshall,
+    <Unmarshaller<T> as Unmarshall>::Data: CreateUnmarshaller + Display + Debug,
+    <Unmarshaller<T> as Unmarshall>::Error: Into<Error>,
 {
-    pub fn with(receiver: PeerReceiver, handler: H) -> Self {
-        Self { receiver, handler }
+    pub fn with(receiver: PeerReceiver, handler: H, unmarshall: Unmarshaller<T>) -> Self {
+        Self { receiver, handler, unmarshall }
     }
 }
 
-impl<H> TryService for Listener<H>
+impl<H, T> TryService for Listener<H, T>
 where
     H: Handler,
+    T: TypedEnum,
+    Unmarshaller<T>: Unmarshall,
+    <Unmarshaller<T> as Unmarshall>::Data: CreateUnmarshaller + Display + Debug,
+    <Unmarshaller<T> as Unmarshall>::Error: Into<Error>,
 {
     type ErrorType = H::Error;
 
@@ -68,13 +79,18 @@ where
     }
 }
 
-impl<H> Listener<H>
+
+impl<H, T> Listener<H, T>
 where
     H: Handler,
+    T: TypedEnum,
+    Unmarshaller<T>: Unmarshall,
+    <Unmarshaller<T> as Unmarshall>::Data: CreateUnmarshaller + Display + Debug,
+    <Unmarshaller<T> as Unmarshall>::Error: Into<Error>,
 {
     fn run(&mut self) -> Result<(), H::Error> {
         trace!("Awaiting for peer messages...");
-        let msg = self.receiver.recv_message()?;
+        let msg = self.receiver.recv_message(&self.unmarshall)?;
         debug!("Processing message {}", msg);
         trace!("Message details: {:?}", msg);
         self.handler.handle(msg)
