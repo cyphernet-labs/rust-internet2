@@ -68,7 +68,7 @@ _config = []
 _rpc = []
 
 serde = ["serde_crate", "serde_with", "amplify/serde", "internet2/serde", "toml", "lnp-core/serde"]
-peer = ["lnp-core"]
+peer = ["lnp-core", "node"]
 zmq = ["zmq_crate", "internet2/zmq"]
 tor = ["internet2/tor"]
 vendored_openssl = ["internet2/vendored_openssl"]
