@@ -23,7 +23,7 @@ use internet2::transport;
 use crate::rpc;
 
 /// Marker trait with all requirements common to LNP/BP service errors
-pub trait Error: std::error::Error + Sized + Clone {}
+pub trait Error: std::error::Error + Sized {}
 
 /// Error happening during config initiliaztion
 #[cfg(feature = "_config")]
