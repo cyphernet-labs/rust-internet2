@@ -1,6 +1,6 @@
 [package]
 name = "microservices"
-version = "0.3.10"
+version = "0.5.0-beta.1"
 license = "Apache-2.0"
 authors = ["Dr Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "LNP/BP support crate for devloping microservices"
@@ -17,19 +17,18 @@ crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 # LNP/BP libraries
-amplify = "3"
-amplify_derive = "2.4"
+amplify = "3.9.1"
 lnp-core = { version = "0.3.1", optional = true }
-internet2 = { version = "0.3.10", default-features = false, features = ["derive"]}
-lightning_encoding = "0.4.0-beta.1"
+internet2 = { version = "0.5.0-alpha.1", default-features = false, features = ["derive"], path = ".."}
+lightning_encoding = "0.5.0-beta.1"
 strict_encoding = { version = "1", default-features = false, features = ["derive"] }
 # Serialization & parsing
 serde_crate = { package = "serde", version = "1", features = ["derive"], optional = true }
-serde_with = { version = "1.5", optional = true, features = ["hex"] }
+serde_with = { version = "1.8", optional = true, features = ["hex"] }
 toml = { version = "0.5", optional = true }
 # Congig
 settings = { version = "0.10", package = "config", optional = true }
-clap = { version = "3.0.0-beta.2", optional = true }
+clap = { version = "3.0.0-beta.4", optional = true }
 log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
 env_logger = "0.7"
 # Networking

@@ -30,8 +30,6 @@
 #[allow(unused_imports)]
 #[macro_use]
 extern crate amplify;
-#[macro_use]
-extern crate amplify_derive;
 #[cfg(feature = "stringly_conversions")]
 #[macro_use]
 extern crate stringly_conversions_crate as stringly_conversions;
