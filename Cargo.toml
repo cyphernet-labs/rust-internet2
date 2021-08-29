@@ -84,6 +84,6 @@ tor = ["inet2_addr/tor"]
 vendored_openssl = ["inet2_addr/vendored_openssl"]
 
 [workspace]
-members = [".", "derive", "addr", "microservices"]
-default-members = [".", "derive", "addr", "microservices"]
+members = [".", "derive", "addr"]
+default-members = [".", "derive", "addr"]
 exclude = ["dep_test"]
