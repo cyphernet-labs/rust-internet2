@@ -435,10 +435,10 @@ impl Duplex for Connection {
             // We panic here because this is a program architecture design
             // error and developer must be notified about it; the program using
             // this pattern can't work
-            panic!(format!(
+            panic!(
                 "Split operation is impossible for ZMQ stream type {}",
                 self.api_type
-            ));
+            );
         }
     }
 }
@@ -455,10 +455,7 @@ impl Bipolar for Connection {
             panic!("ZMQ streams of different type can't be joined");
         }
         if input.api_type != ZmqType::Push || input.api_type == ZmqType::Pull {
-            panic!(format!(
-                "ZMQ streams of {} type can't be joined",
-                input.api_type
-            ));
+            panic!("ZMQ streams of {} type can't be joined", input.api_type);
         }
         Self {
             api_type: input.api_type.clone(),
@@ -474,10 +471,10 @@ impl Bipolar for Connection {
             // We panic here because this is a program architecture design
             // error and developer must be notified about it; the program using
             // this pattern can't work
-            panic!(format!(
+            panic!(
                 "Split operation is impossible for ZMQ stream type {}",
                 self.api_type
-            ));
+            );
         }
     }
 }

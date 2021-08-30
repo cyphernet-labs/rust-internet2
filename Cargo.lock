@@ -598,7 +598,7 @@ dependencies = [
 
 [[package]]
 name = "internet2"
-version = "0.5.0-alpha.1"
+version = "0.5.0-alpha.2"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -642,14 +642,15 @@ checksum = "3cb00336871be5ed2c8ed44b60ae9959dc5b9f08539422ed43f09e34ecaeba21"
 
 [[package]]
 name = "lightning_encoding"
-version = "0.5.0-beta.1"
+version = "0.5.0-beta.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afe928e73cc910ae2602e80d2a3cd1ffe352a44468e7cf03e0d765a3b2690eae"
+checksum = "f68e9919dd7619a1ab9fe627a5f9b00f20d3e5227b444b6db91e059a5c7d35f1"
 dependencies = [
  "amplify",
  "bitcoin",
  "descriptor-wallet",
  "lightning_encoding_derive",
+ "lnpbp",
  "strict_encoding",
 ]
 
@@ -1213,9 +1214,9 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "1.7.1"
+version = "1.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcb4d14cbb0c466a373bfcdb5271d4fbe9a506c6c5ba8d641c724d3e5848186d"
+checksum = "e28386e22c966828e3f483d1ae8d9a7f9a9b8dbc16a47f4023d3c6d81556244f"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -1461,9 +1462,9 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.2.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81a974bcdd357f0dca4d41677db03436324d45a4c9ed2d0b873a5a360ce41c36"
+checksum = "377db0846015f7ae377174787dd452e1c5f5a9050bc6f954911d01f116daa0cd"
 dependencies = [
  "zeroize_derive",
 ]

@@ -54,7 +54,7 @@ impl NoiseEncryptor {
         )?;
         self.increment_nonce();
 
-        &chacha::encrypt(
+        let _ = &chacha::encrypt(
             &self.sending_key,
             self.sending_nonce as u64,
             &[0; 0],

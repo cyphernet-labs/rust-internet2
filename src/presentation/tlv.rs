@@ -22,7 +22,7 @@ use lightning_encoding::{self, BigSize, LightningDecode};
 
 use super::{Error, EvenOdd, Unmarshall, UnmarshallFn};
 
-pub type Map = BTreeMap<Type, RawRecord>;
+pub type UnknownMap = BTreeMap<usize, Box<[u8]>>;
 
 /// TLV type field value
 #[derive(
