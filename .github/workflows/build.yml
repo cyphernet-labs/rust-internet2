@@ -27,10 +27,10 @@ jobs:
           - zmq
           - url
           - websockets
-          - vendored_openssl
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
+        if: startsWith(matrix.feature, 'zmq')
         run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
       - name: Install rust stable
         uses: actions-rs/toolchain@v1
@@ -52,7 +52,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-18.04, ubuntu-20.04, macos-10.15, macos-11.0, windows-2019 ]
+        os: [ ubuntu-18.04, ubuntu-latest, macos-10.15, macos-11.0, windows-latest ]
     steps:
       - uses: actions/checkout@v2
       - name: Install linux dependencies
@@ -87,7 +87,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev libssl-dev
+        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
       - name: Install rust stable
         uses: actions-rs/toolchain@v1
         with:
@@ -108,47 +108,38 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ nightly, beta, stable, 1.45.0 ]
+        toolchain: [ nightly, beta, stable, 1.47.0 ]
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev libssl-dev
+        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
       - name: Install rust ${{ matrix.toolchain }}
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           override: true
+      - name: Regenerate Cargo.lock
+        if: startsWith(matrix.toolchain, '1.')
+        uses: actions-rs/cargo@v1
+        with:
+          command: generate-lockfile
+      - name: Pin versions
+        if: startsWith(matrix.toolchain, '1.')
+        uses: actions-rs/cargo@v1
+        with:
+          command: update
+          args: -p zeroize --precise "1.2.0"
       - name: All features
         uses: actions-rs/cargo@v1
         with:
           command: check
           args: --workspace --all-targets --all-features
-  toolchains-old:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        toolchain: [ 1.41.1 ]
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev libssl-dev
-      - name: Install rust ${{ matrix.toolchain }}
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.toolchain }}
-          override: true
-      - name: Custom features
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --all-targets --features=lnp,websockets,url,keygen,serde,bulletproofs
   dependency:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev libssl-dev
+        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
       - name: Install latest stable
         uses: actions-rs/toolchain@v1
         with:
@@ -184,7 +175,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libpcre3-dev libssl-dev
+          sudo apt-get install -y libpcre3-dev
       - name: set environment variables
         run: |
           ANDROID_SDK_ROOT="$GITHUB_WORKSPACE/sdk"

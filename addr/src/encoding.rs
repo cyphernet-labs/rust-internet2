@@ -42,8 +42,6 @@ impl Uniform for InetAddr {
             InetAddr::IPv4(_) => AddrFormat::IpV4,
             InetAddr::IPv6(_) => AddrFormat::IpV6,
             #[cfg(feature = "tor")]
-            InetAddr::TorV2(_) => AddrFormat::OnionV2,
-            #[cfg(feature = "tor")]
             InetAddr::Tor(_) => AddrFormat::OnionV3,
         }
     }
@@ -54,11 +52,6 @@ impl Uniform for InetAddr {
         match self {
             InetAddr::IPv4(ip) => ip.addr(),
             InetAddr::IPv6(ip) => ip.addr(),
-            #[cfg(feature = "tor")]
-            InetAddr::TorV2(tor) => {
-                buf[23..].copy_from_slice(tor.get_raw_bytes().as_ref());
-                buf
-            }
             #[cfg(feature = "tor")]
             InetAddr::Tor(tor) => {
                 buf[1..].copy_from_slice(&tor.to_bytes());

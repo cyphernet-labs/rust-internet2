@@ -1069,7 +1069,7 @@ mod test {
 
             #[cfg(feature = "tor")]
             {
-                use torut::onion::{OnionAddressV2, OnionAddressV3};
+                use torut::onion::OnionAddressV3;
 
                 assert_eq!(
                     PartialNodeAddr::from_str(
@@ -1078,16 +1078,6 @@ mod test {
                     ).unwrap().inet_addr().unwrap().to_onion().unwrap(),
                     OnionAddressV3::from_str(
                         "32zzibxmqi2ybxpqyggwwuwz7a3lbvtzoloti7cxoevyvijexvgsfeid"
-                    ).unwrap()
-                );
-
-                assert_eq!(
-                    PartialNodeAddr::from_str(
-                        "lnp://022e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af\
-                          @6zdgh5a5e6zpchdz"
-                    ).unwrap().inet_addr().unwrap().to_onion_v2().unwrap(),
-                    OnionAddressV2::from_str(
-                        "6zdgh5a5e6zpchdz"
                     ).unwrap()
                 );
             }
