@@ -17,21 +17,17 @@ jobs:
       matrix:
         feature:
           # Library components, one by one
-          - lnp
+          - derive
           # Cryptographic optionals
           - keygen
-          - elgamal
-          - bulletproofs
-          - ed25519-dalek
           # Core rust optionals
           - serde
-          - tokio
-          - async
           # Networking
+          - tor
+          - zmq
           - url
           - websockets
-          # Full LNP strength, but without Serde
-          - lnp,websockets,url,tokio,async,keygen,bulletproofs,ed25519-dalek
+          - vendored_openssl
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies

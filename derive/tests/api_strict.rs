@@ -6,7 +6,6 @@ use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Eq, Debug, Api)]
 #[api(encoding = "strict")]
-#[strict_encoding_crate(lnpbp::strict_encoding)]
 pub enum Request {
     #[api(type = 0x0001)]
     Hello(String),

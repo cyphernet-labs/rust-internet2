@@ -53,8 +53,8 @@ impl LightningEncode for TypeId {
     fn lightning_encode<E: io::Write>(
         &self,
         mut e: E,
-    ) -> Result<usize, io::Error> {
-        e.write(&self.0.to_be_bytes())
+    ) -> Result<usize, lightning_encoding::Error> {
+        Ok(e.write(&self.0.to_be_bytes())?)
     }
 }
 
@@ -151,7 +151,7 @@ impl LightningEncode for Payload {
     fn lightning_encode<E: io::Write>(
         &self,
         mut e: E,
-    ) -> Result<usize, io::Error> {
+    ) -> Result<usize, lightning_encoding::Error> {
         Ok(self.type_id.lightning_encode(&mut e)? + e.write(&self.payload)?)
     }
 }

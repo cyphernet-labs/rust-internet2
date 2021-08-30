@@ -282,7 +282,7 @@ impl EncodingSrategy {
                 quote_spanned!(span => #import::consensus::encode::consensus_encode(obj))
             }
             Self::Lightning => {
-                quote_spanned!(span => #import::lightning_serialize(obj))
+                quote_spanned!(span => #import::lightning_serialize(obj).expect(ERR))
             }
         }
     }

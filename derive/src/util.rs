@@ -29,10 +29,10 @@ use syn::{
 /// should be used.
 macro_rules! attr_err {
     ($attr:expr, $msg:tt) => {
-        attr_err!($attr.span(), NAME, $msg, EXAMPLE);
+        attr_err!($attr.span(), NAME, $msg, EXAMPLE)
     };
     ($name:expr, $msg:tt, $example:tt) => {
-        attr_err!(::proc_macro2::Span::call_site(), $name, $msg, $example);
+        attr_err!(::proc_macro2::Span::call_site(), $name, $msg, $example)
     };
     ($attr:expr, $name:expr, $msg:tt, $example:tt) => {
         ::syn::Error::new(
@@ -41,7 +41,7 @@ macro_rules! attr_err {
                 "Attribute `#[{}]`: {}\nExample use: {}",
                 $name, $msg, $example
             ),
-        );
+        )
     };
 }
 
