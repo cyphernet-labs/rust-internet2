@@ -1,6 +1,6 @@
 [package]
 name = "inet2_derive"
-version = "0.5.0-alpha.1"
+version = "0.5.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Derivation macros for Internet2-based crates"
@@ -24,5 +24,5 @@ amplify = "3.9.1"
 internet2 = { path = ".." }
 lnpbp = "0.5.0-beta.3"
 strict_encoding = "1.7.1"
-lightning_encoding = "0.5.0-beta.2"
+lightning_encoding = "0.5.0"
 bitcoin = "0.27"
