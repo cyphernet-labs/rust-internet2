@@ -14,8 +14,8 @@
 use std::fmt::{self, Display, Formatter};
 
 #[cfg(feature = "keygen")]
-use bitcoin::secp256k1::rand::thread_rng;
-use bitcoin::secp256k1::{self, Secp256k1};
+use secp256k1::rand::thread_rng;
+use secp256k1::{self, Secp256k1};
 
 lazy_static! {
     static ref SECP256K1: Secp256k1<secp256k1::All> = Secp256k1::new();

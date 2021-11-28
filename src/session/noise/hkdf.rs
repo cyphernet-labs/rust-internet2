@@ -11,8 +11,8 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use bitcoin::hashes::sha256::Hash as Sha256;
-use bitcoin::hashes::{Hash, HashEngine, Hmac, HmacEngine};
+use bitcoin_hashes::sha256::Hash as Sha256;
+use bitcoin_hashes::{Hash, HashEngine, Hmac, HmacEngine};
 
 // Allows 1 or more inputs and "concatenates" them together using the input()
 // function of HmacEngine::<Sha256>
@@ -66,7 +66,7 @@ pub(super) fn derive(salt: &[u8], ikm: &[u8]) -> ([u8; 32], [u8; 32]) {
 #[cfg(test)]
 mod test {
     use super::derive;
-    use bitcoin::hashes::hex::FromHex;
+    use amplify::hex::FromHex;
 
     // Test with SHA-256 and zero-length salt/info
     // Our implementation uses a zero-length info field and returns the first 64

@@ -1,6 +1,6 @@
 [package]
 name = "internet2"
-version = "0.5.0"
+version = "0.6.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Rust implementation for the stack of Internet2 protocols"
@@ -25,11 +25,12 @@ crate-type = ["rlib", "staticlib"]
 amplify = "3.9.1"
 strict_encoding = { version = "1.7", default-features = false, features = ["derive"] }
 lightning_encoding = "0.5.0"
-inet2_addr = { version = "0.5", features = ["strict_encoding", "stringly_conversions"], path = "./addr" }
-inet2_derive = { version = "0.5.0", default-features = false, optional = true, path = "./derive" }
+inet2_addr = { version = "0.6.0", features = ["strict_encoding", "stringly_conversions"], path = "./addr" }
+inet2_derive = { version = "0.6.0", default-features = false, optional = true, path = "./derive" }
 # Dependencies on core rust-bitcoin & cryptography
 # ------------------------------------------------
-bitcoin = { version = "0.27.1", default-features = false, features = ["rand"] }
+secp256k1 = "0.20.3"
+bitcoin_hashes = "0.10.0"
 chacha20poly1305 = "0.7"
 # Core rust projects
 # ------------------
@@ -71,9 +72,9 @@ all = ["derive",
 # ----------------------------
 #   These also include re-assembly of necessary features from dependencies
 serde = ["serde_crate", "serde_with", "amplify/serde",
-         "bitcoin/use-serde", "inet2_addr/serde"]
+         "inet2_addr/serde", "secp256k1/serde", "bitcoin_hashes/serde-std"]
 derive = ["inet2_derive"]
-keygen = ["bitcoin/rand"]
+keygen = ["secp256k1/rand-std"]
 # Networking
 # ----------
 websockets = []

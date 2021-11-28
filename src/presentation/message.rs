@@ -17,10 +17,6 @@ use std::convert::TryInto;
 use std::io;
 use std::sync::Arc;
 
-use bitcoin::consensus::encode::{
-    self as consensus_encoding, Decodable as ConsensusDecode,
-    Encodable as ConsensusEncode,
-};
 use lightning_encoding::{self, LightningDecode, LightningEncode};
 use strict_encoding::{self, StrictEncode};
 
@@ -65,25 +61,6 @@ impl LightningDecode for TypeId {
         let mut id = [0u8; 2];
         d.read_exact(&mut id)?;
         Ok(Self(u16::from_be_bytes(id)))
-    }
-}
-
-impl ConsensusEncode for TypeId {
-    fn consensus_encode<W: io::Write>(
-        &self,
-        mut e: W,
-    ) -> Result<usize, io::Error> {
-        Ok(e.write(&self.0.to_le_bytes())?)
-    }
-}
-
-impl ConsensusDecode for TypeId {
-    fn consensus_decode<D: io::Read>(
-        mut d: D,
-    ) -> Result<Self, consensus_encoding::Error> {
-        let mut id = [0u8; 2];
-        d.read_exact(&mut id)?;
-        Ok(Self(u16::from_le_bytes(id)))
     }
 }
 
@@ -153,15 +130,6 @@ impl LightningEncode for Payload {
         mut e: E,
     ) -> Result<usize, lightning_encoding::Error> {
         Ok(self.type_id.lightning_encode(&mut e)? + e.write(&self.payload)?)
-    }
-}
-
-impl ConsensusEncode for Payload {
-    fn consensus_encode<W: io::Write>(
-        &self,
-        mut e: W,
-    ) -> Result<usize, io::Error> {
-        Ok(self.type_id.consensus_encode(&mut e)? + e.write(&self.payload)?)
     }
 }
 

@@ -104,7 +104,6 @@ dependencies = [
  "bech32",
  "bitcoin_hashes",
  "secp256k1",
- "serde",
 ]
 
 [[package]]
@@ -545,7 +544,7 @@ dependencies = [
 
 [[package]]
 name = "inet2_addr"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "amplify",
  "ed25519-dalek",
@@ -561,7 +560,7 @@ dependencies = [
 
 [[package]]
 name = "inet2_derive"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -585,15 +584,16 @@ dependencies = [
 
 [[package]]
 name = "internet2"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "amplify",
- "bitcoin",
+ "bitcoin_hashes",
  "chacha20poly1305",
  "inet2_addr",
  "inet2_derive",
  "lazy_static",
  "lightning_encoding",
+ "secp256k1",
  "serde",
  "serde_with",
  "strict_encoding",
