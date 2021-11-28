@@ -1,6 +1,6 @@
 [package]
 name = "inet2_addr"
-version = "0.5.0"
+version = "0.6.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Internet2 addresses with support for Tor v2, v3"

@@ -45,11 +45,6 @@ pub enum Error {
     #[from]
     StrictEncoding(strict_encoding::Error),
 
-    /// Error in consensus-encoded data from LNP message
-    #[display(inner)]
-    #[from(bitcoin::consensus::encode::Error)]
-    ConsensusEncoding,
-
     /// unknown data type in LNP message
     #[from(UnknownTypeError)]
     UnknownDataType,
@@ -91,7 +86,6 @@ impl From<Error> for u8 {
             Error::UnknownProtocolVersion => 0x12,
             Error::LightningEncoding(_) => 0x20,
             Error::StrictEncoding(_) => 0x21,
-            Error::ConsensusEncoding => 0x22,
             Error::UnknownDataType => 0x23,
             Error::InvalidValue => 0x24,
             Error::MessageEvenType => 0x30,

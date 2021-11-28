@@ -49,7 +49,4 @@ pub enum EncodingType {
 
     #[display("strict-encoding")]
     Strict,
-
-    #[display("consensus-encoding")]
-    Bitcoin,
 }

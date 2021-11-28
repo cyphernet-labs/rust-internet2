@@ -22,7 +22,6 @@ use std::str::FromStr;
 #[cfg(feature = "url")]
 use url::Url;
 
-use bitcoin::secp256k1;
 use inet2_addr::{InetAddr, InetSocketAddr};
 
 use crate::transport::{LocalSocketAddr, RemoteSocketAddr};

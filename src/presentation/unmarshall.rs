@@ -19,7 +19,6 @@ use std::io::{self, Read};
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use bitcoin::consensus::encode::Decodable as ConsensusDecode;
 use lightning_encoding::LightningDecode;
 use strict_encoding::{self, StrictDecode};
 
@@ -65,7 +64,6 @@ where
         let type_id = match self.encoding {
             EncodingType::Lightning => TypeId::lightning_decode(&mut reader)?,
             EncodingType::Strict => TypeId::strict_decode(&mut reader)?,
-            EncodingType::Bitcoin => TypeId::consensus_decode(&mut reader)?,
         };
         match self.known_types.get(&type_id) {
             None if type_id.is_even() => Err(Error::MessageEvenType),
