@@ -1,6 +1,6 @@
 [package]
 name = "internet2"
-version = "0.5.18"
+version = "0.6.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Rust implementation for the stack of Internet2 protocols"
@@ -28,10 +28,10 @@ required-features = ["keygen"]
 # Dependencies on other LNP/BP repositories
 # -----------------------------------------
 amplify = "3.9.1"
-strict_encoding = { version = ">=1.7.6", default-features = false, features = ["derive"] }
-lightning_encoding = ">=0.5.12"
-inet2_addr = { version = "0.5.0", features = ["strict_encoding", "stringly_conversions"], path = "./addr" }
-inet2_derive = { version = "0.5.0", default-features = false, optional = true, path = "./derive" }
+strict_encoding = { version = "1.7", default-features = false, features = ["derive"] }
+lightning_encoding = "0.5.0"
+inet2_addr = { version = "0.6.0", features = ["strict_encoding", "stringly_conversions"], path = "./addr" }
+inet2_derive = { version = "0.6.0", default-features = false, optional = true, path = "./derive" }
 # Dependencies on core rust-bitcoin & cryptography
 # ------------------------------------------------
 secp256k1 = "0.20.3"
