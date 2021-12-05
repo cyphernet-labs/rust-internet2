@@ -49,6 +49,7 @@ pub enum HandshakeError {
     ChaCha20(chacha20poly1305::aead::Error),
 }
 
+#[derive(Debug)]
 pub enum HandshakeState {
     InitiatorStarting(InitiatorStartingState),
     ResponderAwaitingActOne(ResponderAwaitingActOneState),
@@ -101,9 +102,20 @@ impl HandshakeState {
             }
         }
     }
+
+    pub fn data_len(&self) -> usize {
+        match self {
+            HandshakeState::InitiatorStarting(_) => 50,
+            HandshakeState::ResponderAwaitingActOne(_) => 50,
+            HandshakeState::InitiatorAwaitingActTwo(_) => 50,
+            HandshakeState::ResponderAwaitingActThree(_) => 66,
+            HandshakeState::Complete(_) => 66,
+        }
+    }
 }
 
 // Handshake state of the Initiator prior to generating Act 1
+#[derive(Debug)]
 pub struct InitiatorStartingState {
     initiator_static_private_key: SecretKey,
     initiator_static_public_key: PublicKey,
@@ -115,6 +127,7 @@ pub struct InitiatorStartingState {
 }
 
 // Handshake state of the Responder prior to receiving Act 1
+#[derive(Debug)]
 pub struct ResponderAwaitingActOneState {
     responder_static_private_key: SecretKey,
     responder_ephemeral_private_key: SecretKey,
@@ -125,6 +138,7 @@ pub struct ResponderAwaitingActOneState {
 }
 
 // Handshake state of the Initiator prior to receiving Act 2
+#[derive(Debug)]
 pub struct InitiatorAwaitingActTwoState {
     initiator_static_private_key: SecretKey,
     initiator_static_public_key: PublicKey,
@@ -136,6 +150,7 @@ pub struct InitiatorAwaitingActTwoState {
 }
 
 // Handshake state of the Responder prior to receiving Act 3
+#[derive(Debug)]
 pub struct ResponderAwaitingActThreeState {
     hash: Sha256,
     responder_ephemeral_private_key: SecretKey,

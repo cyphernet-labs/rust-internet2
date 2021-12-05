@@ -141,7 +141,7 @@ pub trait RecvFrame {
     /// I/O error type
     fn recv_frame(&mut self) -> Result<Vec<u8>, Error>;
 
-    /// Try to eceive `len` number of bytes and pack them as a frame.
+    /// Try to receive `len` number of bytes and pack them as a frame.
     /// The actual amount of bytes received may differ for some protocols,
     /// like ZMQ, so the function should be used with caution!
     ///

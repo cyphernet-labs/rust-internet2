@@ -27,6 +27,7 @@ const TAGGED_MESSAGE_LENGTH_HEADER_SIZE: usize =
 
 const KEY_ROTATION_INDEX: u32 = 1000;
 
+#[derive(Debug)]
 pub struct NoiseEncryptor {
     sending_key: SymmetricKey,
     sending_chaining_key: SymmetricKey,
@@ -84,6 +85,7 @@ impl Encrypt for NoiseEncryptor {
     }
 }
 
+#[derive(Debug)]
 pub struct NoiseDecryptor {
     receiving_key: SymmetricKey,
     receiving_chaining_key: SymmetricKey,
@@ -244,6 +246,7 @@ impl Decrypt for NoiseDecryptor {
 /// Automatically handles key rotation.
 /// For decryption, it is recommended to call `decrypt_message_stream` for
 /// automatic buffering.
+#[derive(Debug)]
 pub struct NoiseTranscoder {
     pub encryptor: NoiseEncryptor,
     pub decryptor: NoiseDecryptor,
