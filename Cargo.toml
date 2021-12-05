@@ -27,14 +27,14 @@ required-features = ["keygen"]
 [dependencies]
 # Dependencies on other LNP/BP repositories
 # -----------------------------------------
-amplify = "3.9.1"
-strict_encoding = { version = "1.7", default-features = false, features = ["derive"] }
-lightning_encoding = "0.5.0"
+amplify = "3.12.0"
+strict_encoding = { version = "1.8.0", default-features = false, features = ["derive"] }
+lightning_encoding = "0.6.0"
 inet2_addr = { version = "0.6.0", features = ["strict_encoding", "stringly_conversions"], path = "./addr" }
 inet2_derive = { version = "0.6.0", default-features = false, optional = true, path = "./derive" }
 # Dependencies on core rust-bitcoin & cryptography
 # ------------------------------------------------
-secp256k1 = "0.20.3"
+secp256k1 = "0.22.1"
 bitcoin_hashes = "0.10.0"
 chacha20 = "0.8.1"
 chacha20poly1305 = "0.7"
@@ -56,7 +56,7 @@ urldecode = { version = "0.1.1", optional = true }
 
 [dev-dependencies]
 torut = "0.2.0"
-strict_encoding_test = "1.7.4"
+strict_encoding_test = { version = "1.7.3", git = "https://github.com/LNP-BP/client_side_validation", branch = "develop" }
 strict_encoding_derive = "1.7.6-beta.1"
 compiletest_rs = "0.7.0"
 
