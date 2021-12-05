@@ -66,7 +66,7 @@ impl EvenOdd for Type {}
 
 #[derive(Debug, Display, Default)]
 #[display(Debug)]
-pub struct Stream(BTreeMap<Type, Arc<dyn Any>>);
+pub struct Stream(BTreeMap<Type, Box<[u8]>>);
 
 impl Stream {
     #[inline]
@@ -75,13 +75,13 @@ impl Stream {
     }
 
     #[inline]
-    pub fn get<T: Any>(&self, type_id: &Type) -> Option<&T> {
-        self.0.get(type_id).and_then(|v| v.downcast_ref::<T>())
+    pub fn get(&self, type_id: &Type) -> Option<&[u8]> {
+        self.0.get(type_id).map(Box::as_ref)
     }
 
     #[inline]
-    pub fn insert<T: Any>(&mut self, type_id: Type, value: T) -> bool {
-        self.0.insert(type_id, Arc::new(value)).is_none()
+    pub fn insert(&mut self, type_id: Type, value: impl AsRef<[u8]>) -> bool {
+        self.0.insert(type_id, Box::from(value.as_ref())).is_none()
     }
 
     #[inline]
@@ -163,7 +163,11 @@ impl Unmarshall for Unmarshaller {
                         // library which may know the meaning of the bytes
                         (self.raw_parser)(&mut reader)?
                     };
-                    tlv.insert(type_id, rec);
+                    tlv.insert(
+                        type_id,
+                        rec.downcast_ref::<&[u8]>()
+                            .ok_or(Error::InvalidValue)?,
+                    );
                     prev_type_id = type_id;
                 }
             }
