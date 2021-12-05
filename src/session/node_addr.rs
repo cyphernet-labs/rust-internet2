@@ -991,6 +991,23 @@ impl TryFrom<PartialNodeAddr> for ZmqSocketAddr {
 #[cfg(test)]
 mod test {
     use super::*;
+    use amplify::hex::FromHex;
+    use strict_encoding_test::test_encoding_roundtrip;
+
+    #[test]
+    fn test_node_addr() {
+        let node_id = secp256k1::PublicKey::from_str(
+            "022e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af"
+        ).unwrap();
+        let inet1 = InetSocketAddr::from_str("127.0.0.1:2345").unwrap();
+        let remote_addr = RemoteSocketAddr::Ftcp(inet1);
+        let addr = NodeAddr::Remote(RemoteNodeAddr {
+            node_id,
+            remote_addr,
+        });
+        test_encoding_roundtrip(&addr, Vec::<u8>::from_hex("01022e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af000000000000000000000000000000000000000000000000000000000000007f000001092900").unwrap())
+            .unwrap();
+    }
 
     #[test]
     fn test_native() {
