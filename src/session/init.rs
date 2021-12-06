@@ -65,6 +65,7 @@ impl Accept for LocalSocketAddr {
     }
 }
 
+#[cfg(feature = "keygen")]
 impl Connect for RemoteNodeAddr {
     fn connect(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
         Ok(match self.remote_addr {
@@ -94,6 +95,7 @@ impl Connect for RemoteNodeAddr {
     }
 }
 
+#[cfg(feature = "keygen")]
 impl Accept for RemoteNodeAddr {
     fn accept(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
         Ok(match self.remote_addr {

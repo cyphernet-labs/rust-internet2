@@ -13,18 +13,19 @@ fn main() {
     };
     let node_b = node_a.clone();
 
-    let _ = std::thread::spawn(move || receiver(&node_rx, node_a));
+    let rx = std::thread::spawn(move || receiver(&node_rx, node_a));
     let tx = std::thread::spawn(move || sender(&node_tx, node_b));
 
     tx.join().unwrap();
+    rx.join().unwrap();
 }
 
 fn receiver(local_node: &LocalNode, node: RemoteNodeAddr) {
-    let mut rx = node.accept(local_node).unwrap();
-    assert_eq!(rx.recv_raw_message().unwrap(), b"hello world");
+    node.accept(local_node).unwrap();
+    std::thread::sleep(core::time::Duration::from_secs(3));
 }
 
 fn sender(local_node: &LocalNode, node: RemoteNodeAddr) {
-    let mut tx = node.connect(local_node).unwrap();
-    tx.send_raw_message(b"hello world").unwrap();
+    std::thread::sleep(core::time::Duration::from_secs(1));
+    node.connect(local_node).unwrap();
 }
