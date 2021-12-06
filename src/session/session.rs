@@ -11,7 +11,9 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+#[cfg(feature = "keygen")]
 use crate::session::noise::HandshakeState;
+#[cfg(feature = "keygen")]
 use crate::NoiseTranscoder;
 use amplify::Bipolar;
 use inet2_addr::InetSocketAddr;

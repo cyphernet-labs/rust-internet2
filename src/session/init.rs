@@ -14,10 +14,9 @@
 use crate::transport::Error;
 #[cfg(feature = "zmq")]
 use crate::zmqsocket;
-use crate::{
-    session, LocalNode, LocalSocketAddr, NodeAddr, RemoteNodeAddr,
-    RemoteSocketAddr, Session,
-};
+use crate::{session, LocalNode, LocalSocketAddr, NodeAddr, Session};
+#[cfg(feature = "keygen")]
+use crate::{RemoteNodeAddr, RemoteSocketAddr};
 
 pub trait Connect {
     fn connect(&self, node: &LocalNode) -> Result<Box<dyn Session>, Error>;
@@ -125,7 +124,12 @@ impl Connect for NodeAddr {
     fn connect(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
         match self {
             NodeAddr::Local(addr) => addr.connect(local),
+            #[cfg(feature = "keygen")]
             NodeAddr::Remote(addr) => addr.connect(local),
+            #[cfg(not(feature = "keygen"))]
+            NodeAddr::Remote(addr) => {
+                Err(Error::KeygenFeatureRequired("encrypted TCP connect"))
+            }
         }
     }
 }
@@ -134,7 +138,12 @@ impl Accept for NodeAddr {
     fn accept(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
         match self {
             NodeAddr::Local(addr) => addr.accept(local),
+            #[cfg(feature = "keygen")]
             NodeAddr::Remote(addr) => addr.accept(local),
+            #[cfg(not(feature = "keygen"))]
+            NodeAddr::Remote(addr) => {
+                Err(Error::KeygenFeatureRequired("encrypted TCP accept"))
+            }
         }
     }
 }
