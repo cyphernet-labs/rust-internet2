@@ -18,3 +18,4 @@ mod handshake;
 mod hkdf;
 
 pub use conduit::{NoiseDecryptor, NoiseEncryptor, NoiseTranscoder};
+pub use handshake::{HandshakeError, HandshakeState};

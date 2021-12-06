@@ -11,6 +11,8 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+use crate::session::noise::HandshakeState;
+use crate::NoiseTranscoder;
 use amplify::Bipolar;
 use inet2_addr::InetSocketAddr;
 use std::any::Any;
@@ -201,6 +203,83 @@ impl Raw<PlainTranscoder, ftcp::Connection> {
         Ok(Self {
             transcoder: PlainTranscoder,
             connection: ftcp::Connection::accept(socket_addr)?,
+        })
+    }
+}
+
+#[cfg(feature = "keygen")]
+impl Raw<NoiseTranscoder, ftcp::Connection> {
+    pub fn connect_ftcp_encrypted(
+        local_key: secp256k1::SecretKey,
+        remote_key: secp256k1::PublicKey,
+        remote_addr: InetSocketAddr,
+    ) -> Result<Self, Error> {
+        use secp256k1::rand::thread_rng;
+
+        let mut rng = thread_rng();
+        let ephemeral_key = secp256k1::SecretKey::new(&mut rng);
+        let mut handshake = HandshakeState::new_initiator(
+            &local_key,
+            &remote_key,
+            &ephemeral_key,
+        );
+
+        let mut connection = ftcp::Connection::connect(remote_addr)?;
+
+        let mut data = vec![];
+        let transcoder = loop {
+            let (act, h) = handshake.next(&data)?;
+            handshake = h;
+            if let Some(ref act) = act {
+                connection.as_sender().send_raw(&*act)?;
+                if let HandshakeState::Complete(Some((transcoder, pk))) =
+                    handshake
+                {
+                    break transcoder;
+                }
+                data =
+                    connection.as_receiver().recv_raw(handshake.data_len())?;
+            }
+        };
+
+        Ok(Self {
+            transcoder,
+            connection,
+        })
+    }
+
+    pub fn accept_ftcp_encrypted(
+        local_key: secp256k1::SecretKey,
+        remote_addr: InetSocketAddr,
+    ) -> Result<Self, Error> {
+        use secp256k1::rand::thread_rng;
+
+        let mut rng = thread_rng();
+        let ephemeral_key = secp256k1::SecretKey::new(&mut rng);
+        let mut handshake =
+            HandshakeState::new_responder(&local_key, &ephemeral_key);
+
+        let mut connection = ftcp::Connection::accept(remote_addr)?;
+
+        let mut data =
+            connection.as_receiver().recv_raw(handshake.data_len())?;
+        let transcoder = loop {
+            let (act, h) = handshake.next(&data)?;
+            handshake = h;
+            if let HandshakeState::Complete(Some((transcoder, pk))) = handshake
+            {
+                break transcoder;
+            }
+            if let Some(act) = act {
+                connection.as_sender().send_raw(&*act)?;
+                data =
+                    connection.as_receiver().recv_raw(handshake.data_len())?;
+            }
+        };
+
+        Ok(Self {
+            transcoder,
+            connection,
         })
     }
 }

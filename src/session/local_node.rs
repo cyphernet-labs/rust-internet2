@@ -15,48 +15,57 @@ use std::fmt::{self, Display, Formatter};
 
 #[cfg(feature = "keygen")]
 use secp256k1::rand::thread_rng;
-use secp256k1::{self, Secp256k1};
-
-lazy_static! {
-    static ref SECP256K1: Secp256k1<secp256k1::All> = Secp256k1::new();
-}
+use secp256k1::{Secp256k1, Signing};
 
 /// Local node private keys
 #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
 pub struct LocalNode {
     private_key: secp256k1::SecretKey,
-    ephemeral_private_key: secp256k1::SecretKey,
+    public_key: secp256k1::PublicKey,
 }
 
 impl LocalNode {
     /// Constructs new set of private key by using random number generator
     #[cfg(feature = "keygen")]
-    pub fn new() -> Self {
+    pub fn new<C: Signing>(secp: &Secp256k1<C>) -> Self {
         let mut rng = thread_rng();
         let private_key = secp256k1::SecretKey::new(&mut rng);
-        let ephemeral_private_key = secp256k1::SecretKey::new(&mut rng);
+        let public_key =
+            secp256k1::PublicKey::from_secret_key(&secp, &private_key);
         Self {
             private_key,
-            ephemeral_private_key,
+            public_key,
         }
     }
 
-    pub fn from_keys(
-        node_key: secp256k1::SecretKey,
-        ephemeral_key: secp256k1::SecretKey,
+    #[inline]
+    pub fn with(
+        private_key: secp256k1::SecretKey,
+        public_key: secp256k1::PublicKey,
     ) -> Self {
         Self {
-            private_key: node_key,
-            ephemeral_private_key: ephemeral_key,
+            private_key,
+            public_key,
         }
     }
 
+    #[inline]
     pub fn node_id(&self) -> secp256k1::PublicKey {
-        secp256k1::PublicKey::from_secret_key(&SECP256K1, &self.private_key)
+        self.public_key
     }
 
-    pub fn sign(&self, message: &secp256k1::Message) -> secp256k1::Signature {
-        SECP256K1.sign(message, &self.private_key)
+    #[inline]
+    pub fn private_key(&self) -> secp256k1::SecretKey {
+        self.private_key
+    }
+
+    #[inline]
+    pub fn sign<C: Signing>(
+        &self,
+        secp: &Secp256k1<C>,
+        message: &secp256k1::Message,
+    ) -> secp256k1::Signature {
+        secp.sign(message, &self.private_key)
     }
 }
 

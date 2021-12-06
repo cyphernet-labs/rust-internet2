@@ -27,6 +27,7 @@ const TAGGED_MESSAGE_LENGTH_HEADER_SIZE: usize =
 
 const KEY_ROTATION_INDEX: u32 = 1000;
 
+#[derive(Debug)]
 pub struct NoiseEncryptor {
     sending_key: SymmetricKey,
     sending_chaining_key: SymmetricKey,
@@ -84,6 +85,7 @@ impl Encrypt for NoiseEncryptor {
     }
 }
 
+#[derive(Debug)]
 pub struct NoiseDecryptor {
     receiving_key: SymmetricKey,
     receiving_chaining_key: SymmetricKey,
@@ -244,6 +246,7 @@ impl Decrypt for NoiseDecryptor {
 /// Automatically handles key rotation.
 /// For decryption, it is recommended to call `decrypt_message_stream` for
 /// automatic buffering.
+#[derive(Debug)]
 pub struct NoiseTranscoder {
     pub encryptor: NoiseEncryptor,
     pub decryptor: NoiseDecryptor,
@@ -342,10 +345,10 @@ impl Transcode for NoiseTranscoder {
 }
 
 impl Bipolar for NoiseTranscoder {
-    type Left = <Self as Transcode>::Encryptor;
-    type Right = <Self as Transcode>::Decryptor;
+    type Left = <Self as Transcode>::Decryptor;
+    type Right = <Self as Transcode>::Encryptor;
 
-    fn join(encryptor: Self::Left, decryptor: Self::Right) -> Self {
+    fn join(decryptor: Self::Left, encryptor: Self::Right) -> Self {
         Self {
             encryptor,
             decryptor,
@@ -353,7 +356,7 @@ impl Bipolar for NoiseTranscoder {
     }
 
     fn split(self) -> (Self::Left, Self::Right) {
-        (self.encryptor, self.decryptor)
+        (self.decryptor, self.encryptor)
     }
 }
 
