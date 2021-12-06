@@ -1,14 +1,23 @@
 Change Log
 ==========
 
+v0.5.3
+------
+- Complete Tlv implementation
+- Improved code formatting and fixed lints
+
+v0.5.2
+------
+- Noise_XK transcoder intrgration into TCP-based connections
+
 v0.5.0
 ------
 - Microservices are made into a separate repository
 - Removed Tor Onion v2 address support
 - Unmarshaller improvements
 
-v0.4.0-alpha.1
---------------
+v0.4.0
+------
 - Lightning encoding moved into a separate crate within LNP Core Lib
 
 v0.3.5
