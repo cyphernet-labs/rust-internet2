@@ -29,7 +29,7 @@ use super::{Error, EvenOdd, Unmarshall, UnmarshallFn};
     Wrapper, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug,
     Display, From
 )]
-#[derive(StrictEncode, StrictDecode, LightningEncode, LightningDecode)]
+#[derive(StrictEncode, StrictDecode)]
 #[display(inner)]
 #[wrapper(LowerHex, UpperHex, Octal, FromStr)]
 pub struct Type(u64);
@@ -40,16 +40,70 @@ impl From<usize> for Type {
     fn from(val: usize) -> Self { Type(val as u64) }
 }
 
+// Lightning encoding of Tlv type field requires BigSize representation
+impl lightning_encoding::LightningEncode for Type {
+    #[inline]
+    fn lightning_encode<E: Write>(
+        &self,
+        e: E,
+    ) -> Result<usize, lightning_encoding::Error> {
+        BigSize::from(self.0).lightning_encode(e)
+    }
+}
+
+impl lightning_encoding::LightningDecode for Type {
+    #[inline]
+    fn lightning_decode<D: Read>(
+        d: D,
+    ) -> Result<Self, lightning_encoding::Error> {
+        Ok(Self(BigSize::lightning_decode(d)?.into_inner()))
+    }
+}
+
 /// Unknown TLV record represented by raw bytes
 #[derive(
     Wrapper, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, From
 )]
-#[derive(StrictEncode, StrictDecode, LightningEncode, LightningDecode)]
+#[derive(StrictEncode, StrictDecode)]
 pub struct RawValue(Box<[u8]>);
 
 impl AsRef<[u8]> for RawValue {
     #[inline]
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+}
+
+impl RawValue {
+    #[inline]
+    pub fn len(&self) -> usize { self.0.len() }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool { self.0.is_empty() }
+}
+
+// Lightning encoding of Tlv value field requires BigSize representation of the
+// length
+impl lightning_encoding::LightningEncode for RawValue {
+    #[inline]
+    fn lightning_encode<E: Write>(
+        &self,
+        mut e: E,
+    ) -> Result<usize, lightning_encoding::Error> {
+        let count = BigSize::from(self.len());
+        count.lightning_encode(&mut e)?;
+        e.write_all(&self.0)?;
+        Ok(self.len() + count.into_inner() as usize)
+    }
+}
+
+impl lightning_encoding::LightningDecode for RawValue {
+    fn lightning_decode<D: Read>(
+        mut d: D,
+    ) -> Result<Self, lightning_encoding::Error> {
+        let count = BigSize::lightning_decode(&mut d)?;
+        let mut buf = vec![0u8; count.into()];
+        d.read_exact(&mut buf)?;
+        Ok(Self(Box::from(buf)))
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default, From)]
@@ -122,14 +176,21 @@ impl strict_encoding::StrictDecode for Stream {
 impl lightning_encoding::LightningEncode for Stream {
     fn lightning_encode<E: Write>(
         &self,
-        e: E,
+        mut e: E,
     ) -> Result<usize, lightning_encoding::Error> {
         // We ignore empty TLV stream according to the lightning serialization
         // rules
         if self.0.is_empty() {
             return Ok(0);
         }
-        self.0.lightning_encode(e)
+        // We serialize stream without specifying the length of the stream or
+        // count of data items
+        let mut len = 0usize;
+        for (ty, value) in &self.0 {
+            len += ty.lightning_encode(&mut e)?;
+            len += value.lightning_encode(&mut e)?;
+        }
+        Ok(len)
     }
 }
 
@@ -137,15 +198,17 @@ impl lightning_encoding::LightningDecode for Stream {
     fn lightning_decode<D: Read>(
         mut d: D,
     ) -> Result<Self, lightning_encoding::Error> {
-        let mut buf = [0u8; 2];
-        // Empty data means empty TLV stream and not an error
-        if d.read_exact(&mut buf).is_err() {
-            return Ok(Stream::default());
-        }
-        let count = u16::from_be_bytes(buf);
         let mut set: BTreeMap<Type, RawValue> = bmap! {};
-        for _ in 0..count {
-            let ty = Type::lightning_decode(&mut d)?;
+        // Reading stream record by record until it is over
+        while let Some(ty) = Type::lightning_decode(&mut d)
+            .map(Option::Some)
+            .or_else(|err| match &err {
+                lightning_encoding::Error::BigSizeNotCanonical
+                | lightning_encoding::Error::BigSizeEof => Err(err),
+                _ => Ok(None),
+            })?
+        {
+            let val = RawValue::lightning_decode(&mut d)?;
             if set.contains_key(&ty) {
                 return Err(TlvError::Repeated(ty.into_inner()).into());
             }
@@ -158,7 +221,7 @@ impl lightning_encoding::LightningDecode for Stream {
                     .into());
                 }
             }
-            set.insert(ty, RawValue::lightning_decode(&mut d)?);
+            set.insert(ty, val);
         }
         Ok(Self(set))
     }
