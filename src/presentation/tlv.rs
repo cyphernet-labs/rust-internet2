@@ -60,13 +60,13 @@ pub struct Type(u64);
     StrictEncode,
     StrictDecode,
 )]
-pub struct RawRecord(Vec<u8>);
+pub struct RawRecord(Box<[u8]>);
 
 impl EvenOdd for Type {}
 
 #[derive(Debug, Display, Default)]
 #[display(Debug)]
-pub struct Stream(BTreeMap<Type, Box<[u8]>>);
+pub struct Stream(BTreeMap<Type, RawRecord>);
 
 impl Stream {
     #[inline]
@@ -75,13 +75,15 @@ impl Stream {
     }
 
     #[inline]
-    pub fn get(&self, type_id: &Type) -> Option<&[u8]> {
-        self.0.get(type_id).map(Box::as_ref)
+    pub fn get(&self, type_id: &Type) -> Option<&RawRecord> {
+        self.0.get(type_id)
     }
 
     #[inline]
     pub fn insert(&mut self, type_id: Type, value: impl AsRef<[u8]>) -> bool {
-        self.0.insert(type_id, Box::from(value.as_ref())).is_none()
+        self.0
+            .insert(type_id, RawRecord::from(Box::from(value.as_ref())))
+            .is_none()
     }
 
     #[inline]
@@ -206,7 +208,7 @@ impl Unmarshaller {
             .read_exact(&mut buf[..])
             .map_err(|_| Error::TlvRecordInvalidLen)?;
 
-        let rec = RawRecord(buf.to_vec());
+        let rec = RawRecord(Box::from(buf));
         Ok(Arc::new(rec))
     }
 }
