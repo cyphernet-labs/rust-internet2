@@ -50,14 +50,10 @@ impl LocalNode {
     }
 
     #[inline]
-    pub fn node_id(&self) -> secp256k1::PublicKey {
-        self.public_key
-    }
+    pub fn node_id(&self) -> secp256k1::PublicKey { self.public_key }
 
     #[inline]
-    pub fn private_key(&self) -> secp256k1::SecretKey {
-        self.private_key
-    }
+    pub fn private_key(&self) -> secp256k1::SecretKey { self.private_key }
 
     #[inline]
     pub fn sign<C: Signing>(

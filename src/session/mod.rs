@@ -18,6 +18,7 @@ mod init;
 mod local_node;
 pub mod node_addr;
 mod noise;
+#[allow(clippy::module_inception)]
 mod session;
 mod transcoders;
 

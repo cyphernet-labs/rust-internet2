@@ -1,6 +1,6 @@
-// Internet2 addresses with support for Tor v2, v3
+// Internet2 addresses with support for Tor v3
 //
-// Written in 2019-2020 by
+// Written in 2019-2021 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
 //     Martin Habovstiak <martin.habovstiak@gmail.com>
 //
@@ -14,12 +14,12 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use std::net::{Ipv4Addr, Ipv6Addr};
-#[cfg(feature = "tor")]
-use torut::onion::{TorPublicKeyV3, TORV3_PUBLIC_KEY_LENGTH};
 
 use strict_encoding::net::{
     AddrFormat, DecodeError, RawAddr, Transport, Uniform, UniformAddr, ADDR_LEN,
 };
+#[cfg(feature = "tor")]
+use torut::onion::{TorPublicKeyV3, TORV3_PUBLIC_KEY_LENGTH};
 
 use crate::{InetAddr, InetSocketAddr, InetSocketAddrExt};
 
@@ -61,14 +61,10 @@ impl Uniform for InetAddr {
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        None
-    }
+    fn port(&self) -> Option<u16> { None }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -95,31 +91,23 @@ impl Uniform for InetAddr {
             }
             #[cfg(feature = "tor")]
             AddrFormat::OnionV3 => InetAddr::Tor(tor_from_raw_addr(addr.addr)?),
-            _ => Err(DecodeError::UnsupportedAddrFormat)?,
+            _ => return Err(DecodeError::UnsupportedAddrFormat),
         })
     }
 }
 
 impl Uniform for InetSocketAddr {
     #[inline]
-    fn addr_format(&self) -> AddrFormat {
-        self.address.addr_format()
-    }
+    fn addr_format(&self) -> AddrFormat { self.address.addr_format() }
 
     #[inline]
-    fn addr(&self) -> RawAddr {
-        self.address.addr()
-    }
+    fn addr(&self) -> RawAddr { self.address.addr() }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        Some(self.port)
-    }
+    fn port(&self) -> Option<u16> { Some(self.port) }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> {
-        None
-    }
+    fn transport(&self) -> Option<Transport> { None }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -148,19 +136,13 @@ impl Uniform for InetSocketAddr {
 
 impl Uniform for InetSocketAddrExt {
     #[inline]
-    fn addr_format(&self) -> AddrFormat {
-        self.1.addr_format()
-    }
+    fn addr_format(&self) -> AddrFormat { self.1.addr_format() }
 
     #[inline]
-    fn addr(&self) -> RawAddr {
-        self.1.addr()
-    }
+    fn addr(&self) -> RawAddr { self.1.addr() }
 
     #[inline]
-    fn port(&self) -> Option<u16> {
-        Some(self.1.port)
-    }
+    fn port(&self) -> Option<u16> { Some(self.1.port) }
 
     #[inline]
     fn transport(&self) -> Option<Transport> {

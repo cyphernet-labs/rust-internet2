@@ -38,7 +38,7 @@ macro_rules! concat_then_sha256 {
 }
 
 #[derive(
-    Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Display, Error, From,
+    Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Display, Error, From
 )]
 #[display(Debug)]
 pub enum HandshakeError {
@@ -67,9 +67,9 @@ impl HandshakeState {
         initiator_ephemeral_private_key: &SecretKey,
     ) -> Self {
         HandshakeState::InitiatorStarting(InitiatorStartingState::new(
-            initiator_static_private_key.clone(),
-            initiator_ephemeral_private_key.clone(),
-            responder_static_public_key.clone(),
+            *initiator_static_private_key,
+            *initiator_ephemeral_private_key,
+            *responder_static_public_key,
         ))
     }
     pub fn new_responder(
@@ -78,8 +78,8 @@ impl HandshakeState {
     ) -> Self {
         HandshakeState::ResponderAwaitingActOne(
             ResponderAwaitingActOneState::new(
-                responder_static_private_key.clone(),
-                responder_ephemeral_private_key.clone(),
+                *responder_static_private_key,
+                *responder_ephemeral_private_key,
             ),
         )
     }
@@ -500,7 +500,7 @@ impl ResponderAwaitingActThreeState {
             &temporary_key,
             1,
             &hash,
-            &tagged_encrypted_pubkey,
+            tagged_encrypted_pubkey,
             &mut remote_pubkey,
         )?;
         let initiator_pubkey =
@@ -522,7 +522,7 @@ impl ResponderAwaitingActThreeState {
         let (chaining_key, temporary_key) = hkdf::derive(&chaining_key, &ecdh);
 
         // 8. p = decryptWithAD(temp_k3, 0, h, t)
-        chacha::decrypt(&temporary_key, 0, &hash, &chacha_tag, &mut [0; 0])?;
+        chacha::decrypt(&temporary_key, 0, &hash, chacha_tag, &mut [0; 0])?;
 
         // 9. rk, sk = HKDF(ck, zero)
         let (receiving_key, sending_key) = hkdf::derive(&chaining_key, &[0; 0]);
@@ -585,7 +585,7 @@ fn calculate_act_message(
 
     // 3. ACT1: es = ECDH(e.priv, rs)
     // 3. ACT2: es = ECDH(e.priv, re)
-    let ecdh = ecdh(local_private_ephemeral_key, &remote_public_key);
+    let ecdh = ecdh(local_private_ephemeral_key, remote_public_key);
 
     // 4. ACT1: ck, temp_k1 = HKDF(ck, es)
     // 4. ACT2: ck, temp_k2 = HKDF(ck, ee)
@@ -626,7 +626,7 @@ fn process_act_message(
     let chacha_tag = &act_bytes[34..];
 
     let ephemeral_public_key = if let Ok(public_key) =
-        PublicKey::from_slice(&ephemeral_public_key_bytes)
+        PublicKey::from_slice(ephemeral_public_key_bytes)
     {
         public_key
     } else {
@@ -655,7 +655,7 @@ fn process_act_message(
 
     // 7. Act1: p = decryptWithAD(temp_k1, 0, h, c)
     // 7. Act2: p = decryptWithAD(temp_k2, 0, h, c)
-    chacha::decrypt(&temporary_key, 0, &hash, &chacha_tag, &mut [0; 0])?;
+    chacha::decrypt(&temporary_key, 0, &hash, chacha_tag, &mut [0; 0])?;
 
     // 8. h = SHA-256(h || c)
     let hash = concat_then_sha256!(hash, chacha_tag);
@@ -665,13 +665,13 @@ fn process_act_message(
 
 fn private_key_to_public_key(private_key: &SecretKey) -> PublicKey {
     let curve = secp256k1::Secp256k1::new();
-    let pk_object = PublicKey::from_secret_key(&curve, &private_key);
-    pk_object
+
+    PublicKey::from_secret_key(&curve, private_key)
 }
 
 fn ecdh(private_key: &SecretKey, public_key: &PublicKey) -> SymmetricKey {
     let curve = secp256k1::Secp256k1::new();
-    let mut pk_object = public_key.clone();
+    let mut pk_object = *public_key;
     pk_object
         .mul_assign(&curve, &private_key[..])
         .expect("invalid multiplication");
@@ -684,11 +684,11 @@ fn ecdh(private_key: &SecretKey, public_key: &PublicKey) -> SymmetricKey {
 // Reference RFC test vectors for hard-coded values
 // https://github.com/lightningnetwork/lightning-rfc/blob/master/08-transport.md#appendix-a-transport-test-vectors
 mod test {
-    use super::HandshakeState::*;
-    use super::*;
-
     use bitcoin_hashes::hex::{FromHex, ToHex};
     use secp256k1::{PublicKey, SecretKey};
+
+    use super::HandshakeState::*;
+    use super::*;
 
     struct TestCtx {
         initiator: HandshakeState,
@@ -814,10 +814,10 @@ mod test {
         let act1_partial1 = &test_ctx.valid_act1[..25];
         let act1_partial2 = &test_ctx.valid_act1[25..];
 
-        let next_state = test_ctx.responder.next(&act1_partial1).unwrap();
+        let next_state = test_ctx.responder.next(act1_partial1).unwrap();
         assert_matches!(next_state, (None, ResponderAwaitingActOne(_)));
         assert_matches!(
-            next_state.1.next(&act1_partial2).unwrap(),
+            next_state.1.next(act1_partial2).unwrap(),
             (Some(_), ResponderAwaitingActThree(_))
         );
     }
@@ -915,10 +915,10 @@ mod test {
         let act2_partial1 = &test_ctx.valid_act2[..25];
         let act2_partial2 = &test_ctx.valid_act2[25..];
 
-        let next_state = awaiting_act_two_state.next(&act2_partial1).unwrap();
+        let next_state = awaiting_act_two_state.next(act2_partial1).unwrap();
         assert_matches!(next_state, (None, InitiatorAwaitingActTwo(_)));
         assert_matches!(
-            next_state.1.next(&act2_partial2).unwrap(),
+            next_state.1.next(act2_partial2).unwrap(),
             (Some(_), Complete(_))
         );
     }
@@ -1043,10 +1043,10 @@ mod test {
         let act3_partial1 = &test_ctx.valid_act3[..35];
         let act3_partial2 = &test_ctx.valid_act3[35..];
 
-        let next_state = awaiting_act_three_state.next(&act3_partial1).unwrap();
+        let next_state = awaiting_act_three_state.next(act3_partial1).unwrap();
         assert_matches!(next_state, (None, ResponderAwaitingActThree(_)));
         assert_matches!(
-            next_state.1.next(&act3_partial2),
+            next_state.1.next(act3_partial2),
             Ok((None, Complete(_)))
         );
     }

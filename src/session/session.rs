@@ -11,21 +11,22 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-#[cfg(feature = "keygen")]
-use crate::session::noise::HandshakeState;
-#[cfg(feature = "keygen")]
-use crate::NoiseTranscoder;
-use amplify::Bipolar;
-use inet2_addr::InetSocketAddr;
 use std::any::Any;
 
+use amplify::Bipolar;
+use inet2_addr::InetSocketAddr;
+
 use super::{Decrypt, Encrypt, Transcode};
+#[cfg(feature = "keygen")]
+use crate::session::noise::HandshakeState;
 use crate::session::PlainTranscoder;
 use crate::transport::{
     ftcp, Duplex, Error, RecvFrame, RoutedFrame, SendFrame,
 };
 #[cfg(feature = "zmq")]
 use crate::zmqsocket;
+#[cfg(feature = "keygen")]
+use crate::NoiseTranscoder;
 
 // Generics prevents us from using session as `&dyn` reference, so we have
 // to avoid `where Self: Input + Output` and generic parameters, unlike with
@@ -124,7 +125,7 @@ where
     #[inline]
     fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error> {
         let writer = self.connection.as_sender();
-        Ok(writer.send_frame(&self.transcoder.encrypt(raw))?)
+        writer.send_frame(&self.transcoder.encrypt(raw))
     }
 
     #[inline]
@@ -144,18 +145,11 @@ where
         raw: &[u8],
     ) -> Result<usize, Error> {
         let writer = self.connection.as_sender();
-        Ok(writer.send_routed(
-            source,
-            route,
-            dest,
-            &self.transcoder.encrypt(raw),
-        )?)
+        writer.send_routed(source, route, dest, &self.transcoder.encrypt(raw))
     }
 
     #[inline]
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
-        self
-    }
+    fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
 }
 
 impl<T, C> Split for Raw<T, C>
@@ -322,9 +316,7 @@ where
     T::Left: Decrypt + Send + 'static,
     T::Right: Encrypt + Send + 'static,
 {
-    pub fn as_socket(&self) -> &zmq::Socket {
-        &self.connection.as_socket()
-    }
+    pub fn as_socket(&self) -> &zmq::Socket { self.connection.as_socket() }
 }
 
 impl<T, C> Input for RawInput<T, C>
@@ -350,7 +342,7 @@ where
     C: SendFrame,
 {
     fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error> {
-        Ok(self.output.send_frame(&self.encryptor.encrypt(raw))?)
+        self.output.send_frame(&self.encryptor.encrypt(raw))
     }
     fn send_routed_message(
         &mut self,
@@ -360,7 +352,7 @@ where
         raw: &[u8],
     ) -> Result<usize, Error> {
         let encrypted = self.encryptor.encrypt(raw);
-        Ok(self.output.send_routed(source, route, dest, &encrypted)?)
+        self.output.send_routed(source, route, dest, &encrypted)
     }
 }
 

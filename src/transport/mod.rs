@@ -26,11 +26,11 @@ pub mod websocket;
 #[cfg(feature = "zmq")]
 pub mod zmqsocket;
 
+use std::io::ErrorKind;
+
 pub use socket_addr::{FramingProtocol, LocalSocketAddr, RemoteSocketAddr};
 #[cfg(feature = "zmq")]
 pub use zmqsocket::{ZmqSocketAddr, ZmqType, ZMQ_CONTEXT};
-
-use std::io::ErrorKind;
 
 use crate::session::HandshakeError;
 
@@ -119,11 +119,8 @@ pub struct RoutedFrame {
 
 /// Marker trait for types that can provide a concrete implementation for both
 /// frame parser implementing [`RecvFrame`] and frame composer implementing
-/// [`SendFrame`]. These types must also implement [`Bipolar`], i.e. they must
-/// be splittable into the receiving and sending half-types.
-///
-/// Any type implementing both [`AsReceiver`] and [`AsSender`], plust providing
-/// [`Bipolar`] trait implementation has a blanket implementation of this trait
+/// [`SendFrame`]. These types must also implement [`amplify::Bipolar`], i.e.
+/// they must be splittable into the receiving and sending half-types.
 pub trait Duplex {
     fn as_receiver(&mut self) -> &mut dyn RecvFrame;
     fn as_sender(&mut self) -> &mut dyn SendFrame;
@@ -132,15 +129,13 @@ pub trait Duplex {
 
 /// Frame receiving type which is able to parse raw data (streamed or framed by
 /// an underlying overlaid protocol such as ZMQ, HTTP, Websocket).
-///
-/// For asynchronous version check [`AsyncRecvFrame`]
 pub trait RecvFrame {
     /// Receive a single frame of data structured as a byte string. The frame
     /// contains LNP framing prefix, which is used by upstream session-level
     /// protocols.
     ///
     /// # Errors
-    /// Returns only [`Error::SocketError`] if the overlaid protocol errors with
+    /// Returns only [`Error::SocketIo`] if the overlaid protocol errors with
     /// I/O error type
     fn recv_frame(&mut self) -> Result<Vec<u8>, Error>;
 
@@ -149,7 +144,7 @@ pub trait RecvFrame {
     /// like ZMQ, so the function should be used with caution!
     ///
     /// # Errors
-    /// Returns only [`Error::SocketError`] if the overlaid protocol errors with
+    /// Returns only [`Error::SocketIo`] if the overlaid protocol errors with
     /// I/O error type
     fn recv_raw(&mut self, len: usize) -> Result<Vec<u8>, Error>;
 
@@ -163,12 +158,12 @@ pub trait RecvFrame {
     ///   frame). The id is specific for the underlying overlaid protocol.
     ///
     /// # Errors
-    /// Returns only [`Error::SocketError`] if the overlaid protocol errors with
+    /// Returns only [`Error::SocketIo`] if the overlaid protocol errors with
     /// I/O error type
     ///
     /// # Panics
     /// Default implementation panics, since most of the framing protocols do
-    /// not support multipeer sockets and [`RecFrame::recv_frame`] must be
+    /// not support multipeer sockets and [`RecvFrame::recv_frame`] must be
     /// used instead (currently only ZMQ-based connections support this
     /// operation)
     fn recv_routed(&mut self) -> Result<RoutedFrame, Error> {
@@ -181,8 +176,6 @@ pub trait RecvFrame {
 
 /// Frame sending type which is able to compose frame with a given raw data and
 /// send it via an underlying overlaid protocol such as ZMQ, HTTP, Websocket.
-///
-/// For asynchronous version check [`AsyncSendFrame`]
 pub trait SendFrame {
     /// Sends a single frame of data structured as a byte string. The frame must
     /// already contain LNP framing prefix with size data. The function must
@@ -195,12 +188,10 @@ pub trait SendFrame {
     /// argument)
     ///
     /// # Errors
-    /// * [`Error::SocketError`] if the overlaid protocol errors with I/O error
+    /// * [`Error::SocketIo`] if the overlaid protocol errors with I/O error
     ///   type
     /// * [`Error::OversizedFrame`] if the provided data length exceeds
     ///   [`MAX_FRAME_SIZE`]
-    ///
-    /// [`MAX_FRAME_SIZE`]: super::MAX_FRAME_SIZE
     // We can't use `impl AsRev<[u8]>` here since with it the trait can't be
     // made into an object
     fn send_frame(&mut self, frame: &[u8]) -> Result<usize, Error>;
@@ -218,10 +209,8 @@ pub trait SendFrame {
     /// `raw_frame` argument)
     ///
     /// # Errors
-    /// * [`Error::SocketError`] if the overlaid protocol errors with I/O error
+    /// * [`Error::SocketIo`] if the overlaid protocol errors with I/O error
     ///   type
-    ///
-    /// [`MAX_FRAME_SIZE`]: super::MAX_FRAME_SIZE
     fn send_raw(&mut self, raw_frame: &[u8]) -> Result<usize, Error>;
 
     /// Sends a single frame of data structured as a byte string to a specific
@@ -237,7 +226,7 @@ pub trait SendFrame {
     /// argument)
     ///
     /// # Errors
-    /// * [`Error::SocketError`] if the overlaid protocol errors with I/O error
+    /// * [`Error::SocketIo`] if the overlaid protocol errors with I/O error
     ///   type
     /// * [`Error::OversizedFrame`] if the provided data length exceeds
     ///   [`MAX_FRAME_SIZE`]
@@ -247,8 +236,6 @@ pub trait SendFrame {
     /// not support multipeer sockets and [`SendFrame::send_frame`] must be
     /// used instead (currently only ZMQ-based connections support this
     /// operation)
-    ///
-    /// [`MAX_FRAME_SIZE`]: super::MAX_FRAME_SIZE
     #[allow(dead_code)]
     fn send_routed(
         &mut self,

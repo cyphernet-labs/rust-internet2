@@ -1,6 +1,6 @@
-// Internet2 addresses with support for Tor v2, v3
+// Internet2 addresses with support for Tor vv3
 //
-// Written in 2019-2020 by
+// Written in 2019-2021 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
 //     Martin Habovstiak <martin.habovstiak@gmail.com>
 //
@@ -51,20 +51,21 @@ use std::net::{
 };
 use std::num::ParseIntError;
 use std::str::FromStr;
+
 #[cfg(feature = "tor")]
 use torut::onion::{OnionAddressV3, TorPublicKeyV3};
 
 /// Address type do not support ONION address format and can be used only with
 /// IPv4 or IPv6 addresses
 #[derive(
-    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error,
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error
 )]
 #[display(doc_comments)]
 pub struct NoOnionSupportError;
 
 /// Errors during address string parse process
 #[derive(
-    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error, From,
+    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error, From
 )]
 #[display(doc_comments)]
 pub enum AddrParseError {
@@ -76,11 +77,11 @@ pub enum AddrParseError {
     WrongAddrFormat(String),
 
     /// Wrong format of socket address string "{_0}"; use
-    /// <inet_address>[:<port>]
+    /// <inet_address>\[:<port>\]
     WrongSocketFormat(String),
 
     /// Wrong format of extended socket address string "{_0}"; use
-    /// <transport>://<inet_address>[:<port>]
+    /// <transport>://<inet_address>\[:<port>\]
     WrongSocketExtFormat(String),
 
     /// Unknown transport protocol "{_0}"
@@ -98,12 +99,12 @@ pub enum AddrParseError {
 /// * IPv6 address
 /// * Tor Onion address (V3 only)
 ///
-/// NB: we are using `TorPublicKeyV3` instead of `OnionAddressV3`, since
+/// NB: we are using [`TorPublicKeyV3`] instead of `OnionAddressV3`, since
 /// `OnionAddressV3` keeps checksum and other information which can be
-/// reconstructed from `TorPublicKeyV3`. The 2-byte checksum in `OnionAddressV3`
-/// is designed for human-readable part that checks that the address was typed
-/// in correctly. In computer-stored digital data it may be deterministically
-/// regenerated and does not add any additional security.
+/// reconstructed from [`TorPublicKeyV3`]. The 2-byte checksum in
+/// `OnionAddressV3` is designed for human-readable part that checks that the
+/// address was typed in correctly. In computer-stored digital data it may be
+/// deterministically regenerated and does not add any additional security.
 ///
 /// Tor addresses are distinguished by the fact that last 16 bits
 /// must be set to 0
@@ -164,9 +165,15 @@ impl Ord for InetAddr {
     }
 }
 
+// We need this since TorPublicKeyV3 does not implement Hash
+#[allow(clippy::derive_hash_xor_eq)]
 impl std::hash::Hash for InetAddr {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write(self.to_string().as_bytes())
+        match self {
+            InetAddr::IPv4(ipv4) => ipv4.hash(state),
+            InetAddr::IPv6(ipv6) => ipv6.hash(state),
+            InetAddr::Tor(torv3) => torv3.as_bytes().hash(state),
+        }
     }
 }
 
@@ -199,35 +206,24 @@ impl InetAddr {
     /// enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn is_tor(&self) -> bool {
-        false
-    }
+    pub fn is_tor(&self) -> bool { false }
 
     /// Always returns [`Option::None`] (the library is built without `tor`
     /// feature; use it to enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn to_onion_v2(&self) -> Option<()> {
-        None
-    }
+    pub fn to_onion_v2(&self) -> Option<()> { None }
 
     /// Always returns [`Option::None`] (the library is built without `tor`
     /// feature; use it to enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn to_onion(&self) -> Option<()> {
-        None
-    }
+    pub fn to_onion(&self) -> Option<()> { None }
 
     /// Determines whether provided address is a Tor address
     #[cfg(feature = "tor")]
     #[inline]
-    pub fn is_tor(&self) -> bool {
-        match self {
-            InetAddr::Tor(_) => true,
-            _ => false,
-        }
-    }
+    pub fn is_tor(&self) -> bool { matches!(self, InetAddr::Tor(_)) }
 
     /// Returns Onion v3 address, if any, or [`Option::None`]
     #[cfg(feature = "tor")]
@@ -242,9 +238,7 @@ impl InetAddr {
 
 impl Default for InetAddr {
     #[inline]
-    fn default() -> Self {
-        InetAddr::IPv4(Ipv4Addr::from(0))
-    }
+    fn default() -> Self { InetAddr::IPv4(Ipv4Addr::from(0)) }
 }
 
 impl fmt::Display for InetAddr {
@@ -267,7 +261,7 @@ impl TryFrom<InetAddr> for IpAddr {
             InetAddr::IPv4(addr) => IpAddr::V4(addr),
             InetAddr::IPv6(addr) => IpAddr::V6(addr),
             #[cfg(feature = "tor")]
-            InetAddr::Tor(_) => Err(NoOnionSupportError)?,
+            InetAddr::Tor(_) => return Err(NoOnionSupportError),
         })
     }
 }
@@ -295,24 +289,18 @@ impl From<IpAddr> for InetAddr {
 
 impl From<Ipv4Addr> for InetAddr {
     #[inline]
-    fn from(addr: Ipv4Addr) -> Self {
-        InetAddr::IPv4(addr)
-    }
+    fn from(addr: Ipv4Addr) -> Self { InetAddr::IPv4(addr) }
 }
 
 impl From<Ipv6Addr> for InetAddr {
     #[inline]
-    fn from(addr: Ipv6Addr) -> Self {
-        InetAddr::IPv6(addr)
-    }
+    fn from(addr: Ipv6Addr) -> Self { InetAddr::IPv6(addr) }
 }
 
 #[cfg(feature = "tor")]
 impl From<TorPublicKeyV3> for InetAddr {
     #[inline]
-    fn from(value: TorPublicKeyV3) -> Self {
-        InetAddr::Tor(value)
-    }
+    fn from(value: TorPublicKeyV3) -> Self { InetAddr::Tor(value) }
 }
 
 #[cfg(feature = "tor")]
@@ -367,23 +355,17 @@ impl parse_arg::ParseArgFromStr for InetAddr {
 
 impl From<[u8; 4]> for InetAddr {
     #[inline]
-    fn from(value: [u8; 4]) -> Self {
-        InetAddr::from(Ipv4Addr::from(value))
-    }
+    fn from(value: [u8; 4]) -> Self { InetAddr::from(Ipv4Addr::from(value)) }
 }
 
 impl From<[u8; 16]> for InetAddr {
     #[inline]
-    fn from(value: [u8; 16]) -> Self {
-        InetAddr::from(Ipv6Addr::from(value))
-    }
+    fn from(value: [u8; 16]) -> Self { InetAddr::from(Ipv6Addr::from(value)) }
 }
 
 impl From<[u16; 8]> for InetAddr {
     #[inline]
-    fn from(value: [u16; 8]) -> Self {
-        InetAddr::from(Ipv6Addr::from(value))
-    }
+    fn from(value: [u16; 8]) -> Self { InetAddr::from(Ipv6Addr::from(value)) }
 }
 
 /// Transport protocols that may be part of [`InetSocketAddrExt`]
@@ -425,9 +407,7 @@ pub enum Transport {
 
 impl Default for Transport {
     #[inline]
-    fn default() -> Self {
-        Transport::Tcp
-    }
+    fn default() -> Self { Transport::Tcp }
 }
 
 impl FromStr for Transport {
@@ -438,7 +418,9 @@ impl FromStr for Transport {
             "udp" => Transport::Udp,
             "mtcp" => Transport::Mtcp,
             "quic" => Transport::Quic,
-            _ => Err(AddrParseError::UnknownProtocolError(s.to_owned()))?,
+            _ => {
+                return Err(AddrParseError::UnknownProtocolError(s.to_owned()))
+            }
         })
     }
 }
@@ -479,15 +461,11 @@ impl InetSocketAddr {
     /// Constructs new socket address from an internet address and a port
     /// information
     #[inline]
-    pub fn new(address: InetAddr, port: u16) -> Self {
-        Self { address, port }
-    }
+    pub fn new(address: InetAddr, port: u16) -> Self { Self { address, port } }
 
     /// Determines whether provided address is a Tor address
     #[inline]
-    pub fn is_tor(&self) -> bool {
-        self.address.is_tor()
-    }
+    pub fn is_tor(&self) -> bool { self.address.is_tor() }
 }
 
 impl fmt::Display for InetSocketAddr {
@@ -666,9 +644,9 @@ mod test {
         assert_eq!(InetAddr::default(), InetAddr::from_str("0.0.0.0").unwrap());
 
         #[cfg(feature = "tor")]
-        assert_eq!(IpAddr::try_from(ip4.clone()).unwrap(), IpAddr::V4(ip4a));
+        assert_eq!(IpAddr::try_from(ip4).unwrap(), IpAddr::V4(ip4a));
         #[cfg(feature = "tor")]
-        assert_eq!(IpAddr::try_from(ip6.clone()).unwrap(), IpAddr::V6(ip6a));
+        assert_eq!(IpAddr::try_from(ip6).unwrap(), IpAddr::V6(ip6a));
 
         #[cfg(not(feature = "tor"))]
         assert_eq!(IpAddr::from(ip4.clone()), IpAddr::V4(ip4a));
@@ -721,12 +699,12 @@ mod test {
 
         #[cfg(feature = "tor")]
         assert_eq!(
-            SocketAddr::try_from(ip4.clone()).unwrap(),
+            SocketAddr::try_from(ip4).unwrap(),
             SocketAddr::V4(socket4a)
         );
         #[cfg(feature = "tor")]
         assert_eq!(
-            SocketAddr::try_from(ip6.clone()).unwrap(),
+            SocketAddr::try_from(ip6).unwrap(),
             SocketAddr::V6(socket6a)
         );
 

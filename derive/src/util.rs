@@ -46,8 +46,8 @@ macro_rules! attr_err {
 }
 
 macro_rules! err {
-    ( $span:expr, $msg:literal ) => {
-        Err(attr_err!($span, $msg))?
+    ($span:expr, $msg:literal) => {
+        return Err(attr_err!($span, $msg))
     };
 }
 
@@ -124,10 +124,11 @@ pub(crate) fn attr_named_value<'a>(
                     }
                     Meta::List(_) => {
                         return Err(attr_err!(
-                        ident,
-                        "must have form `name=\"value\"`, not `name(value)`",
-                        example
-                    ))
+                            ident,
+                            "must have form `name=\"value\"`, not \
+                             `name(value)`",
+                            example
+                        ))
                     }
                     Meta::NameValue(name_val) => return Ok(Some(name_val.lit)),
                 },
@@ -179,14 +180,11 @@ pub(crate) fn nested_one_path(
     example: &str,
 ) -> Result<Option<Path>> {
     let meta = nested_one_meta(list, attr_name, example)?;
-    Ok(meta
-        .map(|meta| match meta {
-            Meta::Path(path) => Ok(path),
-            _ => {
-                Err(attr_err!(attr_name, "unexpected attribute type", example))
-            }
-        })
-        .transpose()?)
+    meta.map(|meta| match meta {
+        Meta::Path(path) => Ok(path),
+        _ => Err(attr_err!(attr_name, "unexpected attribute type", example)),
+    })
+    .transpose()
 }
 
 pub(crate) fn nested_one_named_value(
@@ -195,12 +193,9 @@ pub(crate) fn nested_one_named_value(
     example: &str,
 ) -> Result<Option<MetaNameValue>> {
     let meta = nested_one_meta(list, attr_name, example)?;
-    Ok(meta
-        .map(|meta| match meta {
-            Meta::NameValue(nested_meta) => Ok(nested_meta),
-            _ => {
-                Err(attr_err!(attr_name, "unexpected attribute type", example))
-            }
-        })
-        .transpose()?)
+    meta.map(|meta| match meta {
+        Meta::NameValue(nested_meta) => Ok(nested_meta),
+        _ => Err(attr_err!(attr_name, "unexpected attribute type", example)),
+    })
+    .transpose()
 }

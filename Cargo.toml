@@ -17,6 +17,11 @@ name = "internet2"
 path = "src/lib.rs"
 crate-type = ["rlib", "staticlib"]
 
+[[test]]
+name = "noise_xk"
+path = "tests/noise_xk.rs"
+required-features = ["keygen"]
+
 # Dependencies
 # ============
 [dependencies]

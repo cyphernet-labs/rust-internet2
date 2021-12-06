@@ -1,8 +1,9 @@
 #[macro_use]
 extern crate inet2_derive;
 
-use internet2::{CreateUnmarshaller, TypedEnum, Unmarshall};
 use std::str::FromStr;
+
+use internet2::{CreateUnmarshaller, TypedEnum, Unmarshall};
 
 #[derive(Clone, PartialEq, Eq, Debug, Api)]
 #[api(encoding = "strict")]

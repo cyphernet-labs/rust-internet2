@@ -15,14 +15,8 @@
 //! encryption/decryption of the actual data are taking place. These addresses
 //! is mostly used internally and does not include information about node
 //! public key (for that purpose you need to use session-level address
-//! structures like [`NodeLocator`](NodeLocator) and
-//! [`NodeAddress`](NodeAddr)).
+//! structures like [`crate::NodeAddr`]).
 
-#[cfg(feature = "url")]
-use inet2_addr::InetAddr;
-use inet2_addr::{InetSocketAddr, NoOnionSupportError};
-#[cfg(all(feature = "serde", feature = "zmq"))]
-use serde_with::{As, DisplayFromStr};
 use std::cmp::Ordering;
 #[cfg(feature = "url")]
 use std::convert::TryFrom;
@@ -30,6 +24,12 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
+
+#[cfg(feature = "url")]
+use inet2_addr::InetAddr;
+use inet2_addr::{InetSocketAddr, NoOnionSupportError};
+#[cfg(all(feature = "serde", feature = "zmq"))]
+use serde_with::{As, DisplayFromStr};
 #[cfg(feature = "url")]
 use url::{self, Url};
 
@@ -38,7 +38,15 @@ use super::zmqsocket;
 use crate::{AddrError, UrlString};
 
 #[derive(
-    Clone, Copy, PartialEq, Eq, Hash, Debug, Display, StrictEncode, StrictDecode,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Debug,
+    Display,
+    StrictEncode,
+    StrictDecode
 )]
 #[cfg_attr(
     feature = "serde",
@@ -115,7 +123,7 @@ impl FromStr for FramingProtocol {
     Debug,
     Display,
     StrictEncode,
-    StrictDecode,
+    StrictDecode
 )]
 pub enum LocalSocketAddr {
     /// Microservices connected using ZeroMQ protocol locally
@@ -139,17 +147,25 @@ pub enum LocalSocketAddr {
     serde(crate = "serde_crate")
 )]
 #[derive(
-    Clone, Copy, PartialEq, Eq, Hash, Debug, Display, StrictEncode, StrictDecode,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Debug,
+    Display,
+    StrictEncode,
+    StrictDecode
 )]
 #[non_exhaustive]
 pub enum RemoteSocketAddr {
     /// Framed TCP socket connection, that may be served either over plain IP,
-    /// IPSec or Tor v2 and v3
+    /// IPSec or Tor v3
     #[display("{0}", alt = "lnp://{0}")]
     Ftcp(InetSocketAddr),
 
     /// Microservices connected using ZeroMQ protocol remotely. Can be used
-    /// only with TCP-based ZMQ; for other types use [`LocalAddr::Zmq`]
+    /// only with TCP-based ZMQ
     #[cfg(feature = "zmq")]
     #[display("{0}", alt = "lnpz://{0}")]
     Zmq(SocketAddr),
@@ -196,7 +212,7 @@ impl RemoteSocketAddr {
         match proto {
             FramingProtocol::FramedRaw => Self::Ftcp(addr.into()),
             #[cfg(feature = "zmq")]
-            FramingProtocol::Zmtp => Self::Zmq(addr.into()),
+            FramingProtocol::Zmtp => Self::Zmq(addr),
             FramingProtocol::Http => Self::Http(addr.into()),
             #[cfg(feature = "websocket")]
             FramingProtocol::Websocket => Self::Websocket(addr.into()),
@@ -299,9 +315,7 @@ impl UrlString for LocalSocketAddr {
         }
     }
 
-    fn to_url_string(&self) -> String {
-        format!("{:#}", self)
-    }
+    fn to_url_string(&self) -> String { format!("{:#}", self) }
 }
 
 impl UrlString for RemoteSocketAddr {
@@ -317,9 +331,7 @@ impl UrlString for RemoteSocketAddr {
         }
     }
 
-    fn to_url_string(&self) -> String {
-        format!("{:#}", self)
-    }
+    fn to_url_string(&self) -> String { format!("{:#}", self) }
 }
 
 #[cfg(feature = "url")]
@@ -330,11 +342,11 @@ impl TryFrom<Url> for LocalSocketAddr {
         Ok(match url.scheme() {
             "lnp" => {
                 if url.host().is_some() {
-                    Err(AddrError::UnexpectedHost)?
+                    return Err(AddrError::UnexpectedHost);
                 } else if url.has_authority() {
-                    Err(AddrError::UnexpectedAuthority)?
+                    return Err(AddrError::UnexpectedAuthority);
                 } else if url.port().is_some() {
-                    Err(AddrError::UnexpectedPort)?
+                    return Err(AddrError::UnexpectedPort);
                 }
                 LocalSocketAddr::Posix(url.path().to_owned())
             }
@@ -343,9 +355,9 @@ impl TryFrom<Url> for LocalSocketAddr {
                 LocalSocketAddr::Zmq(zmqsocket::ZmqSocketAddr::try_from(url)?)
             }
             "lnph" | "lnpws" | "lnpm" => {
-                Err(AddrError::Unsupported("for local socket address"))?
+                return Err(AddrError::Unsupported("for local socket address"))
             }
-            other => Err(AddrError::UnknownUrlScheme(other.to_owned()))?,
+            other => return Err(AddrError::UnknownUrlScheme(other.to_owned())),
         })
     }
 }
@@ -373,7 +385,7 @@ impl TryFrom<Url> for RemoteSocketAddr {
             #[cfg(feature = "websocket")]
             "lnpws" => RemoteSocketAddr::Websocket(inet_socket_addr),
             "lnpm" => RemoteSocketAddr::Smtp(inet_socket_addr),
-            other => Err(AddrError::UnknownUrlScheme(other.to_owned()))?,
+            other => return Err(AddrError::UnknownUrlScheme(other.to_owned())),
         })
     }
 }

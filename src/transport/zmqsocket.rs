@@ -11,15 +11,16 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use amplify::{Bipolar, Wrapper};
-#[cfg(feature = "serde")]
-use serde_with::{As, DisplayFromStr};
 use std::cmp::Ordering;
 #[cfg(feature = "url")]
 use std::convert::TryFrom;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::net::SocketAddr;
 use std::str::FromStr;
+
+use amplify::{Bipolar, Wrapper};
+#[cfg(feature = "serde")]
+use serde_with::{As, DisplayFromStr};
 #[cfg(feature = "url")]
 use url::Url;
 
@@ -92,13 +93,13 @@ pub enum ZmqType {
     RouterConnect = 7,
 }
 
-/// Unknown [`ApiType`] string
+/// Unknown [`ZmqType`] string
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Display, Error)]
 #[display(Debug)]
 pub struct UnknownApiType;
 
 impl ZmqType {
-    /// Returns [`zmq::SocketType`] corresponding to the given [`ApiType`]
+    /// Returns [`zmq::SocketType`] corresponding to the given [`ZmqType`]
     pub fn socket_type(&self) -> zmq::SocketType {
         match self {
             ZmqType::Pull => zmq::PULL,
@@ -152,7 +153,14 @@ impl FromStr for ZmqType {
     serde(crate = "serde_crate", tag = "type")
 )]
 #[derive(
-    Clone, PartialEq, Eq, Hash, Debug, Display, StrictEncode, StrictDecode,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Debug,
+    Display,
+    StrictEncode,
+    StrictDecode
 )]
 pub enum ZmqSocketAddr {
     #[display("zmq:{0}", alt = "inproc://{0}")]
@@ -191,15 +199,11 @@ impl UrlString for ZmqSocketAddr {
         }
     }
 
-    fn to_url_string(&self) -> String {
-        format!("{:}", self)
-    }
+    fn to_url_string(&self) -> String { format!("{:}", self) }
 }
 
 impl ZmqSocketAddr {
-    pub fn zmq_socket_string(&self) -> String {
-        format!("{:#}", self)
-    }
+    pub fn zmq_socket_string(&self) -> String { format!("{:#}", self) }
 }
 
 #[derive(Display)]
@@ -212,22 +216,18 @@ pub enum Carrier {
 }
 
 #[derive(
-    Wrapper, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Error, From,
+    Wrapper, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Error, From
 )]
 pub struct Error(i32);
 
 impl From<zmq::Error> for Error {
     #[inline]
-    fn from(err: zmq::Error) -> Self {
-        Self(err.to_raw())
-    }
+    fn from(err: zmq::Error) -> Self { Self(err.to_raw()) }
 }
 
 impl From<Error> for zmq::Error {
     #[inline]
-    fn from(err: Error) -> Self {
-        zmq::Error::from_raw(err.into_inner())
-    }
+    fn from(err: Error) -> Self { zmq::Error::from_raw(err.into_inner()) }
 }
 
 impl From<zmq::Error> for transport::Error {
@@ -283,9 +283,7 @@ impl FromStr for ZmqSocketAddr {
 
 #[cfg(feature = "url")]
 impl From<ZmqSocketAddr> for Url {
-    fn from(addr: ZmqSocketAddr) -> Self {
-        Url::from(&addr)
-    }
+    fn from(addr: ZmqSocketAddr) -> Self { Url::from(&addr) }
 }
 
 #[cfg(feature = "url")]
@@ -374,7 +372,7 @@ impl Connection {
                 Some(socket)
             }
             (ZmqType::Pull, None) | (ZmqType::Push, None) => {
-                Err(transport::Error::RequiresLocalSocket)?
+                return Err(transport::Error::RequiresLocalSocket)
             }
             (_, _) => None,
         }
@@ -395,9 +393,7 @@ impl Connection {
     }
 
     #[inline]
-    pub(crate) fn as_socket(&self) -> &zmq::Socket {
-        &self.input.as_socket()
-    }
+    pub(crate) fn as_socket(&self) -> &zmq::Socket { self.input.as_socket() }
 }
 
 impl WrappedSocket {
@@ -407,16 +403,12 @@ impl WrappedSocket {
     }
 
     #[inline]
-    pub(crate) fn as_socket(&self) -> &zmq::Socket {
-        &self.socket
-    }
+    pub(crate) fn as_socket(&self) -> &zmq::Socket { &self.socket }
 }
 
 impl Duplex for Connection {
     #[inline]
-    fn as_receiver(&mut self) -> &mut dyn RecvFrame {
-        &mut self.input
-    }
+    fn as_receiver(&mut self) -> &mut dyn RecvFrame { &mut self.input }
 
     #[inline]
     fn as_sender(&mut self) -> &mut dyn SendFrame {
@@ -458,7 +450,7 @@ impl Bipolar for Connection {
             panic!("ZMQ streams of {} type can't be joined", input.api_type);
         }
         Self {
-            api_type: input.api_type.clone(),
+            api_type: input.api_type,
             input,
             output: Some(output),
         }
@@ -511,13 +503,13 @@ impl RecvFrame for WrappedSocket {
             "no message part in ZMQ multipart routed frame",
         ))?;
         if multipart.count() > 0 {
-            Err(transport::Error::FrameBroken(
+            return Err(transport::Error::FrameBroken(
                 "excessive parts in ZMQ multipart routed frame",
-            ))?
+            ));
         }
         let len = msg.len();
         if len > super::MAX_FRAME_SIZE as usize {
-            Err(transport::Error::OversizedFrame(len))?
+            return Err(transport::Error::OversizedFrame(len));
         }
         Ok(RoutedFrame { hop, src, dst, msg })
     }

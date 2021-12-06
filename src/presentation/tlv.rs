@@ -11,7 +11,6 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use amplify::Wrapper;
 use std::any::Any;
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
@@ -19,6 +18,7 @@ use std::io;
 use std::io::{Read, Write};
 use std::sync::Arc;
 
+use amplify::Wrapper;
 use lightning_encoding::{self, BigSize, LightningDecode};
 use strict_encoding::TlvError;
 
@@ -43,7 +43,7 @@ pub type UnknownMap = BTreeMap<usize, Box<[u8]>>;
     StrictEncode,
     StrictDecode,
     LightningEncode,
-    LightningDecode,
+    LightningDecode
 )]
 #[display(inner)]
 #[wrapper(LowerHex, UpperHex, Octal, FromStr)]
@@ -64,7 +64,7 @@ pub struct Type(u64);
     StrictEncode,
     StrictDecode,
     LightningEncode,
-    LightningDecode,
+    LightningDecode
 )]
 pub struct RawValue(Box<[u8]>);
 
@@ -81,15 +81,13 @@ impl EvenOdd for Type {}
     Default,
     From,
     StrictEncode,
-    StrictDecode,
+    StrictDecode
 )]
 pub struct Stream(#[from] BTreeMap<Type, RawValue>);
 
 impl Stream {
     #[inline]
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     #[inline]
     pub fn get(&self, type_id: &Type) -> Option<&RawValue> {
@@ -109,9 +107,10 @@ impl Stream {
     }
 
     #[inline]
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
+    pub fn len(&self) -> usize { self.0.len() }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool { self.0.is_empty() }
 }
 
 impl lightning_encoding::LightningEncode for Stream {
@@ -142,14 +141,15 @@ impl lightning_encoding::LightningDecode for Stream {
         for _ in 0..count {
             let ty = Type::lightning_decode(&mut d)?;
             if set.contains_key(&ty) {
-                return Err(TlvError::Repeated(ty.into_inner() as usize))?;
+                return Err(TlvError::Repeated(ty.into_inner() as usize).into());
             }
             if let Some(max) = set.keys().max() {
                 if *max > ty {
                     return Err(TlvError::Order {
                         read: ty.into_inner() as usize,
                         max: max.into_inner() as usize,
-                    })?;
+                    }
+                    .into());
                 }
             }
             set.insert(ty, RawValue::lightning_decode(&mut d)?);
@@ -266,7 +266,7 @@ impl Unmarshaller {
         // exceeds the number of bytes left in the message it will return
         // a error
         if len > crate::LNP_MSG_MAX_LEN {
-            Err(Error::TlvRecordInvalidLen)?;
+            return Err(Error::TlvRecordInvalidLen);
         }
 
         let mut buf = vec![0u8; len];
@@ -277,4 +277,8 @@ impl Unmarshaller {
         let rec = RawValue(Box::from(buf));
         Ok(Arc::new(rec))
     }
+}
+
+impl Default for Unmarshaller {
+    fn default() -> Self { Unmarshaller::new() }
 }

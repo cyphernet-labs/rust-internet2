@@ -37,9 +37,7 @@ pub enum Act {
 
 impl Act {
     /// Returns the size of the underlying array
-    fn len(&self) -> usize {
-        self.as_ref().len()
-    }
+    fn len(&self) -> usize { self.as_ref().len() }
 }
 
 impl From<ActBuilder> for Act {
@@ -57,9 +55,9 @@ impl ops::Deref for Act {
     /// &Act -> &[u8]
     fn deref(&self) -> &Self::Target {
         match self {
-            &Act::One(ref act) => act,
-            &Act::Two(ref act) => act,
-            &Act::Three(ref act) => act,
+            Act::One(ref act) => act,
+            Act::Two(ref act) => act,
+            Act::Three(ref act) => act,
         }
     }
 }
@@ -67,9 +65,7 @@ impl ops::Deref for Act {
 impl AsRef<[u8]> for Act {
     /// Allow convenient exposure of the underlying array through as_ref()
     /// Act.as_ref() -> &[u8]
-    fn as_ref(&self) -> &[u8] {
-        &self
-    }
+    fn as_ref(&self) -> &[u8] { self }
 }
 
 /// Light wrapper around an Act that allows multiple fill() calls before finally
@@ -109,14 +105,14 @@ impl ActBuilder {
             }};
         }
 
-        match &mut self.partial_act {
-            &mut Act::One(ref mut act) => {
+        match self.partial_act {
+            Act::One(ref mut act) => {
                 fill_act_content!(act, self.write_pos, input)
             }
-            &mut Act::Two(ref mut act) => {
+            Act::Two(ref mut act) => {
                 fill_act_content!(act, self.write_pos, input)
             }
-            &mut Act::Three(ref mut act) => {
+            Act::Three(ref mut act) => {
                 fill_act_content!(act, self.write_pos, input)
             }
         }
