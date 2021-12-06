@@ -130,7 +130,7 @@ pub enum AddrError {
     MalformedInetAddr(inet2_addr::AddrParseError),
 
     /// Invalid public key data representing node id
-    #[from(bitcoin::secp256k1::Error)]
+    #[from(secp256k1::Error)]
     InvalidPubkey,
 
     /// No host information found in URL, while it is required for the given

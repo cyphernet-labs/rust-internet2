@@ -18,7 +18,7 @@ pub enum Message {
     NoArgs,
 
     #[api(type = 0x0103)]
-    AddKeys(Vec<bitcoin::PublicKey>),
+    AddKeys(Vec<secp256k1::PublicKey>),
 }
 
 fn main() {

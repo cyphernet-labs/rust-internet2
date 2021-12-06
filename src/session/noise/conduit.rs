@@ -361,7 +361,7 @@ impl Bipolar for NoiseTranscoder {
 mod tests {
     use super::*;
     use crate::LNP_MSG_MAX_LEN;
-    use bitcoin::hashes::hex::FromHex;
+    use bitcoin_hashes::hex::FromHex;
 
     fn setup_peers() -> (NoiseTranscoder, NoiseTranscoder) {
         let chaining_key_vec = Vec::<u8>::from_hex(
