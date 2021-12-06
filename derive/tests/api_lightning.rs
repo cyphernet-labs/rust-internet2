@@ -18,7 +18,7 @@ pub enum Request {
     NoArgs,
 
     #[api(type = 0x0103)]
-    AddKeys(Vec<bitcoin::PublicKey>),
+    AddKeys(Vec<secp256k1::PublicKey>),
 }
 
 #[test]
@@ -48,13 +48,13 @@ fn roundtrip() {
         "03c038e7a5a2710b50afe059c98085ce20455d7d5e681d5962b29e0a6727cfd9d4",
     ]
     .into_iter()
-    .map(bitcoin::PublicKey::from_str)
+    .map(secp256k1::PublicKey::from_str)
     .map(Result::unwrap)
     .collect();
     let message = Request::AddKeys(keys.clone());
     let payload = message.serialize();
     let mut expect = b"\x01\x03\x02".to_vec();
-    expect.extend(keys.iter().map(bitcoin::PublicKey::to_bytes).flatten());
+    expect.extend(keys.iter().map(secp256k1::PublicKey::serialize).flatten());
     assert_eq!(payload, expect);
     let roundtrip = &*unmarshaller.unmarshall(&payload).unwrap();
     assert_eq!(&message, roundtrip);
