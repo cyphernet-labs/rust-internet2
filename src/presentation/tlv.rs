@@ -60,13 +60,13 @@ pub struct Type(u64);
     StrictEncode,
     StrictDecode,
 )]
-pub struct RawRecord(Vec<u8>);
+pub struct RawRecord(Box<[u8]>);
 
 impl EvenOdd for Type {}
 
 #[derive(Debug, Display, Default)]
 #[display(Debug)]
-pub struct Stream(BTreeMap<Type, Arc<dyn Any>>);
+pub struct Stream(BTreeMap<Type, RawRecord>);
 
 impl Stream {
     #[inline]
@@ -75,13 +75,15 @@ impl Stream {
     }
 
     #[inline]
-    pub fn get<T: Any>(&self, type_id: &Type) -> Option<&T> {
-        self.0.get(type_id).and_then(|v| v.downcast_ref::<T>())
+    pub fn get(&self, type_id: &Type) -> Option<&RawRecord> {
+        self.0.get(type_id)
     }
 
     #[inline]
-    pub fn insert<T: Any>(&mut self, type_id: Type, value: T) -> bool {
-        self.0.insert(type_id, Arc::new(value)).is_none()
+    pub fn insert(&mut self, type_id: Type, value: impl AsRef<[u8]>) -> bool {
+        self.0
+            .insert(type_id, RawRecord::from(Box::from(value.as_ref())))
+            .is_none()
     }
 
     #[inline]
@@ -163,7 +165,11 @@ impl Unmarshall for Unmarshaller {
                         // library which may know the meaning of the bytes
                         (self.raw_parser)(&mut reader)?
                     };
-                    tlv.insert(type_id, rec);
+                    tlv.insert(
+                        type_id,
+                        rec.downcast_ref::<&[u8]>()
+                            .ok_or(Error::InvalidValue)?,
+                    );
                     prev_type_id = type_id;
                 }
             }
@@ -202,7 +208,7 @@ impl Unmarshaller {
             .read_exact(&mut buf[..])
             .map_err(|_| Error::TlvRecordInvalidLen)?;
 
-        let rec = RawRecord(buf.to_vec());
+        let rec = RawRecord(Box::from(buf));
         Ok(Arc::new(rec))
     }
 }
