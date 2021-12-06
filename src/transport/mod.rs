@@ -91,6 +91,9 @@ pub enum Error {
     /// failed Noise_XK handshake due to {0}
     #[from]
     Handshake(HandshakeError),
+
+    /// use of {0} API requires compilatino with `keygen` feature enabled
+    KeygenFeatureRequired(&'static str),
 }
 
 impl From<std::io::Error> for Error {
