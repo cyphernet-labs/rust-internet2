@@ -16,9 +16,11 @@ use std::any::Any;
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::io;
+use std::io::{Read, Write};
 use std::sync::Arc;
 
 use lightning_encoding::{self, BigSize, LightningDecode};
+use strict_encoding::TlvError;
 
 use super::{Error, EvenOdd, Unmarshall, UnmarshallFn};
 
@@ -40,6 +42,8 @@ pub type UnknownMap = BTreeMap<usize, Box<[u8]>>;
     From,
     StrictEncode,
     StrictDecode,
+    LightningEncode,
+    LightningDecode,
 )]
 #[display(inner)]
 #[wrapper(LowerHex, UpperHex, Octal, FromStr)]
@@ -59,14 +63,27 @@ pub struct Type(u64);
     From,
     StrictEncode,
     StrictDecode,
+    LightningEncode,
+    LightningDecode,
 )]
-pub struct RawRecord(Box<[u8]>);
+pub struct RawValue(Box<[u8]>);
 
 impl EvenOdd for Type {}
 
-#[derive(Debug, Display, Default)]
-#[display(Debug)]
-pub struct Stream(BTreeMap<Type, RawRecord>);
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Debug,
+    Default,
+    From,
+    StrictEncode,
+    StrictDecode,
+)]
+pub struct Stream(#[from] BTreeMap<Type, RawValue>);
 
 impl Stream {
     #[inline]
@@ -75,20 +92,69 @@ impl Stream {
     }
 
     #[inline]
-    pub fn get(&self, type_id: &Type) -> Option<&RawRecord> {
+    pub fn get(&self, type_id: &Type) -> Option<&RawValue> {
         self.0.get(type_id)
     }
 
     #[inline]
     pub fn insert(&mut self, type_id: Type, value: impl AsRef<[u8]>) -> bool {
         self.0
-            .insert(type_id, RawRecord::from(Box::from(value.as_ref())))
+            .insert(type_id, RawValue::from(Box::from(value.as_ref())))
             .is_none()
     }
 
     #[inline]
     pub fn contains_key(&self, type_id: &Type) -> bool {
         self.0.contains_key(type_id)
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl lightning_encoding::LightningEncode for Stream {
+    fn lightning_encode<E: Write>(
+        &self,
+        e: E,
+    ) -> Result<usize, lightning_encoding::Error> {
+        // We ignore empty TLV stream according to the lightning serialization
+        // rules
+        if self.0.is_empty() {
+            return Ok(0);
+        }
+        self.0.lightning_encode(e)
+    }
+}
+
+impl lightning_encoding::LightningDecode for Stream {
+    fn lightning_decode<D: Read>(
+        mut d: D,
+    ) -> Result<Self, lightning_encoding::Error> {
+        let mut buf = [0u8; 2];
+        // Empty data means empty TLV stream and not an error
+        if d.read_exact(&mut buf).is_err() {
+            return Ok(Stream::default());
+        }
+        let count = u16::from_be_bytes(buf);
+        let mut set: BTreeMap<Type, RawValue> = bmap! {};
+        for _ in 0..count {
+            let ty = Type::lightning_decode(&mut d)?;
+            if set.contains_key(&ty) {
+                return Err(TlvError::Repeated(ty.into_inner() as usize))?;
+            }
+            if let Some(max) = set.keys().max() {
+                if *max > ty {
+                    return Err(TlvError::Order {
+                        read: ty.into_inner() as usize,
+                        max: max.into_inner() as usize,
+                    })?;
+                }
+            }
+            set.insert(ty, RawValue::lightning_decode(&mut d)?);
+        }
+        Ok(Self(set))
     }
 }
 
@@ -208,7 +274,7 @@ impl Unmarshaller {
             .read_exact(&mut buf[..])
             .map_err(|_| Error::TlvRecordInvalidLen)?;
 
-        let rec = RawRecord(Box::from(buf));
+        let rec = RawValue(Box::from(buf));
         Ok(Arc::new(rec))
     }
 }
