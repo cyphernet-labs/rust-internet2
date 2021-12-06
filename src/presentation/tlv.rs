@@ -24,66 +24,50 @@ use strict_encoding::TlvError;
 
 use super::{Error, EvenOdd, Unmarshall, UnmarshallFn};
 
-pub type UnknownMap = BTreeMap<usize, Box<[u8]>>;
-
 /// TLV type field value
 #[derive(
-    Wrapper,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Default,
-    Debug,
-    Display,
-    From,
-    StrictEncode,
-    StrictDecode,
-    LightningEncode,
-    LightningDecode
+    Wrapper, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug,
+    Display, From
 )]
+#[derive(StrictEncode, StrictDecode, LightningEncode, LightningDecode)]
 #[display(inner)]
 #[wrapper(LowerHex, UpperHex, Octal, FromStr)]
 pub struct Type(u64);
 
-/// Unknown TLV record represented by raw bytes
-#[derive(
-    Wrapper,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Default,
-    Debug,
-    From,
-    StrictEncode,
-    StrictDecode,
-    LightningEncode,
-    LightningDecode
-)]
-pub struct RawValue(Box<[u8]>);
-
 impl EvenOdd for Type {}
 
+impl From<usize> for Type {
+    fn from(val: usize) -> Self { Type(val as u64) }
+}
+
+/// Unknown TLV record represented by raw bytes
 #[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Debug,
-    Default,
-    From,
-    StrictEncode,
-    StrictDecode
+    Wrapper, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, From
 )]
-pub struct Stream(#[from] BTreeMap<Type, RawValue>);
+#[derive(StrictEncode, StrictDecode, LightningEncode, LightningDecode)]
+pub struct RawValue(Box<[u8]>);
+
+impl AsRef<[u8]> for RawValue {
+    #[inline]
+    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default, From)]
+pub struct Stream(BTreeMap<Type, RawValue>);
+
+impl<'a> IntoIterator for &'a Stream {
+    type Item = (&'a Type, &'a RawValue);
+    type IntoIter = std::collections::btree_map::Iter<'a, Type, RawValue>;
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter { self.0.iter() }
+}
+
+impl IntoIterator for Stream {
+    type Item = (Type, RawValue);
+    type IntoIter = std::collections::btree_map::IntoIter<Type, RawValue>;
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter { self.0.into_iter() }
+}
 
 impl Stream {
     #[inline]
@@ -111,6 +95,28 @@ impl Stream {
 
     #[inline]
     pub fn is_empty(&self) -> bool { self.0.is_empty() }
+}
+
+impl strict_encoding::StrictEncode for Stream {
+    fn strict_encode<E: Write>(
+        &self,
+        e: E,
+    ) -> Result<usize, strict_encoding::Error> {
+        if self.0.is_empty() {
+            return Ok(0);
+        }
+        self.0.strict_encode(e)
+    }
+}
+
+impl strict_encoding::StrictDecode for Stream {
+    fn strict_decode<D: Read>(d: D) -> Result<Self, strict_encoding::Error> {
+        match BTreeMap::strict_decode(d) {
+            Ok(data) => Ok(Self(data)),
+            Err(strict_encoding::Error::Io(_)) => Ok(Self::default()),
+            Err(err) => Err(err),
+        }
+    }
 }
 
 impl lightning_encoding::LightningEncode for Stream {
@@ -141,13 +147,13 @@ impl lightning_encoding::LightningDecode for Stream {
         for _ in 0..count {
             let ty = Type::lightning_decode(&mut d)?;
             if set.contains_key(&ty) {
-                return Err(TlvError::Repeated(ty.into_inner() as usize).into());
+                return Err(TlvError::Repeated(ty.into_inner()).into());
             }
             if let Some(max) = set.keys().max() {
                 if *max > ty {
                     return Err(TlvError::Order {
-                        read: ty.into_inner() as usize,
-                        max: max.into_inner() as usize,
+                        read: ty.into_inner(),
+                        max: max.into_inner(),
                     }
                     .into());
                 }
