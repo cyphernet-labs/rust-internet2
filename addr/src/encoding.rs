@@ -91,7 +91,7 @@ impl Uniform for InetAddr {
             }
             #[cfg(feature = "tor")]
             AddrFormat::OnionV3 => InetAddr::Tor(tor_from_raw_addr(addr.addr)?),
-            _ => Err(DecodeError::UnsupportedAddrFormat)?,
+            _ => return Err(DecodeError::UnsupportedAddrFormat),
         })
     }
 }

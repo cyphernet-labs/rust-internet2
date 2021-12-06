@@ -372,7 +372,7 @@ impl Connection {
                 Some(socket)
             }
             (ZmqType::Pull, None) | (ZmqType::Push, None) => {
-                Err(transport::Error::RequiresLocalSocket)?
+                return Err(transport::Error::RequiresLocalSocket)
             }
             (_, _) => None,
         }
@@ -393,7 +393,7 @@ impl Connection {
     }
 
     #[inline]
-    pub(crate) fn as_socket(&self) -> &zmq::Socket { &self.input.as_socket() }
+    pub(crate) fn as_socket(&self) -> &zmq::Socket { self.input.as_socket() }
 }
 
 impl WrappedSocket {
@@ -450,7 +450,7 @@ impl Bipolar for Connection {
             panic!("ZMQ streams of {} type can't be joined", input.api_type);
         }
         Self {
-            api_type: input.api_type.clone(),
+            api_type: input.api_type,
             input,
             output: Some(output),
         }
@@ -503,13 +503,13 @@ impl RecvFrame for WrappedSocket {
             "no message part in ZMQ multipart routed frame",
         ))?;
         if multipart.count() > 0 {
-            Err(transport::Error::FrameBroken(
+            return Err(transport::Error::FrameBroken(
                 "excessive parts in ZMQ multipart routed frame",
-            ))?
+            ))
         }
         let len = msg.len();
         if len > super::MAX_FRAME_SIZE as usize {
-            Err(transport::Error::OversizedFrame(len))?
+            return Err(transport::Error::OversizedFrame(len))
         }
         Ok(RoutedFrame { hop, src, dst, msg })
     }

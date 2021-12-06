@@ -99,12 +99,12 @@ pub enum AddrParseError {
 /// * IPv6 address
 /// * Tor Onion address (V3 only)
 ///
-/// NB: we are using `TorPublicKeyV3` instead of `OnionAddressV3`, since
+/// NB: we are using [`TorPublicKeyV3`] instead of `OnionAddressV3`, since
 /// `OnionAddressV3` keeps checksum and other information which can be
-/// reconstructed from `TorPublicKeyV3`. The 2-byte checksum in `OnionAddressV3`
-/// is designed for human-readable part that checks that the address was typed
-/// in correctly. In computer-stored digital data it may be deterministically
-/// regenerated and does not add any additional security.
+/// reconstructed from [`TorPublicKeyV3`]. The 2-byte checksum in
+/// `OnionAddressV3` is designed for human-readable part that checks that the
+/// address was typed in correctly. In computer-stored digital data it may be
+/// deterministically regenerated and does not add any additional security.
 ///
 /// Tor addresses are distinguished by the fact that last 16 bits
 /// must be set to 0
@@ -165,9 +165,15 @@ impl Ord for InetAddr {
     }
 }
 
+// We need this since TorPublicKeyV3 does not implement Hash
+#[allow(clippy::derive_hash_xor_eq)]
 impl std::hash::Hash for InetAddr {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write(self.to_string().as_bytes())
+        match self {
+            InetAddr::IPv4(ipv4) => ipv4.hash(state),
+            InetAddr::IPv6(ipv6) => ipv6.hash(state),
+            InetAddr::Tor(torv3) => torv3.as_bytes().hash(state),
+        }
     }
 }
 
@@ -260,7 +266,7 @@ impl TryFrom<InetAddr> for IpAddr {
             InetAddr::IPv4(addr) => IpAddr::V4(addr),
             InetAddr::IPv6(addr) => IpAddr::V6(addr),
             #[cfg(feature = "tor")]
-            InetAddr::Tor(_) => Err(NoOnionSupportError)?,
+            InetAddr::Tor(_) => return Err(NoOnionSupportError),
         })
     }
 }
@@ -417,7 +423,7 @@ impl FromStr for Transport {
             "udp" => Transport::Udp,
             "mtcp" => Transport::Mtcp,
             "quic" => Transport::Quic,
-            _ => Err(AddrParseError::UnknownProtocolError(s.to_owned()))?,
+            _ => return Err(AddrParseError::UnknownProtocolError(s.to_owned())),
         })
     }
 }
@@ -641,9 +647,9 @@ mod test {
         assert_eq!(InetAddr::default(), InetAddr::from_str("0.0.0.0").unwrap());
 
         #[cfg(feature = "tor")]
-        assert_eq!(IpAddr::try_from(ip4.clone()).unwrap(), IpAddr::V4(ip4a));
+        assert_eq!(IpAddr::try_from(ip4).unwrap(), IpAddr::V4(ip4a));
         #[cfg(feature = "tor")]
-        assert_eq!(IpAddr::try_from(ip6.clone()).unwrap(), IpAddr::V6(ip6a));
+        assert_eq!(IpAddr::try_from(ip6).unwrap(), IpAddr::V6(ip6a));
 
         #[cfg(not(feature = "tor"))]
         assert_eq!(IpAddr::from(ip4.clone()), IpAddr::V4(ip4a));
@@ -696,12 +702,12 @@ mod test {
 
         #[cfg(feature = "tor")]
         assert_eq!(
-            SocketAddr::try_from(ip4.clone()).unwrap(),
+            SocketAddr::try_from(ip4).unwrap(),
             SocketAddr::V4(socket4a)
         );
         #[cfg(feature = "tor")]
         assert_eq!(
-            SocketAddr::try_from(ip6.clone()).unwrap(),
+            SocketAddr::try_from(ip6).unwrap(),
             SocketAddr::V6(socket6a)
         );
 

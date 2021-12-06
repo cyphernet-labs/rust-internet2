@@ -125,7 +125,7 @@ where
     #[inline]
     fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error> {
         let writer = self.connection.as_sender();
-        Ok(writer.send_frame(&self.transcoder.encrypt(raw))?)
+        writer.send_frame(&self.transcoder.encrypt(raw))
     }
 
     #[inline]
@@ -145,12 +145,12 @@ where
         raw: &[u8],
     ) -> Result<usize, Error> {
         let writer = self.connection.as_sender();
-        Ok(writer.send_routed(
+        writer.send_routed(
             source,
             route,
             dest,
             &self.transcoder.encrypt(raw),
-        )?)
+        )
     }
 
     #[inline]
@@ -321,7 +321,7 @@ where
     T::Left: Decrypt + Send + 'static,
     T::Right: Encrypt + Send + 'static,
 {
-    pub fn as_socket(&self) -> &zmq::Socket { &self.connection.as_socket() }
+    pub fn as_socket(&self) -> &zmq::Socket { self.connection.as_socket() }
 }
 
 impl<T, C> Input for RawInput<T, C>
@@ -347,7 +347,7 @@ where
     C: SendFrame,
 {
     fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error> {
-        Ok(self.output.send_frame(&self.encryptor.encrypt(raw))?)
+        self.output.send_frame(&self.encryptor.encrypt(raw))
     }
     fn send_routed_message(
         &mut self,
@@ -357,7 +357,7 @@ where
         raw: &[u8],
     ) -> Result<usize, Error> {
         let encrypted = self.encryptor.encrypt(raw);
-        Ok(self.output.send_routed(source, route, dest, &encrypted)?)
+        self.output.send_routed(source, route, dest, &encrypted)
     }
 }
 

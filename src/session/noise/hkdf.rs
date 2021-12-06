@@ -59,7 +59,7 @@ pub(super) fn derive(salt: &[u8], ikm: &[u8]) -> ([u8; 32], [u8; 32]) {
     // T(2) = HMAC-Hash(PRK, T(1) | info | 0x02)
     let t2 = hmac_sha256!(&prk, (&t1, &[2]));
 
-    return (t1, t2);
+    (t1, t2)
 }
 
 // Appendix A.  Test Vectors

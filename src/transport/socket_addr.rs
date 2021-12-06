@@ -213,7 +213,7 @@ impl RemoteSocketAddr {
         match proto {
             FramingProtocol::FramedRaw => Self::Ftcp(addr.into()),
             #[cfg(feature = "zmq")]
-            FramingProtocol::Zmtp => Self::Zmq(addr.into()),
+            FramingProtocol::Zmtp => Self::Zmq(addr),
             FramingProtocol::Http => Self::Http(addr.into()),
             #[cfg(feature = "websocket")]
             FramingProtocol::Websocket => Self::Websocket(addr.into()),
@@ -343,11 +343,11 @@ impl TryFrom<Url> for LocalSocketAddr {
         Ok(match url.scheme() {
             "lnp" => {
                 if url.host().is_some() {
-                    Err(AddrError::UnexpectedHost)?
+                    return Err(AddrError::UnexpectedHost)
                 } else if url.has_authority() {
-                    Err(AddrError::UnexpectedAuthority)?
+                    return Err(AddrError::UnexpectedAuthority)
                 } else if url.port().is_some() {
-                    Err(AddrError::UnexpectedPort)?
+                    return Err(AddrError::UnexpectedPort)
                 }
                 LocalSocketAddr::Posix(url.path().to_owned())
             }
@@ -356,9 +356,9 @@ impl TryFrom<Url> for LocalSocketAddr {
                 LocalSocketAddr::Zmq(zmqsocket::ZmqSocketAddr::try_from(url)?)
             }
             "lnph" | "lnpws" | "lnpm" => {
-                Err(AddrError::Unsupported("for local socket address"))?
+                return Err(AddrError::Unsupported("for local socket address"))
             }
-            other => Err(AddrError::UnknownUrlScheme(other.to_owned()))?,
+            other => return Err(AddrError::UnknownUrlScheme(other.to_owned())),
         })
     }
 }
@@ -386,7 +386,7 @@ impl TryFrom<Url> for RemoteSocketAddr {
             #[cfg(feature = "websocket")]
             "lnpws" => RemoteSocketAddr::Websocket(inet_socket_addr),
             "lnpm" => RemoteSocketAddr::Smtp(inet_socket_addr),
-            other => Err(AddrError::UnknownUrlScheme(other.to_owned()))?,
+            other => return Err(AddrError::UnknownUrlScheme(other.to_owned())),
         })
     }
 }

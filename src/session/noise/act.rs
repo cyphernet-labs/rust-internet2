@@ -65,7 +65,7 @@ impl ops::Deref for Act {
 impl AsRef<[u8]> for Act {
     /// Allow convenient exposure of the underlying array through as_ref()
     /// Act.as_ref() -> &[u8]
-    fn as_ref(&self) -> &[u8] { &self }
+    fn as_ref(&self) -> &[u8] { self }
 }
 
 /// Light wrapper around an Act that allows multiple fill() calls before finally

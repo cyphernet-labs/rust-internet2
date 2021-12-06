@@ -136,7 +136,7 @@ impl TryFrom<NodeAddr> for ZmqSocketAddr {
                 node_id: _,
                 remote_addr: RemoteSocketAddr::Zmq(addr),
             }) => ZmqSocketAddr::Tcp(addr),
-            _ => Err(AddrError::Unsupported("ZMQ socket"))?,
+            _ => return Err(AddrError::Unsupported("ZMQ socket")),
         })
     }
 }
@@ -287,7 +287,7 @@ impl ToNodeAddr for String {
 impl ToNodeAddr for &str {
     #[inline]
     fn to_node_addr(&self, default_port: u16) -> Option<NodeAddr> {
-        NodeAddr::try_from(PartialNodeAddr::from_str(&self).ok()?).ok()
+        NodeAddr::try_from(PartialNodeAddr::from_str(self).ok()?).ok()
     }
 }
 
@@ -342,7 +342,7 @@ impl ToRemoteNodeAddr for String {
 impl ToRemoteNodeAddr for &str {
     #[inline]
     fn to_remote_node_addr(&self, default_port: u16) -> Option<RemoteNodeAddr> {
-        RemoteNodeAddr::from_str(&self)
+        RemoteNodeAddr::from_str(self)
             .or_else(|_| {
                 RemoteNodeAddr::from_str(&format!("{}:{}", self, default_port))
             })
@@ -607,10 +607,8 @@ impl FromStr for PartialNodeAddr {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut s = s.to_string();
-        if vec!["lnp:", "lnpu:", "lnpz:", "lnpws:", "lnpt:", "lnph:"]
-            .into_iter()
-            .find(|p| s.starts_with(*p))
-            .is_none()
+        if !vec!["lnp:", "lnpu:", "lnpz:", "lnpws:", "lnpt:", "lnph:"]
+            .into_iter().any(|p| s.starts_with(p))
         {
             s = format!("lnp://{}", s);
         }
@@ -784,7 +782,7 @@ impl TryFrom<Url> for PartialNodeAddr {
                 }?;
                 Ok(match (ip, pubkey) {
                     (_, Err(_)) if !url.username().is_empty() => {
-                        Err(AddrError::InvalidPubkey)?
+                        return Err(AddrError::InvalidPubkey)
                     }
                     (Ok(ip), Ok(pubkey)) => PartialNodeAddr::ZmqTcpEncrypted(
                         pubkey, zmq_type, ip, port,
@@ -794,7 +792,7 @@ impl TryFrom<Url> for PartialNodeAddr {
                     }
                     (Err(_), _) => {
                         if url.path().is_empty() {
-                            Err(AddrError::ZmqContextRequired)?
+                            return Err(AddrError::ZmqContextRequired)
                         }
                         PartialNodeAddr::ZmqIpc(
                             url.path().to_string(),
@@ -805,19 +803,19 @@ impl TryFrom<Url> for PartialNodeAddr {
             }
             "lnpt" => {
                 // In this URL scheme we must not use IP address
-                if let Ok(_) = pubkey {
-                    Err(AddrError::UnexpectedHost)?
+                if pubkey.is_ok() {
+                    return Err(AddrError::UnexpectedHost)
                 }
                 // In this URL scheme we must not use IP address
-                if let Some(_) = port {
-                    Err(AddrError::UnexpectedPort)?
+                if port.is_some() {
+                    return Err(AddrError::UnexpectedPort)
                 }
                 if let Some(host) = host {
                     Ok(PartialNodeAddr::Text(secp256k1::PublicKey::from_str(
                         host,
                     )?))
                 } else {
-                    Err(AddrError::InvalidPubkey)?
+                    Err(AddrError::InvalidPubkey)
                 }
             }
             unknown => Err(AddrError::UnknownUrlScheme(unknown.to_string())),
@@ -828,7 +826,7 @@ impl TryFrom<Url> for PartialNodeAddr {
 impl From<PartialNodeAddr> for NodeAddr {
     fn from(locator: PartialNodeAddr) -> Self {
         RemoteNodeAddr::try_from(locator.clone())
-            .map(|addr| NodeAddr::Remote(addr))
+            .map(NodeAddr::Remote)
             .unwrap_or_else(|_| {
                 NodeAddr::Local(LocalSocketAddr::try_from(locator).expect(
                     "PartialNodeAddr must convert to either NodeAddr or \
@@ -858,7 +856,7 @@ impl TryFrom<PartialNodeAddr> for LocalSocketAddr {
                     ip, port,
                 )))
             }
-            _ => Err(AddrError::Unsupported("local socket address"))?,
+            _ => return Err(AddrError::Unsupported("local socket address")),
         })
     }
 }
@@ -959,10 +957,10 @@ impl TryFrom<PartialNodeAddr> for ZmqSocketAddr {
             | PartialNodeAddr::ZmqTcpEncrypted(_, _, ip, Some(port)) => {
                 ZmqSocketAddr::Tcp(SocketAddr::new(ip, port))
             }
-            _ => Err(AddrError::Unsupported(
+            _ => return Err(AddrError::Unsupported(
                 "Provided partial address can't be converted into a valid ZMQ \
                  socket",
-            ))?,
+            )),
         })
     }
 }

@@ -138,14 +138,14 @@ impl lightning_encoding::LightningDecode for Stream {
         for _ in 0..count {
             let ty = Type::lightning_decode(&mut d)?;
             if set.contains_key(&ty) {
-                return Err(TlvError::Repeated(ty.into_inner() as usize))?;
+                return Err(TlvError::Repeated(ty.into_inner() as usize).into());
             }
             if let Some(max) = set.keys().max() {
                 if *max > ty {
                     return Err(TlvError::Order {
                         read: ty.into_inner() as usize,
                         max: max.into_inner() as usize,
-                    })?;
+                    }.into());
                 }
             }
             set.insert(ty, RawValue::lightning_decode(&mut d)?);
@@ -262,7 +262,7 @@ impl Unmarshaller {
         // exceeds the number of bytes left in the message it will return
         // a error
         if len > crate::LNP_MSG_MAX_LEN {
-            Err(Error::TlvRecordInvalidLen)?;
+            return Err(Error::TlvRecordInvalidLen);
         }
 
         let mut buf = vec![0u8; len];

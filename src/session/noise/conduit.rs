@@ -80,8 +80,8 @@ impl NoiseEncryptor {
 impl Encrypt for NoiseEncryptor {
     fn encrypt(&mut self, buffer: impl Borrow<[u8]>) -> Vec<u8> {
         match self.encrypt_buf(buffer.borrow()) {
-            Ok(values) => return values,
-            Err(_) => return Vec::new(),
+            Ok(values) => values,
+            Err(_) => Vec::new(),
         }
     }
 }
@@ -279,7 +279,7 @@ impl NoiseTranscoder {
 
     /// Encrypt data to be sent to peer
     pub fn encrypt_buf(&mut self, buffer: &[u8]) -> Result<Vec<u8>, Error> {
-        Ok(self.encryptor.encrypt_buf(buffer)?)
+        self.encryptor.encrypt_buf(buffer)
     }
 
     pub fn read_buf(&mut self, data: &[u8]) { self.decryptor.read_buf(data) }
@@ -293,7 +293,7 @@ impl NoiseTranscoder {
         &mut self,
         new_data: Option<&[u8]>,
     ) -> Result<Option<Vec<u8>>, Error> {
-        Ok(self.decryptor.decrypt_single_message(new_data)?)
+        self.decryptor.decrypt_single_message(new_data)
     }
 
     fn increment_nonce(
@@ -318,8 +318,8 @@ impl NoiseTranscoder {
 impl Encrypt for NoiseTranscoder {
     fn encrypt(&mut self, buffer: impl Borrow<[u8]>) -> Vec<u8> {
         match self.encrypt_buf(buffer.borrow()) {
-            Ok(values) => return values,
-            Err(_) => return Vec::new(),
+            Ok(values) => values,
+            Err(_) => Vec::new(),
         }
     }
 }
