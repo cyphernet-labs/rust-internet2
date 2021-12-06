@@ -665,7 +665,7 @@ fn process_act_message(
 
 fn private_key_to_public_key(private_key: &SecretKey) -> PublicKey {
     let curve = secp256k1::Secp256k1::new();
-    
+
     PublicKey::from_secret_key(&curve, private_key)
 }
 

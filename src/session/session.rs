@@ -145,12 +145,7 @@ where
         raw: &[u8],
     ) -> Result<usize, Error> {
         let writer = self.connection.as_sender();
-        writer.send_routed(
-            source,
-            route,
-            dest,
-            &self.transcoder.encrypt(raw),
-        )
+        writer.send_routed(source, route, dest, &self.transcoder.encrypt(raw))
     }
 
     #[inline]
