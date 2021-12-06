@@ -22,7 +22,7 @@ amplify = "3.9.1"
 [dev-dependencies]
 amplify = "3.9.1"
 internet2 = { path = ".." }
-lnpbp = "0.5.0-beta.3"
+lnpbp = "0.5.0"
 strict_encoding = "1.7.1"
 lightning_encoding = "0.5.0"
 bitcoin = "0.27"
