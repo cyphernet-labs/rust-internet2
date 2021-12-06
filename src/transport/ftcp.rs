@@ -14,12 +14,13 @@
 //! Framed TCP protocol: reads & writes frames (corresponding to LNP messages)
 //! from TCP stream
 
-use amplify::Bipolar;
-use inet2_addr::InetSocketAddr;
 use std::convert::TryFrom;
 use std::io::{Read, Write};
 use std::net::SocketAddr;
 use std::time::Duration;
+
+use amplify::Bipolar;
+use inet2_addr::InetSocketAddr;
 
 use super::{Duplex, Error, RecvFrame, SendFrame};
 
@@ -72,14 +73,10 @@ impl Connection {
 
 impl Duplex for Connection {
     #[inline]
-    fn as_receiver(&mut self) -> &mut dyn RecvFrame {
-        &mut self.stream
-    }
+    fn as_receiver(&mut self) -> &mut dyn RecvFrame { &mut self.stream }
 
     #[inline]
-    fn as_sender(&mut self) -> &mut dyn SendFrame {
-        &mut self.stream
-    }
+    fn as_sender(&mut self) -> &mut dyn SendFrame { &mut self.stream }
 
     #[inline]
     fn split(self) -> (Box<dyn RecvFrame + Send>, Box<dyn SendFrame + Send>) {

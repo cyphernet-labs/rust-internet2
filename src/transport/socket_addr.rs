@@ -18,11 +18,6 @@
 //! structures like [`NodeLocator`](NodeLocator) and
 //! [`NodeAddress`](NodeAddr)).
 
-#[cfg(feature = "url")]
-use inet2_addr::InetAddr;
-use inet2_addr::{InetSocketAddr, NoOnionSupportError};
-#[cfg(all(feature = "serde", feature = "zmq"))]
-use serde_with::{As, DisplayFromStr};
 use std::cmp::Ordering;
 #[cfg(feature = "url")]
 use std::convert::TryFrom;
@@ -30,6 +25,12 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
+
+#[cfg(feature = "url")]
+use inet2_addr::InetAddr;
+use inet2_addr::{InetSocketAddr, NoOnionSupportError};
+#[cfg(all(feature = "serde", feature = "zmq"))]
+use serde_with::{As, DisplayFromStr};
 #[cfg(feature = "url")]
 use url::{self, Url};
 
@@ -38,7 +39,15 @@ use super::zmqsocket;
 use crate::{AddrError, UrlString};
 
 #[derive(
-    Clone, Copy, PartialEq, Eq, Hash, Debug, Display, StrictEncode, StrictDecode,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Debug,
+    Display,
+    StrictEncode,
+    StrictDecode
 )]
 #[cfg_attr(
     feature = "serde",
@@ -115,7 +124,7 @@ impl FromStr for FramingProtocol {
     Debug,
     Display,
     StrictEncode,
-    StrictDecode,
+    StrictDecode
 )]
 pub enum LocalSocketAddr {
     /// Microservices connected using ZeroMQ protocol locally
@@ -139,7 +148,15 @@ pub enum LocalSocketAddr {
     serde(crate = "serde_crate")
 )]
 #[derive(
-    Clone, Copy, PartialEq, Eq, Hash, Debug, Display, StrictEncode, StrictDecode,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Debug,
+    Display,
+    StrictEncode,
+    StrictDecode
 )]
 #[non_exhaustive]
 pub enum RemoteSocketAddr {
@@ -299,9 +316,7 @@ impl UrlString for LocalSocketAddr {
         }
     }
 
-    fn to_url_string(&self) -> String {
-        format!("{:#}", self)
-    }
+    fn to_url_string(&self) -> String { format!("{:#}", self) }
 }
 
 impl UrlString for RemoteSocketAddr {
@@ -317,9 +332,7 @@ impl UrlString for RemoteSocketAddr {
         }
     }
 
-    fn to_url_string(&self) -> String {
-        format!("{:#}", self)
-    }
+    fn to_url_string(&self) -> String { format!("{:#}", self) }
 }
 
 #[cfg(feature = "url")]

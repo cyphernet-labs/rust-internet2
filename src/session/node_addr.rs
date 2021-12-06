@@ -11,18 +11,18 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-#[cfg(feature = "serde")]
-use serde_with::{As, DisplayFromStr};
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::net::IpAddr;
 #[cfg(feature = "zmq")]
 use std::net::SocketAddr;
 use std::str::FromStr;
-#[cfg(feature = "url")]
-use url::Url;
 
 use inet2_addr::{InetAddr, InetSocketAddr};
+#[cfg(feature = "serde")]
+use serde_with::{As, DisplayFromStr};
+#[cfg(feature = "url")]
+use url::Url;
 
 use crate::transport::{LocalSocketAddr, RemoteSocketAddr};
 #[cfg(feature = "zmq")]
@@ -52,7 +52,7 @@ pub struct ZmqType;
     Debug,
     Display,
     StrictEncode,
-    StrictDecode,
+    StrictDecode
 )]
 #[display(inner)]
 pub enum NodeAddr {
@@ -97,9 +97,7 @@ impl UrlString for NodeAddr {
 
 #[cfg(feature = "url")]
 impl From<NodeAddr> for Url {
-    fn from(addr: NodeAddr) -> Self {
-        Url::from(&addr)
-    }
+    fn from(addr: NodeAddr) -> Self { Url::from(&addr) }
 }
 
 #[cfg(feature = "url")]
@@ -120,15 +118,11 @@ impl TryFrom<Url> for NodeAddr {
 }
 
 impl From<RemoteNodeAddr> for NodeAddr {
-    fn from(addr: RemoteNodeAddr) -> Self {
-        NodeAddr::Remote(addr)
-    }
+    fn from(addr: RemoteNodeAddr) -> Self { NodeAddr::Remote(addr) }
 }
 
 impl From<LocalSocketAddr> for NodeAddr {
-    fn from(addr: LocalSocketAddr) -> Self {
-        NodeAddr::Local(addr)
-    }
+    fn from(addr: LocalSocketAddr) -> Self { NodeAddr::Local(addr) }
 }
 
 #[cfg(feature = "zmq")]
@@ -169,7 +163,7 @@ impl TryFrom<NodeAddr> for ZmqSocketAddr {
     Hash,
     Debug,
     StrictEncode,
-    StrictDecode,
+    StrictDecode
 )]
 pub struct RemoteNodeAddr {
     /// Node public key, used both as an ID and encryption key for per-session
@@ -209,20 +203,14 @@ impl FromStr for RemoteNodeAddr {
 }
 
 impl UrlString for RemoteNodeAddr {
-    fn url_scheme(&self) -> &'static str {
-        self.remote_addr.url_scheme()
-    }
+    fn url_scheme(&self) -> &'static str { self.remote_addr.url_scheme() }
 
-    fn to_url_string(&self) -> String {
-        format!("{:#}", self)
-    }
+    fn to_url_string(&self) -> String { format!("{:#}", self) }
 }
 
 #[cfg(feature = "url")]
 impl From<RemoteNodeAddr> for Url {
-    fn from(addr: RemoteNodeAddr) -> Self {
-        Url::from(&addr)
-    }
+    fn from(addr: RemoteNodeAddr) -> Self { Url::from(&addr) }
 }
 
 #[cfg(feature = "url")]
@@ -243,9 +231,7 @@ impl TryFrom<Url> for RemoteNodeAddr {
 }
 
 impl From<RemoteNodeAddr> for RemoteSocketAddr {
-    fn from(addr: RemoteNodeAddr) -> RemoteSocketAddr {
-        addr.remote_addr
-    }
+    fn from(addr: RemoteNodeAddr) -> RemoteSocketAddr { addr.remote_addr }
 }
 
 /// Trait allowing generic function arguments for application-level
@@ -567,30 +553,22 @@ impl PartialNodeAddr {
     /// Returns [`InetAddr`] for the given locator, if any, or [`Option::None`]
     /// otherwise
     #[inline]
-    pub fn inet_addr(&self) -> Option<InetAddr> {
-        self.components().1
-    }
+    pub fn inet_addr(&self) -> Option<InetAddr> { self.components().1 }
 
     /// Returns port number for the given locator, if any, or [`Option::None`]
     /// otherwise
     #[inline]
-    pub fn port(&self) -> Option<u16> {
-        self.components().2
-    }
+    pub fn port(&self) -> Option<u16> { self.components().2 }
 
     /// Returns socket name if for the given locator, if any, or
     /// [`Option::None`] otherwise
     #[inline]
-    pub fn socket_name(&self) -> Option<String> {
-        self.components().3
-    }
+    pub fn socket_name(&self) -> Option<String> { self.components().3 }
 
     /// Returns [`zmqsocket::ApiType`] for the given locator, if any, or
     /// [`Option::None`] otherwise
     #[inline]
-    pub fn api_type(&self) -> Option<ZmqType> {
-        self.components().4
-    }
+    pub fn api_type(&self) -> Option<ZmqType> { self.components().4 }
 }
 
 impl Display for PartialNodeAddr {
@@ -737,9 +715,7 @@ impl UrlString for PartialNodeAddr {
 
 #[cfg(feature = "url")]
 impl From<PartialNodeAddr> for Url {
-    fn from(addr: PartialNodeAddr) -> Self {
-        Url::from(&addr)
-    }
+    fn from(addr: PartialNodeAddr) -> Self { Url::from(&addr) }
 }
 
 #[cfg(feature = "url")]
@@ -855,7 +831,8 @@ impl From<PartialNodeAddr> for NodeAddr {
             .map(|addr| NodeAddr::Remote(addr))
             .unwrap_or_else(|_| {
                 NodeAddr::Local(LocalSocketAddr::try_from(locator).expect(
-                    "PartialNodeAddr must convert to either NodeAddr or LocalAddr",
+                    "PartialNodeAddr must convert to either NodeAddr or \
+                     LocalAddr",
                 ))
             })
     }
@@ -927,7 +904,10 @@ impl TryFrom<PartialNodeAddr> for RemoteNodeAddr {
                     ),
                 })
             }
-            _ => Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr")),
+            _ => Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr",
+            )),
         }
     }
 }
@@ -974,25 +954,25 @@ impl TryFrom<PartialNodeAddr> for ZmqSocketAddr {
 
     fn try_from(socket_addr: PartialNodeAddr) -> Result<Self, Self::Error> {
         Ok(match socket_addr {
-            PartialNodeAddr::ZmqIpc(path, _) => {
-                ZmqSocketAddr::Ipc(path)
-            }
-            PartialNodeAddr::ZmqTcpUnencrypted(_, ip, Some(port)) |
-            PartialNodeAddr::ZmqTcpEncrypted(_, _, ip, Some(port)) => {
+            PartialNodeAddr::ZmqIpc(path, _) => ZmqSocketAddr::Ipc(path),
+            PartialNodeAddr::ZmqTcpUnencrypted(_, ip, Some(port))
+            | PartialNodeAddr::ZmqTcpEncrypted(_, _, ip, Some(port)) => {
                 ZmqSocketAddr::Tcp(SocketAddr::new(ip, port))
             }
             _ => Err(AddrError::Unsupported(
-                "Provided partial address can't be converted into a valid ZMQ socket"
-            ))?
+                "Provided partial address can't be converted into a valid ZMQ \
+                 socket",
+            ))?,
         })
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use amplify::hex::FromHex;
     use strict_encoding_test::test_encoding_roundtrip;
+
+    use super::*;
 
     #[test]
     fn test_node_addr() {
@@ -1128,11 +1108,17 @@ mod test {
 
         assert_eq!(
             RemoteNodeAddr::try_from(locator1.clone()),
-            Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr"))
+            Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr"
+            ))
         );
         assert_eq!(
             RemoteNodeAddr::try_from(locator_with_port.clone()),
-            Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr"))
+            Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr"
+            ))
         );
 
         assert_eq!(
@@ -1190,11 +1176,17 @@ mod test {
 
         assert_eq!(
             RemoteNodeAddr::try_from(locator1.clone()),
-            Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr"))
+            Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr"
+            ))
         );
         assert_eq!(
             RemoteNodeAddr::try_from(locator_with_port.clone()),
-            Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr"))
+            Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr"
+            ))
         );
 
         assert_eq!(
@@ -1346,11 +1338,17 @@ mod test {
 
         assert_eq!(
             RemoteNodeAddr::try_from(locator1.clone()),
-            Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr"))
+            Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr"
+            ))
         );
         assert_eq!(
             RemoteNodeAddr::try_from(locator_with_port.clone()),
-            Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr"))
+            Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr"
+            ))
         );
 
         assert_eq!(locator1.to_url_string(), "lnpz://127.0.0.1/?api=p2p");
@@ -1397,11 +1395,17 @@ mod test {
 
         assert_eq!(
             RemoteNodeAddr::try_from(locator1.clone()),
-            Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr"))
+            Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr"
+            ))
         );
         assert_eq!(
             RemoteNodeAddr::try_from(locator_with_port.clone()),
-            Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr"))
+            Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr"
+            ))
         );
 
         assert_eq!(locator1.to_url_string(), "lnpz:?api=p2p#socket1");
@@ -1442,11 +1446,17 @@ mod test {
 
         assert_eq!(
             RemoteNodeAddr::try_from(locator1.clone()),
-            Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr"))
+            Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr"
+            ))
         );
         assert_eq!(
             RemoteNodeAddr::try_from(locator_with_port.clone()),
-            Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr"))
+            Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr"
+            ))
         );
 
         assert_eq!(locator1.to_url_string(), "lnpz:./socket1?api=p2p");
@@ -1488,11 +1498,17 @@ mod test {
 
         assert_eq!(
             RemoteNodeAddr::try_from(locator1.clone()),
-            Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr"))
+            Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr"
+            ))
         );
         assert_eq!(
             RemoteNodeAddr::try_from(locator_with_port.clone()),
-            Err(AddrError::Unsupported("Given PartialNodeAddr type can't be converted into RemoteNodeAddr"))
+            Err(AddrError::Unsupported(
+                "Given PartialNodeAddr type can't be converted into \
+                 RemoteNodeAddr"
+            ))
         );
 
         assert_eq!(

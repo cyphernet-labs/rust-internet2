@@ -38,7 +38,7 @@ macro_rules! concat_then_sha256 {
 }
 
 #[derive(
-    Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Display, Error, From,
+    Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Display, Error, From
 )]
 #[display(Debug)]
 pub enum HandshakeError {
@@ -684,11 +684,11 @@ fn ecdh(private_key: &SecretKey, public_key: &PublicKey) -> SymmetricKey {
 // Reference RFC test vectors for hard-coded values
 // https://github.com/lightningnetwork/lightning-rfc/blob/master/08-transport.md#appendix-a-transport-test-vectors
 mod test {
-    use super::HandshakeState::*;
-    use super::*;
-
     use bitcoin_hashes::hex::{FromHex, ToHex};
     use secp256k1::{PublicKey, SecretKey};
+
+    use super::HandshakeState::*;
+    use super::*;
 
     struct TestCtx {
         initiator: HandshakeState,

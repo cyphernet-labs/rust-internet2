@@ -11,8 +11,9 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use proc_macro2::{Span, TokenStream as TokenStream2};
 use std::convert::TryFrom;
+
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use syn::spanned::Spanned;
 use syn::{
     Data, DataEnum, DeriveInput, Error, Fields, Ident, Lit, Path, Result,
@@ -128,8 +129,9 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 if fields.len() > 1 {
                     err!(
                         v,
-                        "each API message enum variant must contain not more than a single argument"     
-                   );
+                        "each API message enum variant must contain not more \
+                         than a single argument"
+                    );
                 }
                 if let Some(f) = fields.first() {
                     let payload = &f.ty;
@@ -344,7 +346,8 @@ impl TryFrom<Lit> for EncodingSrategy {
     fn try_from(value: Lit) -> Result<Self> {
         let err = Error::new(
             value.span(),
-            "Wrong encoding strategy for API; allowed strategies: strict, bitcoin, lightning",
+            "Wrong encoding strategy for API; allowed strategies: strict, \
+             bitcoin, lightning",
         );
         Ok(match value {
             Lit::Str(s) => match s.value().to_lowercase().as_ref() {

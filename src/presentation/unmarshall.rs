@@ -11,7 +11,6 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use amplify::Wrapper;
 use std::any::Any;
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
@@ -19,6 +18,7 @@ use std::io::{self, Read};
 use std::marker::PhantomData;
 use std::sync::Arc;
 
+use amplify::Wrapper;
 use lightning_encoding::LightningDecode;
 use strict_encoding::{self, StrictDecode};
 
@@ -70,10 +70,10 @@ where
             None => {
                 let mut payload = Vec::new();
                 reader.read_to_end(&mut payload)?;
-                Ok(Arc::new(T::try_from_type(
+                Ok(Arc::new(T::try_from_type(type_id, &Payload {
                     type_id,
-                    &Payload { type_id, payload },
-                )?))
+                    payload,
+                })?))
             }
             Some(parser) => parser(&mut reader).and_then(|data| {
                 Ok(Arc::new(T::try_from_type(type_id, &*data)?))

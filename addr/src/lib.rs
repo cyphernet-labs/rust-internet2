@@ -1,6 +1,6 @@
-// Internet2 addresses with support for Tor v2, v3
+// Internet2 addresses with support for Tor vv3
 //
-// Written in 2019-2020 by
+// Written in 2019-2021 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
 //     Martin Habovstiak <martin.habovstiak@gmail.com>
 //
@@ -51,20 +51,21 @@ use std::net::{
 };
 use std::num::ParseIntError;
 use std::str::FromStr;
+
 #[cfg(feature = "tor")]
 use torut::onion::{OnionAddressV3, TorPublicKeyV3};
 
 /// Address type do not support ONION address format and can be used only with
 /// IPv4 or IPv6 addresses
 #[derive(
-    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error,
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error
 )]
 #[display(doc_comments)]
 pub struct NoOnionSupportError;
 
 /// Errors during address string parse process
 #[derive(
-    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error, From,
+    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error, From
 )]
 #[display(doc_comments)]
 pub enum AddrParseError {
@@ -199,25 +200,19 @@ impl InetAddr {
     /// enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn is_tor(&self) -> bool {
-        false
-    }
+    pub fn is_tor(&self) -> bool { false }
 
     /// Always returns [`Option::None`] (the library is built without `tor`
     /// feature; use it to enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn to_onion_v2(&self) -> Option<()> {
-        None
-    }
+    pub fn to_onion_v2(&self) -> Option<()> { None }
 
     /// Always returns [`Option::None`] (the library is built without `tor`
     /// feature; use it to enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn to_onion(&self) -> Option<()> {
-        None
-    }
+    pub fn to_onion(&self) -> Option<()> { None }
 
     /// Determines whether provided address is a Tor address
     #[cfg(feature = "tor")]
@@ -242,9 +237,7 @@ impl InetAddr {
 
 impl Default for InetAddr {
     #[inline]
-    fn default() -> Self {
-        InetAddr::IPv4(Ipv4Addr::from(0))
-    }
+    fn default() -> Self { InetAddr::IPv4(Ipv4Addr::from(0)) }
 }
 
 impl fmt::Display for InetAddr {
@@ -295,24 +288,18 @@ impl From<IpAddr> for InetAddr {
 
 impl From<Ipv4Addr> for InetAddr {
     #[inline]
-    fn from(addr: Ipv4Addr) -> Self {
-        InetAddr::IPv4(addr)
-    }
+    fn from(addr: Ipv4Addr) -> Self { InetAddr::IPv4(addr) }
 }
 
 impl From<Ipv6Addr> for InetAddr {
     #[inline]
-    fn from(addr: Ipv6Addr) -> Self {
-        InetAddr::IPv6(addr)
-    }
+    fn from(addr: Ipv6Addr) -> Self { InetAddr::IPv6(addr) }
 }
 
 #[cfg(feature = "tor")]
 impl From<TorPublicKeyV3> for InetAddr {
     #[inline]
-    fn from(value: TorPublicKeyV3) -> Self {
-        InetAddr::Tor(value)
-    }
+    fn from(value: TorPublicKeyV3) -> Self { InetAddr::Tor(value) }
 }
 
 #[cfg(feature = "tor")]
@@ -367,23 +354,17 @@ impl parse_arg::ParseArgFromStr for InetAddr {
 
 impl From<[u8; 4]> for InetAddr {
     #[inline]
-    fn from(value: [u8; 4]) -> Self {
-        InetAddr::from(Ipv4Addr::from(value))
-    }
+    fn from(value: [u8; 4]) -> Self { InetAddr::from(Ipv4Addr::from(value)) }
 }
 
 impl From<[u8; 16]> for InetAddr {
     #[inline]
-    fn from(value: [u8; 16]) -> Self {
-        InetAddr::from(Ipv6Addr::from(value))
-    }
+    fn from(value: [u8; 16]) -> Self { InetAddr::from(Ipv6Addr::from(value)) }
 }
 
 impl From<[u16; 8]> for InetAddr {
     #[inline]
-    fn from(value: [u16; 8]) -> Self {
-        InetAddr::from(Ipv6Addr::from(value))
-    }
+    fn from(value: [u16; 8]) -> Self { InetAddr::from(Ipv6Addr::from(value)) }
 }
 
 /// Transport protocols that may be part of [`InetSocketAddrExt`]
@@ -425,9 +406,7 @@ pub enum Transport {
 
 impl Default for Transport {
     #[inline]
-    fn default() -> Self {
-        Transport::Tcp
-    }
+    fn default() -> Self { Transport::Tcp }
 }
 
 impl FromStr for Transport {
@@ -479,15 +458,11 @@ impl InetSocketAddr {
     /// Constructs new socket address from an internet address and a port
     /// information
     #[inline]
-    pub fn new(address: InetAddr, port: u16) -> Self {
-        Self { address, port }
-    }
+    pub fn new(address: InetAddr, port: u16) -> Self { Self { address, port } }
 
     /// Determines whether provided address is a Tor address
     #[inline]
-    pub fn is_tor(&self) -> bool {
-        self.address.is_tor()
-    }
+    pub fn is_tor(&self) -> bool { self.address.is_tor() }
 }
 
 impl fmt::Display for InetSocketAddr {

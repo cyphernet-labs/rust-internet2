@@ -26,11 +26,11 @@ pub mod websocket;
 #[cfg(feature = "zmq")]
 pub mod zmqsocket;
 
+use std::io::ErrorKind;
+
 pub use socket_addr::{FramingProtocol, LocalSocketAddr, RemoteSocketAddr};
 #[cfg(feature = "zmq")]
 pub use zmqsocket::{ZmqSocketAddr, ZmqType, ZMQ_CONTEXT};
-
-use std::io::ErrorKind;
 
 use crate::session::HandshakeError;
 

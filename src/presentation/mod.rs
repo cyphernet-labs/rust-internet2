@@ -16,14 +16,14 @@ pub mod message;
 pub mod tlv;
 mod unmarshall;
 
+use std::ops::Rem;
+
+use amplify::Wrapper;
 pub use error::{Error, UnknownTypeError};
 pub use message::{Payload, TypeId, TypedEnum};
 pub use unmarshall::{
     CreateUnmarshaller, Unmarshall, UnmarshallFn, Unmarshaller,
 };
-
-use amplify::Wrapper;
-use std::ops::Rem;
 
 pub trait EvenOdd
 where
@@ -32,14 +32,10 @@ where
     <Self::Inner as Rem>::Output: Eq + From<u8>,
 {
     #[inline]
-    fn is_odd(&self) -> bool {
-        !self.is_even()
-    }
+    fn is_odd(&self) -> bool { !self.is_even() }
 
     #[inline]
-    fn is_even(&self) -> bool {
-        self.to_inner() % 2.into() == 0.into()
-    }
+    fn is_even(&self) -> bool { self.to_inner() % 2.into() == 0.into() }
 }
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display)]

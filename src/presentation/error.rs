@@ -101,7 +101,7 @@ impl From<Error> for u8 {
 
 /// Error representing unknown LNP message type
 #[derive(
-    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error,
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error
 )]
 #[display(Debug)]
 pub struct UnknownTypeError;

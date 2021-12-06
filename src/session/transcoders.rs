@@ -11,8 +11,9 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use amplify::Bipolar;
 use std::borrow::Borrow;
+
+use amplify::Bipolar;
 
 use crate::transport::{
     Error, FRAME_PREFIX_SIZE, FRAME_SUFFIX_SIZE, MAX_FRAME_SIZE,
@@ -37,7 +38,7 @@ pub trait Transcode: Bipolar + Encrypt + Decrypt {
 }
 
 #[derive(
-    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error,
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error
 )]
 #[display(Debug)]
 pub struct DecryptionError;
@@ -98,9 +99,7 @@ impl Bipolar for PlainTranscoder {
         encryptor as PlainTranscoder
     }
 
-    fn split(self) -> (Self::Left, Self::Right) {
-        (self.clone(), self)
-    }
+    fn split(self) -> (Self::Left, Self::Right) { (self.clone(), self) }
 }
 
 #[cfg(test)]
@@ -118,14 +117,11 @@ mod test {
 
         let data = b"Some message";
         let frame = encoder.encrypt(*data);
-        assert_eq!(
-            frame,
-            vec![
-                0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 83, 111,
-                109, 101, 32, 109, 101, 115, 115, 97, 103, 101, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-            ]
-        );
+        assert_eq!(frame, vec![
+            0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 83, 111,
+            109, 101, 32, 109, 101, 115, 115, 97, 103, 101, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ]);
         let decrypted = decoder.decrypt(frame.as_ref()).unwrap();
         assert_eq!(decrypted, data);
 

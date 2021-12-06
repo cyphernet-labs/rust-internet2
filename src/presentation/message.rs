@@ -11,12 +11,12 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use amplify::AsAny;
 use std::any::Any;
 use std::convert::TryInto;
 use std::io;
 use std::sync::Arc;
 
+use amplify::AsAny;
 use lightning_encoding::{self, LightningDecode, LightningEncode};
 use strict_encoding::{self, StrictEncode};
 
@@ -24,18 +24,8 @@ use super::{tlv, EvenOdd, UnknownTypeError};
 
 /// Message type field value
 #[derive(
-    Wrapper,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Default,
-    Display,
-    Debug,
-    From,
+    Wrapper, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default,
+    Display, Debug, From
 )]
 #[display(inner)]
 #[wrapper(LowerHex, UpperHex, Octal, FromStr)]
@@ -102,17 +92,13 @@ pub struct Payload {
 }
 
 impl Extract for Payload {
-    fn get_type(&self) -> TypeId {
-        self.type_id
-    }
+    fn get_type(&self) -> TypeId { self.type_id }
 
     fn get_payload(&self) -> Source {
         Source(vec![Arc::new(self.payload.clone())])
     }
 
-    fn get_tlvs(&self) -> tlv::Stream {
-        tlv::Stream::new()
-    }
+    fn get_tlvs(&self) -> tlv::Stream { tlv::Stream::new() }
 }
 
 impl StrictEncode for Payload {

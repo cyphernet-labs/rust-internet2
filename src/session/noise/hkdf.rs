@@ -65,8 +65,9 @@ pub(super) fn derive(salt: &[u8], ikm: &[u8]) -> ([u8; 32], [u8; 32]) {
 // Appendix A.  Test Vectors
 #[cfg(test)]
 mod test {
-    use super::derive;
     use amplify::hex::FromHex;
+
+    use super::derive;
 
     // Test with SHA-256 and zero-length salt/info
     // Our implementation uses a zero-length info field and returns the first 64

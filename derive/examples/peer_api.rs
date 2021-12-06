@@ -22,8 +22,9 @@ pub enum Message {
 }
 
 fn main() {
-    use internet2::{TypeId, TypedEnum};
     use std::convert::TryFrom;
+
+    use internet2::{TypeId, TypedEnum};
 
     let _ = Message::Empty().get_type();
     Message::try_from_type(

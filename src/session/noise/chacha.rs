@@ -78,9 +78,10 @@ pub fn decrypt(
 
 #[cfg(test)]
 mod test {
-    use crate::chacha20poly1305::aead::AeadInPlace;
     use chacha20poly1305::aead::{Aead, NewAead};
-    use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce}; /* Or `XChaCha20Poly1305` */
+    use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
+
+    use crate::chacha20poly1305::aead::AeadInPlace; /* Or `XChaCha20Poly1305` */
 
     #[test]
     fn test1() {

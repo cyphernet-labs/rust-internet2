@@ -11,9 +11,10 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+use std::borrow::Borrow;
+
 use amplify::Bipolar;
 use chacha20poly1305::aead::Error;
-use std::borrow::Borrow;
 
 use super::handshake::HandshakeError;
 use super::{chacha, hkdf};
@@ -281,9 +282,7 @@ impl NoiseTranscoder {
         Ok(self.encryptor.encrypt_buf(buffer)?)
     }
 
-    pub fn read_buf(&mut self, data: &[u8]) {
-        self.decryptor.read_buf(data)
-    }
+    pub fn read_buf(&mut self, data: &[u8]) { self.decryptor.read_buf(data) }
 
     /// Decrypt a single message. If data containing more than one message has
     /// been received, only the first message will be returned, and the rest
@@ -362,9 +361,10 @@ impl Bipolar for NoiseTranscoder {
 
 #[cfg(test)]
 mod tests {
+    use bitcoin_hashes::hex::FromHex;
+
     use super::*;
     use crate::LNP_MSG_MAX_LEN;
-    use bitcoin_hashes::hex::FromHex;
 
     fn setup_peers() -> (NoiseTranscoder, NoiseTranscoder) {
         let chaining_key_vec = Vec::<u8>::from_hex(

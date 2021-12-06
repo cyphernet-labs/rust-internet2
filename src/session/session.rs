@@ -11,21 +11,22 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-#[cfg(feature = "keygen")]
-use crate::session::noise::HandshakeState;
-#[cfg(feature = "keygen")]
-use crate::NoiseTranscoder;
-use amplify::Bipolar;
-use inet2_addr::InetSocketAddr;
 use std::any::Any;
 
+use amplify::Bipolar;
+use inet2_addr::InetSocketAddr;
+
 use super::{Decrypt, Encrypt, Transcode};
+#[cfg(feature = "keygen")]
+use crate::session::noise::HandshakeState;
 use crate::session::PlainTranscoder;
 use crate::transport::{
     ftcp, Duplex, Error, RecvFrame, RoutedFrame, SendFrame,
 };
 #[cfg(feature = "zmq")]
 use crate::zmqsocket;
+#[cfg(feature = "keygen")]
+use crate::NoiseTranscoder;
 
 // Generics prevents us from using session as `&dyn` reference, so we have
 // to avoid `where Self: Input + Output` and generic parameters, unlike with
@@ -153,9 +154,7 @@ where
     }
 
     #[inline]
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
-        self
-    }
+    fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
 }
 
 impl<T, C> Split for Raw<T, C>
@@ -322,9 +321,7 @@ where
     T::Left: Decrypt + Send + 'static,
     T::Right: Encrypt + Send + 'static,
 {
-    pub fn as_socket(&self) -> &zmq::Socket {
-        &self.connection.as_socket()
-    }
+    pub fn as_socket(&self) -> &zmq::Socket { &self.connection.as_socket() }
 }
 
 impl<T, C> Input for RawInput<T, C>

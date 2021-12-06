@@ -46,7 +46,7 @@ macro_rules! attr_err {
 }
 
 macro_rules! err {
-    ( $span:expr, $msg:literal ) => {
+    ($span:expr, $msg:literal) => {
         Err(attr_err!($span, $msg))?
     };
 }
@@ -124,10 +124,11 @@ pub(crate) fn attr_named_value<'a>(
                     }
                     Meta::List(_) => {
                         return Err(attr_err!(
-                        ident,
-                        "must have form `name=\"value\"`, not `name(value)`",
-                        example
-                    ))
+                            ident,
+                            "must have form `name=\"value\"`, not \
+                             `name(value)`",
+                            example
+                        ))
                     }
                     Meta::NameValue(name_val) => return Ok(Some(name_val.lit)),
                 },
