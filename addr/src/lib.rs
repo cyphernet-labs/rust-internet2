@@ -223,12 +223,7 @@ impl InetAddr {
     /// Determines whether provided address is a Tor address
     #[cfg(feature = "tor")]
     #[inline]
-    pub fn is_tor(&self) -> bool {
-        match self {
-            InetAddr::Tor(_) => true,
-            _ => false,
-        }
-    }
+    pub fn is_tor(&self) -> bool { matches!(self, InetAddr::Tor(_)) }
 
     /// Returns Onion v3 address, if any, or [`Option::None`]
     #[cfg(feature = "tor")]
@@ -423,7 +418,9 @@ impl FromStr for Transport {
             "udp" => Transport::Udp,
             "mtcp" => Transport::Mtcp,
             "quic" => Transport::Quic,
-            _ => return Err(AddrParseError::UnknownProtocolError(s.to_owned())),
+            _ => {
+                return Err(AddrParseError::UnknownProtocolError(s.to_owned()))
+            }
         })
     }
 }

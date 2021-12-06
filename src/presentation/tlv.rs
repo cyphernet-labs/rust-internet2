@@ -108,6 +108,9 @@ impl Stream {
 
     #[inline]
     pub fn len(&self) -> usize { self.0.len() }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool { self.0.is_empty() }
 }
 
 impl lightning_encoding::LightningEncode for Stream {
@@ -145,7 +148,8 @@ impl lightning_encoding::LightningDecode for Stream {
                     return Err(TlvError::Order {
                         read: ty.into_inner() as usize,
                         max: max.into_inner() as usize,
-                    }.into());
+                    }
+                    .into());
                 }
             }
             set.insert(ty, RawValue::lightning_decode(&mut d)?);
@@ -273,4 +277,8 @@ impl Unmarshaller {
         let rec = RawValue(Box::from(buf));
         Ok(Arc::new(rec))
     }
+}
+
+impl Default for Unmarshaller {
+    fn default() -> Self { Unmarshaller::new() }
 }

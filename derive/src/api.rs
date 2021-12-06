@@ -21,8 +21,8 @@ use syn::{
 
 use crate::util::{attr_list, get_encoding_crate, nested_one_named_value};
 
-const NAME: &'static str = "api";
-const EXAMPLE: &'static str = "#[api(encoding=\"strict|bitcoin|lightning\")]";
+const NAME: &str = "api";
+const EXAMPLE: &str = "#[api(encoding=\"strict|bitcoin|lightning\")]";
 
 pub(crate) fn inner(input: DeriveInput) -> Result<TokenStream2> {
     match input.data {
@@ -43,10 +43,10 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     let ident_name = &input.ident;
 
     let global_params = attr_list(&input.attrs, NAME, EXAMPLE)?
-        .ok_or(attr_err!(input, "encoding type must be specified"))?;
+        .ok_or_else(|| attr_err!(input, "encoding type must be specified"))?;
     let global_encoding = EncodingSrategy::try_from(
         nested_one_named_value(&global_params, "encoding", EXAMPLE)?
-            .ok_or(attr_err!(input, "encoding must be specified"))?
+            .ok_or_else(|| attr_err!(input, "encoding must be specified"))?
             .lit,
     )?;
     let import = get_encoding_crate(
@@ -74,22 +74,24 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
     let mut get_type = vec![];
     let mut get_payload = vec![];
     for v in &data.variants {
-        let meta = attr_list(&v.attrs, "api", example)?.ok_or(Error::new(
-            v.span(),
-            format!(
-                "Attribute macro canonical form `{}` violation: {}",
-                example,
-                "`api` attribute is required for each message enum case",
-            ),
-        ))?;
+        let meta = attr_list(&v.attrs, "api", example)?.ok_or_else(|| {
+            Error::new(
+                v.span(),
+                format!(
+                    "Attribute macro canonical form `{}` violation: {}",
+                    example,
+                    "`api` attribute is required for each message enum case",
+                ),
+            )
+        })?;
 
         let type_lit: Lit = nested_one_named_value(&meta, "type", EXAMPLE)?
-            .ok_or(attr_err!(v, "type must be specified"))?
+            .ok_or_else(|| attr_err!(v, "type must be specified"))?
             .lit;
         let type_id: u16 = match type_lit {
             Lit::Int(i) => i
                 .base10_parse()
-                .or_else(|_| Err(attr_err!(i, "`type` must be an integer")))?,
+                .map_err(|_| attr_err!(i, "`type` must be an integer"))?,
             _ => err!(type_lit, "`type` must be an integer"),
         };
         let type_name = &v.ident;
@@ -354,9 +356,9 @@ impl TryFrom<Lit> for EncodingSrategy {
                 "strict" => EncodingSrategy::Strict,
                 "bitcoin" => EncodingSrategy::Bitcoin,
                 "lightning" => EncodingSrategy::Lightning,
-                _ => Err(err)?,
+                _ => return Err(err),
             },
-            _ => Err(err)?,
+            _ => return Err(err),
         })
     }
 }

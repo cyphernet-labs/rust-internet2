@@ -23,10 +23,8 @@
     //missing_docs
 )]
 #![allow(unused_variables, dead_code)]
-// TODO: when we will be ready for the release #![deny(missing_docs, dead_code)]
-// This is required because of incomplete rust async implementation and can be
-// removed after async trait feature completion in rust compiler
-#![cfg_attr(feature = "async", allow(where_clauses_object_safety))]
+#![allow(clippy::needless_borrow)] // Caused by a bug in amplify_derive::Display
+                                   // TODO: when we will be ready for the release #![deny(missing_docs, dead_code)]
 
 #[macro_use]
 extern crate amplify;

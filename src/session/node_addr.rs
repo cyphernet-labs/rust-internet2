@@ -491,6 +491,7 @@ impl PartialNodeAddr {
     /// 3) port
     /// 4) file path or POSIX socket name
     /// 5) [`zmqsocket::ApiType`] parameter for ZMQ based locators
+    #[allow(clippy::type_complexity)]
     pub fn components(
         &self,
     ) -> (
@@ -608,7 +609,8 @@ impl FromStr for PartialNodeAddr {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut s = s.to_string();
         if !vec!["lnp:", "lnpu:", "lnpz:", "lnpws:", "lnpt:", "lnph:"]
-            .into_iter().any(|p| s.starts_with(p))
+            .into_iter()
+            .any(|p| s.starts_with(p))
         {
             s = format!("lnp://{}", s);
         }
@@ -792,7 +794,7 @@ impl TryFrom<Url> for PartialNodeAddr {
                     }
                     (Err(_), _) => {
                         if url.path().is_empty() {
-                            return Err(AddrError::ZmqContextRequired)
+                            return Err(AddrError::ZmqContextRequired);
                         }
                         PartialNodeAddr::ZmqIpc(
                             url.path().to_string(),
@@ -804,11 +806,11 @@ impl TryFrom<Url> for PartialNodeAddr {
             "lnpt" => {
                 // In this URL scheme we must not use IP address
                 if pubkey.is_ok() {
-                    return Err(AddrError::UnexpectedHost)
+                    return Err(AddrError::UnexpectedHost);
                 }
                 // In this URL scheme we must not use IP address
                 if port.is_some() {
-                    return Err(AddrError::UnexpectedPort)
+                    return Err(AddrError::UnexpectedPort);
                 }
                 if let Some(host) = host {
                     Ok(PartialNodeAddr::Text(secp256k1::PublicKey::from_str(
@@ -957,10 +959,12 @@ impl TryFrom<PartialNodeAddr> for ZmqSocketAddr {
             | PartialNodeAddr::ZmqTcpEncrypted(_, _, ip, Some(port)) => {
                 ZmqSocketAddr::Tcp(SocketAddr::new(ip, port))
             }
-            _ => return Err(AddrError::Unsupported(
-                "Provided partial address can't be converted into a valid ZMQ \
-                 socket",
-            )),
+            _ => {
+                return Err(AddrError::Unsupported(
+                    "Provided partial address can't be converted into a valid \
+                     ZMQ socket",
+                ))
+            }
         })
     }
 }
