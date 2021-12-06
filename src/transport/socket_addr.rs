@@ -15,8 +15,7 @@
 //! encryption/decryption of the actual data are taking place. These addresses
 //! is mostly used internally and does not include information about node
 //! public key (for that purpose you need to use session-level address
-//! structures like [`NodeLocator`](NodeLocator) and
-//! [`NodeAddress`](NodeAddr)).
+//! structures like [`crate::NodeAddr`]).
 
 use std::cmp::Ordering;
 #[cfg(feature = "url")]
@@ -161,12 +160,12 @@ pub enum LocalSocketAddr {
 #[non_exhaustive]
 pub enum RemoteSocketAddr {
     /// Framed TCP socket connection, that may be served either over plain IP,
-    /// IPSec or Tor v2 and v3
+    /// IPSec or Tor v3
     #[display("{0}", alt = "lnp://{0}")]
     Ftcp(InetSocketAddr),
 
     /// Microservices connected using ZeroMQ protocol remotely. Can be used
-    /// only with TCP-based ZMQ; for other types use [`LocalAddr::Zmq`]
+    /// only with TCP-based ZMQ
     #[cfg(feature = "zmq")]
     #[display("{0}", alt = "lnpz://{0}")]
     Zmq(SocketAddr),
@@ -343,11 +342,11 @@ impl TryFrom<Url> for LocalSocketAddr {
         Ok(match url.scheme() {
             "lnp" => {
                 if url.host().is_some() {
-                    return Err(AddrError::UnexpectedHost)
+                    return Err(AddrError::UnexpectedHost);
                 } else if url.has_authority() {
-                    return Err(AddrError::UnexpectedAuthority)
+                    return Err(AddrError::UnexpectedAuthority);
                 } else if url.port().is_some() {
-                    return Err(AddrError::UnexpectedPort)
+                    return Err(AddrError::UnexpectedPort);
                 }
                 LocalSocketAddr::Posix(url.path().to_owned())
             }

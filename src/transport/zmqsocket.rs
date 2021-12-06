@@ -93,13 +93,13 @@ pub enum ZmqType {
     RouterConnect = 7,
 }
 
-/// Unknown [`ApiType`] string
+/// Unknown [`ZmqType`] string
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Display, Error)]
 #[display(Debug)]
 pub struct UnknownApiType;
 
 impl ZmqType {
-    /// Returns [`zmq::SocketType`] corresponding to the given [`ApiType`]
+    /// Returns [`zmq::SocketType`] corresponding to the given [`ZmqType`]
     pub fn socket_type(&self) -> zmq::SocketType {
         match self {
             ZmqType::Pull => zmq::PULL,
@@ -505,11 +505,11 @@ impl RecvFrame for WrappedSocket {
         if multipart.count() > 0 {
             return Err(transport::Error::FrameBroken(
                 "excessive parts in ZMQ multipart routed frame",
-            ))
+            ));
         }
         let len = msg.len();
         if len > super::MAX_FRAME_SIZE as usize {
-            return Err(transport::Error::OversizedFrame(len))
+            return Err(transport::Error::OversizedFrame(len));
         }
         Ok(RoutedFrame { hop, src, dst, msg })
     }

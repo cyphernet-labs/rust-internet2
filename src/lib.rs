@@ -89,7 +89,7 @@ pub trait UrlString {
     fn url_scheme(&self) -> &'static str;
 
     /// Returns URL string representation for a given node or socket address. If
-    /// you need full URL address, please use [`Url::from()`] instead (this
+    /// you need full URL address, please use `Url::from()` instead (this
     /// will require `url` feature for LNP/BP Core Library).
     fn to_url_string(&self) -> String;
 }
@@ -97,8 +97,9 @@ pub trait UrlString {
 pub use inet2_addr::NoOnionSupportError;
 
 /// Error extracting transport-level address types ([`FramingProtocol`],
-/// [`LocalAddr`], [`RemoteAddr`]) and session-level node types ([`NodeAddr`],
-/// [`RemoteNodeAddr`]) from string, URLs and other data types
+/// [`LocalSocketAddr`], [`RemoteSocketAddr`]) and session-level node types
+/// ([`NodeAddr`], [`LocalNode`], [`RemoteNodeAddr`]) from string, URLs and
+/// other data types
 #[derive(Clone, PartialEq, Eq, Debug, Display, Error, From)]
 #[display(doc_comments)]
 pub enum AddrError {

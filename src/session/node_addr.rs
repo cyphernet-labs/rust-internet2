@@ -146,7 +146,7 @@ impl TryFrom<NodeAddr> for ZmqSocketAddr {
 /// connection point specification.
 ///
 /// Node address must be given as in form of
-/// `<node_id>@<node_inet_addr>[:<port>]`, where <node_inet_addr> may be
+/// `<node_id>@<node_inet_addr>\[:<port>\]`, where <node_inet_addr> may be
 /// IPv4, IPv6, Onion v2 or v3 address
 #[cfg_attr(
     feature = "serde",
@@ -312,8 +312,7 @@ pub trait ToRemoteNodeAddr {
     /// * `None`, if the underlying type variant can't be represented as a
     ///   complete node address (for instance, for unencrypted local socket)
     ///   Corresponds to situations when `TryInto<`[`RemoteNodeAddr`]`>` returns
-    ///   [`ConversionError::UnsupportedType`] or when string conversion fails
-    ///   with [`AddrError`].
+    ///   [`AddrError`] or when string conversion fails with [`AddrError`].
     /// * `Some(`[`RemoteNodeAddr`]`)` otherwise
     fn to_remote_node_addr(&self, default_port: u16) -> Option<RemoteNodeAddr>;
 }
@@ -422,7 +421,7 @@ pub enum PartialNodeAddr {
     /// connection MUST be used
     ///
     /// # URL Scheme
-    /// lnpz://<node-id>@<ip>[:<port>]/?api=<p2p|rpc|sub>
+    /// lnpz://<node-id>@<ip>\[:<port>\]/?api=<p2p|rpc|sub>
     #[cfg(feature = "zmq")]
     ZmqTcpEncrypted(secp256k1::PublicKey, ZmqType, IpAddr, Option<u16>),
 
@@ -431,16 +430,16 @@ pub enum PartialNodeAddr {
     /// connection MUST be used
     ///
     /// # URL Schema
-    /// lnpz://<ip>[:<port>]/?api=<p2p|rpc|sub>
+    /// lnpz://<ip>\[:<port>\]/?api=<p2p|rpc|sub>
     #[cfg(feature = "zmq")]
     ZmqTcpUnencrypted(ZmqType, IpAddr, Option<u16>),
 
     /// # URL Scheme
-    /// lnph://<node-id>@<ip>|<onion>[:<port>]
+    /// lnph://<node-id>@<ip>|<onion>\[:<port>\]
     Http(secp256k1::PublicKey, InetAddr, Option<u16>),
 
     /// # URL Scheme
-    /// lnpws://<node-id>@<ip>|<onion>[:<port>]
+    /// lnpws://<node-id>@<ip>|<onion>\[:<port>\]
     #[cfg(feature = "websockets")]
     Websocket(secp256k1::PublicKey, InetAddr, Option<u16>),
 
@@ -490,7 +489,7 @@ impl PartialNodeAddr {
     /// 2) [`InetAddr`] of the node,
     /// 3) port
     /// 4) file path or POSIX socket name
-    /// 5) [`zmqsocket::ApiType`] parameter for ZMQ based locators
+    /// 5) [`ZmqType`] parameter for ZMQ based locators
     #[allow(clippy::type_complexity)]
     pub fn components(
         &self,
@@ -566,8 +565,8 @@ impl PartialNodeAddr {
     #[inline]
     pub fn socket_name(&self) -> Option<String> { self.components().3 }
 
-    /// Returns [`zmqsocket::ApiType`] for the given locator, if any, or
-    /// [`Option::None`] otherwise
+    /// Returns [`ZmqType`] for the given locator, if any, or [`Option::None`]
+    /// otherwise
     #[inline]
     pub fn api_type(&self) -> Option<ZmqType> { self.components().4 }
 }

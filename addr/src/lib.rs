@@ -77,11 +77,11 @@ pub enum AddrParseError {
     WrongAddrFormat(String),
 
     /// Wrong format of socket address string "{_0}"; use
-    /// <inet_address>[:<port>]
+    /// <inet_address>\[:<port>\]
     WrongSocketFormat(String),
 
     /// Wrong format of extended socket address string "{_0}"; use
-    /// <transport>://<inet_address>[:<port>]
+    /// <transport>://<inet_address>\[:<port>\]
     WrongSocketExtFormat(String),
 
     /// Unknown transport protocol "{_0}"
