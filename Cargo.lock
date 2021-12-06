@@ -596,6 +596,7 @@ dependencies = [
  "serde",
  "serde_with",
  "strict_encoding",
+ "strict_encoding_test",
  "torut",
  "url",
  "zeromq-src 0.1.10+4.3.2 (git+https://github.com/LNP-BP/zeromq-src-rs?branch=fix/cmake)",
@@ -1186,6 +1187,16 @@ dependencies = [
  "encoding_derive_helpers",
  "proc-macro2",
  "syn",
+]
+
+[[package]]
+name = "strict_encoding_test"
+version = "1.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adbc8dacf48120f716eb205cff27ce662af4e4f53f72ca139b50eade05640de0"
+dependencies = [
+ "amplify",
+ "strict_encoding",
 ]
 
 [[package]]

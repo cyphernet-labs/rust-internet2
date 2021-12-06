@@ -17,14 +17,6 @@ use std::borrow::Borrow;
 use crate::transport::{
     Error, FRAME_PREFIX_SIZE, FRAME_SUFFIX_SIZE, MAX_FRAME_SIZE,
 };
-#[cfg(feature = "lightning")]
-use lightning::ln::peers::{
-    encryption::{Decryptor, Encryptor},
-    handshake::CompletedHandshakeInfo,
-};
-
-#[cfg(feature = "lightning")]
-pub struct Transcoder(CompletedHandshakeInfo);
 
 pub trait Encrypt {
     fn encrypt(&mut self, buffer: impl Borrow<[u8]>) -> Vec<u8>;
@@ -49,80 +41,6 @@ pub trait Transcode: Bipolar + Encrypt + Decrypt {
 )]
 #[display(Debug)]
 pub struct DecryptionError;
-
-#[cfg(feature = "lightning")]
-impl Encrypt for Encryptor {
-    fn encrypt(&mut self, buffer: impl Borrow<[u8]>) -> Vec<u8> {
-        self.encrypt_buf(buffer.borrow())
-    }
-}
-
-#[cfg(feature = "lightning")]
-impl Decrypt for Decryptor {
-    type Error = DecryptionError;
-
-    fn decrypt(
-        &mut self,
-        buffer: impl Borrow<[u8]>,
-    ) -> Result<Vec<u8>, Self::Error> {
-        match self.decrypt_next(buffer.borrow()) {
-            Ok((Some(data), _)) => Ok(data),
-            _ => Err(DecryptionError),
-        }
-    }
-}
-
-#[cfg(feature = "lightning")]
-impl Encrypt for Transcoder {
-    fn encrypt(&mut self, buffer: impl Borrow<[u8]>) -> Vec<u8> {
-        self.0.encryptor.encrypt_buf(buffer.borrow())
-    }
-}
-
-#[cfg(feature = "lightning")]
-impl Decrypt for Transcoder {
-    type Error = DecryptionError;
-
-    fn decrypt(
-        &mut self,
-        buffer: impl Borrow<[u8]>,
-    ) -> Result<Vec<u8>, Self::Error> {
-        match self.0.decryptor.decrypt_next(buffer.borrow()) {
-            Ok((Some(data), _)) => Ok(data),
-            _ => Err(DecryptionError),
-        }
-    }
-}
-
-#[cfg(feature = "lightning")]
-impl Transcode for Transcoder {
-    type Encryptor = Encryptor;
-    type Decryptor = Decryptor;
-}
-
-#[cfg(feature = "lightning")]
-impl Bipolar for Transcoder {
-    type Left = <Self as Transcode>::Encryptor;
-    type Right = <Self as Transcode>::Decryptor;
-
-    /// Creates conduit by joining encrypting and decrypting parts
-    fn join(encryptor: Self::Left, decryptor: Self::Right) -> Self {
-        // TODO: (new) figure out what to do with `their_node_id` field
-        Self(CompletedHandshakeInfo {
-            decryptor,
-            encryptor,
-            their_node_id: bitcoin::secp256k1::PublicKey::from_slice(
-                &[0u8; 33],
-            )
-            .unwrap(),
-        })
-    }
-
-    /// Splits conduit into an encrypting and decrypting parts
-    fn split(self) -> (Self::Left, Self::Right) {
-        (self.0.encryptor, self.0.decryptor)
-    }
-}
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Display)]
 #[display(Debug)]

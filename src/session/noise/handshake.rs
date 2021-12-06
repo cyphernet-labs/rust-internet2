@@ -37,7 +37,9 @@ macro_rules! concat_then_sha256 {
 	}}
 }
 
-#[derive(Debug, Display, Error, From, PartialEq)]
+#[derive(
+    Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Display, Error, From,
+)]
 #[display(Debug)]
 pub enum HandshakeError {
     #[from]

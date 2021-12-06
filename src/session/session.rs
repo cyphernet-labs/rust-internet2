@@ -11,9 +11,12 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+use crate::session::noise::{HandshakeError, HandshakeState};
+use crate::NoiseTranscoder;
 use amplify::Bipolar;
 use inet2_addr::InetSocketAddr;
 use std::any::Any;
+use std::ops::Deref;
 
 use super::{Decrypt, Encrypt, Transcode};
 use crate::session::PlainTranscoder;
@@ -201,6 +204,65 @@ impl Raw<PlainTranscoder, ftcp::Connection> {
         Ok(Self {
             transcoder: PlainTranscoder,
             connection: ftcp::Connection::accept(socket_addr)?,
+        })
+    }
+}
+
+#[cfg(feature = "keygen")]
+impl Raw<NoiseTranscoder, ftcp::Connection> {
+    pub fn connect_ftcp_encrypted(
+        local_key: secp256k1::SecretKey,
+        remote_key: secp256k1::PublicKey,
+        remote_addr: InetSocketAddr,
+    ) -> Result<Self, Error> {
+        use secp256k1::rand::thread_rng;
+
+        let mut rng = thread_rng();
+        let ephemeral_key = secp256k1::SecretKey::new(&mut rng);
+        let handshake = HandshakeState::new_initiator(
+            &local_key,
+            &remote_key,
+            &ephemeral_key,
+        );
+
+        Ok(Self {
+            transcoder: handshake.hanshake()?,
+            connection: ftcp::Connection::connect(remote_addr)?,
+        })
+    }
+
+    pub fn accept_ftcp_encrypted(
+        local_key: secp256k1::SecretKey,
+        remote_addr: InetSocketAddr,
+    ) -> Result<Self, Error> {
+        use secp256k1::rand::thread_rng;
+
+        let mut rng = thread_rng();
+        let ephemeral_key = secp256k1::SecretKey::new(&mut rng);
+        let handshake =
+            HandshakeState::new_responder(&local_key, &ephemeral_key);
+
+        Ok(Self {
+            transcoder: handshake.hanshake()?,
+            connection: ftcp::Connection::accept(remote_addr)?,
+        })
+    }
+}
+
+impl HandshakeState {
+    fn hanshake(mut self) -> Result<NoiseTranscoder, HandshakeError> {
+        let mut data = vec![];
+        Ok(loop {
+            if let HandshakeState::Complete(Some((transcoder, pk))) = self {
+                break transcoder;
+            }
+            let (act, h) = self.next(&data)?;
+            self = h;
+            if let Some(act) = act {
+                data = act.deref().to_vec();
+            } else {
+                data = vec![];
+            }
         })
     }
 }

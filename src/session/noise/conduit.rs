@@ -342,10 +342,10 @@ impl Transcode for NoiseTranscoder {
 }
 
 impl Bipolar for NoiseTranscoder {
-    type Left = <Self as Transcode>::Encryptor;
-    type Right = <Self as Transcode>::Decryptor;
+    type Left = <Self as Transcode>::Decryptor;
+    type Right = <Self as Transcode>::Encryptor;
 
-    fn join(encryptor: Self::Left, decryptor: Self::Right) -> Self {
+    fn join(decryptor: Self::Left, encryptor: Self::Right) -> Self {
         Self {
             encryptor,
             decryptor,
@@ -353,7 +353,7 @@ impl Bipolar for NoiseTranscoder {
     }
 
     fn split(self) -> (Self::Left, Self::Right) {
-        (self.encryptor, self.decryptor)
+        (self.decryptor, self.encryptor)
     }
 }
 
