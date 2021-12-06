@@ -28,6 +28,7 @@ type ActTwo = [u8; ACT_TWO_LENGTH];
 type ActThree = [u8; ACT_THREE_LENGTH];
 
 /// Wrapper for any act message
+#[derive(Copy, Clone, Debug)]
 pub enum Act {
     One(ActOne),
     Two(ActTwo),
@@ -74,6 +75,7 @@ impl AsRef<[u8]> for Act {
 /// Light wrapper around an Act that allows multiple fill() calls before finally
 /// converting to an Act via Act::from(act_builder). Handles all of the
 /// bookkeeping and edge cases of the array fill
+#[derive(Debug)]
 pub struct ActBuilder {
     partial_act: Act,
     write_pos: usize,
