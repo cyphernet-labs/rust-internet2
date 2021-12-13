@@ -323,7 +323,9 @@ impl TryFrom<Url> for ZmqSocketAddr {
             "inproc" => Ok(ZmqSocketAddr::Inproc(
                 url.host_str().ok_or(AddrError::HostRequired)?.to_owned(),
             )),
-            "ipc" => Ok(ZmqSocketAddr::Ipc(url.path().to_owned())),
+            "ipc" => {
+                Ok(ZmqSocketAddr::Ipc(urldecode::decode(url.path().to_owned())))
+            }
             unknown => Err(AddrError::UnknownUrlScheme(unknown.to_owned())),
         }
     }

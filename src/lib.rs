@@ -34,6 +34,8 @@ extern crate strict_encoding;
 extern crate lazy_static;
 
 extern crate chacha20poly1305;
+#[cfg(feature = "url")]
+extern crate url_crate as url;
 
 #[cfg(feature = "serde")]
 #[macro_use]
