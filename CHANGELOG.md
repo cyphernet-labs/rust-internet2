@@ -1,6 +1,11 @@
 Change Log
 ==========
 
+v0.5.5
+------
+- ZMQ socket addresses support native ZMQ representation (starting with 
+  `tcp://`, `ipc://`, `inproc://`)
+
 v0.5.3
 ------
 - Complete Tlv implementation
