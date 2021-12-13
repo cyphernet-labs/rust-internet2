@@ -163,13 +163,13 @@ impl FromStr for ZmqType {
     StrictDecode
 )]
 pub enum ZmqSocketAddr {
-    #[display("zmq:{0}", alt = "inproc://{0}")]
+    #[display("inproc://{0}", alt = "zmq:{0}")]
     Inproc(String),
 
-    #[display("lnpz:{0}", alt = "ipc://{0}")]
+    #[display("ipc://{0}", alt = "lnpz:{0}")]
     Ipc(String),
 
-    #[display("lnpz://{0}", alt = "tcp://{0}")]
+    #[display("tcp://{0}", alt = "lnpz://{0}")]
     Tcp(
         #[cfg_attr(feature = "serde", serde(with = "As::<DisplayFromStr>"))]
         SocketAddr,
@@ -193,9 +193,9 @@ impl Ord for ZmqSocketAddr {
 impl UrlString for ZmqSocketAddr {
     fn url_scheme(&self) -> &'static str {
         match self {
-            ZmqSocketAddr::Inproc(_) => "zmq:",
-            ZmqSocketAddr::Ipc(_) => "lnpz:",
-            ZmqSocketAddr::Tcp(_) => "lnpz://",
+            ZmqSocketAddr::Inproc(_) => "inproc://",
+            ZmqSocketAddr::Ipc(_) => "ipc://",
+            ZmqSocketAddr::Tcp(_) => "tcp://",
         }
     }
 
@@ -203,7 +203,7 @@ impl UrlString for ZmqSocketAddr {
 }
 
 impl ZmqSocketAddr {
-    pub fn zmq_socket_string(&self) -> String { format!("{:#}", self) }
+    pub fn zmq_socket_string(&self) -> String { format!("{:}", self) }
 }
 
 #[derive(Display)]
@@ -313,15 +313,17 @@ impl TryFrom<Url> for ZmqSocketAddr {
                     Ok(ZmqSocketAddr::Ipc(url.path().to_owned()))
                 }
             }
-            "tcp" => Err(AddrError::UnknownUrlScheme(s!(
-                "'tcp://'; use 'lnpz://' instead"
+            "tcp" => Ok(ZmqSocketAddr::Tcp(SocketAddr::new(
+                url.host()
+                    .ok_or(AddrError::HostRequired)?
+                    .to_string()
+                    .parse()?,
+                url.port().ok_or(AddrError::PortRequired)?,
             ))),
             "inproc" => Ok(ZmqSocketAddr::Inproc(
                 url.host_str().ok_or(AddrError::HostRequired)?.to_owned(),
             )),
-            "ipc" => Err(AddrError::UnknownUrlScheme(s!(
-                "'ipc:'; use 'lnpz:' instead"
-            ))),
+            "ipc" => Ok(ZmqSocketAddr::Ipc(url.path().to_owned())),
             unknown => Err(AddrError::UnknownUrlScheme(unknown.to_owned())),
         }
     }
