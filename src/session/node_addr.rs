@@ -273,7 +273,7 @@ impl ToNodeAddr for LocalSocketAddr {
 impl ToNodeAddr for PartialNodeAddr {
     #[inline]
     fn to_node_addr(&self, default_port: u16) -> Option<NodeAddr> {
-        self.with_port(default_port).try_into().ok()
+        self.clone().with_default_port(default_port).try_into().ok()
     }
 }
 
@@ -327,7 +327,7 @@ impl ToRemoteNodeAddr for RemoteNodeAddr {
 impl ToRemoteNodeAddr for PartialNodeAddr {
     #[inline]
     fn to_remote_node_addr(&self, default_port: u16) -> Option<RemoteNodeAddr> {
-        self.with_port(default_port).try_into().ok()
+        self.clone().with_default_port(default_port).try_into().ok()
     }
 }
 
@@ -453,30 +453,30 @@ pub enum PartialNodeAddr {
 }
 
 impl PartialNodeAddr {
-    /// Adds port information to the node locator, if it can contain port.
-    /// In case if it does not, performs no action. Returns cloned `Self` with
-    /// the updated data.
-    pub fn with_port(&self, port: u16) -> Self {
+    /// Adds port information to the node locator, if it can contain port and
+    /// has no port information. In case if it does not, performs no action.
+    /// Returns cloned `Self` with the updated data.
+    pub fn with_default_port(self, port: u16) -> Self {
         match self.clone() {
-            PartialNodeAddr::Native(a, b, _) => {
+            PartialNodeAddr::Native(a, b, None) => {
                 PartialNodeAddr::Native(a, b, Some(port))
             }
-            PartialNodeAddr::Udp(a, b, _) => {
+            PartialNodeAddr::Udp(a, b, None) => {
                 PartialNodeAddr::Udp(a, b, Some(port))
             }
             #[cfg(feature = "zmq")]
-            PartialNodeAddr::ZmqTcpEncrypted(a, b, c, _) => {
+            PartialNodeAddr::ZmqTcpEncrypted(a, b, c, None) => {
                 PartialNodeAddr::ZmqTcpEncrypted(a, b, c, Some(port))
             }
             #[cfg(feature = "zmq")]
-            PartialNodeAddr::ZmqTcpUnencrypted(a, b, _) => {
+            PartialNodeAddr::ZmqTcpUnencrypted(a, b, None) => {
                 PartialNodeAddr::ZmqTcpUnencrypted(a, b, Some(port))
             }
-            PartialNodeAddr::Http(a, b, _) => {
+            PartialNodeAddr::Http(a, b, None) => {
                 PartialNodeAddr::Http(a, b, Some(port))
             }
             #[cfg(feature = "websockets")]
-            PartialNodeAddr::Websocket(a, b, _) => {
+            PartialNodeAddr::Websocket(a, b, None) => {
                 PartialNodeAddr::Websocket(a, b, Some(port))
             }
             me => me,
@@ -1013,7 +1013,7 @@ mod test {
         assert_eq!(locator1.api_type(), None);
         assert_eq!(locator1.inet_addr(), Some(inet1));
         assert_eq!(locator1.socket_name(), None);
-        let locator_with_port = locator1.with_port(24);
+        let locator_with_port = locator1.clone().with_default_port(24);
         assert_eq!(locator_with_port.port(), Some(24));
 
         let socket_addr = InetSocketAddr {
@@ -1104,7 +1104,7 @@ mod test {
         assert_eq!(locator1.api_type(), None);
         assert_eq!(locator1.inet_addr(), Some(InetAddr::from(inet1)));
         assert_eq!(locator1.socket_name(), None);
-        let locator_with_port = locator1.with_port(24);
+        let locator_with_port = locator1.clone().with_default_port(24);
         assert_eq!(locator_with_port.port(), Some(24));
 
         assert_eq!(
@@ -1172,7 +1172,7 @@ mod test {
         assert_eq!(locator1.api_type(), None);
         assert_eq!(locator1.inet_addr(), Some(InetAddr::from(inet1)));
         assert_eq!(locator1.socket_name(), None);
-        let locator_with_port = locator1.with_port(24);
+        let locator_with_port = locator1.clone().with_default_port(24);
         assert_eq!(locator_with_port.port(), Some(24));
 
         assert_eq!(
@@ -1264,7 +1264,7 @@ mod test {
         assert_eq!(locator1.api_type(), Some(ZmqType::Push));
         assert_eq!(locator1.inet_addr(), Some(InetAddr::from(inet1)));
         assert_eq!(locator1.socket_name(), None);
-        let locator_with_port = locator1.with_port(24);
+        let locator_with_port = locator1.clone().with_default_port(24);
         assert_eq!(locator_with_port.port(), Some(24));
 
         assert_eq!(
@@ -1304,7 +1304,7 @@ mod test {
                 PartialNodeAddr::from_str(
                     "lnpz://022e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af@127.0.0.1:24/?api=p2p"
                 ).unwrap(),
-                locator1.with_port(24)
+                locator1.with_default_port(24)
             );
         }
     }
@@ -1334,7 +1334,7 @@ mod test {
         assert_eq!(locator1.port(), None);
         assert_eq!(locator1.api_type(), Some(ZmqType::Push));
         assert_eq!(locator1.inet_addr(), Some(InetAddr::from(inet1)));
-        let locator_with_port = locator1.with_port(24);
+        let locator_with_port = locator1.clone().with_default_port(24);
         assert_eq!(locator_with_port.port(), Some(24));
 
         assert_eq!(
@@ -1391,7 +1391,7 @@ mod test {
         assert_eq!(locator1.api_type(), Some(ZmqType::Push));
         assert_eq!(locator1.inet_addr(), None);
         assert_eq!(locator1.socket_name(), Some(s!("socket1")));
-        let locator_with_port = locator1.with_port(24);
+        let locator_with_port = locator1.clone().with_default_port(24);
         assert_eq!(locator_with_port.port(), None);
 
         assert_eq!(
@@ -1442,7 +1442,7 @@ mod test {
         assert_eq!(locator1.api_type(), Some(ZmqType::Push));
         assert_eq!(locator1.inet_addr(), None);
         assert_eq!(locator1.socket_name(), Some(s!("./socket1")));
-        let locator_with_port = locator1.with_port(24);
+        let locator_with_port = locator1.clone().with_default_port(24);
         assert_eq!(locator_with_port.port(), None);
 
         assert_eq!(
@@ -1494,7 +1494,7 @@ mod test {
         assert_eq!(locator1.api_type(), None);
         assert_eq!(locator1.inet_addr(), None);
         assert_eq!(locator1.socket_name(), None);
-        let locator_with_port = locator1.with_port(24);
+        let locator_with_port = locator1.clone().with_default_port(24);
         assert_eq!(locator_with_port.port(), None);
 
         assert_eq!(
