@@ -11,7 +11,7 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use crate::transport;
+use crate::{transport, TypeId};
 
 /// Presentation-level LNP error types
 #[derive(Clone, PartialEq, Eq, Debug, Display, Error, From)]
@@ -52,8 +52,8 @@ pub enum Error {
     /// invalid value in LNP message
     InvalidValue,
 
-    /// LNP message with unknown even value
-    MessageEvenType,
+    /// LNP message with unknown even type #{0}
+    MessageEvenType(TypeId),
 
     /// bad length descriptor in LNP message
     BadLengthDescriptor,
@@ -88,7 +88,7 @@ impl From<Error> for u8 {
             Error::StrictEncoding(_) => 0x21,
             Error::UnknownDataType => 0x23,
             Error::InvalidValue => 0x24,
-            Error::MessageEvenType => 0x30,
+            Error::MessageEvenType(_) => 0x30,
             Error::BadLengthDescriptor => 0x31,
             Error::TlvStreamWrongOrder => 0x32,
             Error::TlvStreamDuplicateItem => 0x33,

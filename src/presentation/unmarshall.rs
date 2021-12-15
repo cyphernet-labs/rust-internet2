@@ -66,7 +66,7 @@ where
             EncodingType::Strict => TypeId::strict_decode(&mut reader)?,
         };
         match self.known_types.get(&type_id) {
-            None if type_id.is_even() => Err(Error::MessageEvenType),
+            None if type_id.is_even() => Err(Error::MessageEvenType(type_id)),
             None => {
                 let mut payload = Vec::new();
                 reader.read_to_end(&mut payload)?;
