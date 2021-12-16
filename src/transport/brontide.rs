@@ -14,7 +14,7 @@
 //! Brontide protocol: reads & writes frames (corresponding to LNP messages)
 //! from TCP stream according to BOLT-8 requirements.
 
-use std::io::{Read, Write};
+use std::io::Read;
 use std::net::TcpStream;
 
 use amplify::Bipolar;
@@ -91,25 +91,20 @@ impl RecvFrame for Stream {
 
     /// Receive Brontinde encrypted message of variable length. The length is
     /// taken from decoding data returned by [`Stream::recv_frame`].
+    #[inline]
     fn recv_raw(&mut self, len: usize) -> Result<Vec<u8>, Error> {
-        let mut buf: Vec<u8> = vec![0u8; len];
-        self.0.read_exact(&mut buf)?;
-        Ok(buf)
+        self.0.recv_raw(len)
     }
 }
 
 impl SendFrame for Stream {
+    #[inline]
     fn send_frame(&mut self, data: &[u8]) -> Result<usize, Error> {
-        let len = data.len();
-        if len > super::MAX_FRAME_SIZE {
-            return Err(Error::OversizedFrame(len));
-        }
-        self.0.write_all(data)?;
-        Ok(len)
+        self.0.send_frame(data)
     }
 
+    #[inline]
     fn send_raw(&mut self, data: &[u8]) -> Result<usize, Error> {
-        self.0.write_all(data)?;
-        Ok(data.len())
+        self.0.send_raw(data)
     }
 }

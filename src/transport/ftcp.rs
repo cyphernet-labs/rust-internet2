@@ -14,7 +14,6 @@
 //! Framed TCP protocol: reads & writes frames (corresponding to LNP messages)
 //! from TCP stream
 
-use std::io::{Read, Write};
 use std::net::TcpStream;
 
 use amplify::Bipolar;
@@ -76,39 +75,23 @@ impl Duplex for Stream {
 }
 
 impl RecvFrame for Stream {
-    fn recv_frame(&mut self) -> Result<Vec<u8>, Error> {
-        let mut len_buf = [0u8; 2];
-        self.0.read_exact(&mut len_buf)?;
-        let len = u16::from_be_bytes(len_buf) as usize;
-        let mut buf: Vec<u8> = vec![
-            0u8;
-            len + super::FRAME_PREFIX_SIZE
-                + super::FRAME_SUFFIX_SIZE
-        ];
-        buf[0..2].copy_from_slice(&len_buf);
-        self.0.read_exact(&mut buf[2..])?;
-        Ok(buf)
-    }
+    #[inline]
+    fn recv_frame(&mut self) -> Result<Vec<u8>, Error> { self.0.recv_frame() }
 
+    #[inline]
     fn recv_raw(&mut self, len: usize) -> Result<Vec<u8>, Error> {
-        let mut buf: Vec<u8> = vec![0u8; len];
-        self.0.read_exact(&mut buf)?;
-        Ok(buf)
+        self.0.recv_raw(len)
     }
 }
 
 impl SendFrame for Stream {
+    #[inline]
     fn send_frame(&mut self, data: &[u8]) -> Result<usize, Error> {
-        let len = data.len();
-        if len > super::MAX_FRAME_SIZE {
-            return Err(Error::OversizedFrame(len));
-        }
-        self.0.write_all(data)?;
-        Ok(len)
+        self.0.send_frame(data)
     }
 
+    #[inline]
     fn send_raw(&mut self, data: &[u8]) -> Result<usize, Error> {
-        self.0.write_all(data)?;
-        Ok(data.len())
+        self.0.send_raw(data)
     }
 }

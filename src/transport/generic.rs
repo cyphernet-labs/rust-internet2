@@ -14,6 +14,7 @@
 //! Types generic over specific implementations
 
 use std::convert::TryFrom;
+use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::time::Duration;
 
@@ -136,5 +137,43 @@ impl TcpInetStream for TcpStream {
 
     fn split(self) -> (Self, Self) {
         (self.try_clone().expect("TcpStream cloning failed"), self)
+    }
+}
+
+impl RecvFrame for TcpStream {
+    fn recv_frame(&mut self) -> Result<Vec<u8>, Error> {
+        let mut len_buf = [0u8; 2];
+        self.read_exact(&mut len_buf)?;
+        let len = u16::from_be_bytes(len_buf) as usize;
+        let mut buf: Vec<u8> = vec![
+            0u8;
+            len + super::FRAME_PREFIX_SIZE
+                + super::FRAME_SUFFIX_SIZE
+        ];
+        buf[0..2].copy_from_slice(&len_buf);
+        self.read_exact(&mut buf[2..])?;
+        Ok(buf)
+    }
+
+    fn recv_raw(&mut self, len: usize) -> Result<Vec<u8>, Error> {
+        let mut buf: Vec<u8> = vec![0u8; len];
+        self.read_exact(&mut buf)?;
+        Ok(buf)
+    }
+}
+
+impl SendFrame for TcpStream {
+    fn send_frame(&mut self, data: &[u8]) -> Result<usize, Error> {
+        let len = data.len();
+        if len > super::MAX_FRAME_SIZE {
+            return Err(Error::OversizedFrame(len));
+        }
+        self.write_all(data)?;
+        Ok(len)
+    }
+
+    fn send_raw(&mut self, data: &[u8]) -> Result<usize, Error> {
+        self.write_all(data)?;
+        Ok(data.len())
     }
 }
