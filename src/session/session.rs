@@ -473,13 +473,10 @@ impl Input for RawInput<PlainTranscoder, ftcp::Stream> {
     }
 }
 
-impl Input for RawInput<NoiseTranscoder, brontide::Stream> {
+impl Input for RawInput<NoiseDecryptor, brontide::Stream> {
     #[inline]
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
-        Ok(recv_brontide_message(
-            &mut self.input,
-            &mut self.decryptor.decryptor,
-        )?)
+        Ok(recv_brontide_message(&mut self.input, &mut self.decryptor)?)
     }
     fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
         InternalInput::recv_routed_message(self)
