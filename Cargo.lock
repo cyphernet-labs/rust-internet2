@@ -737,9 +737,9 @@ checksum = "f98a04dce437184842841303488f70d0188c5f51437d2a834dc097eafa909a01"
 
 [[package]]
 name = "lightning_encoding"
-version = "0.5.3"
+version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "958827d3484c6986b2abbead07ca44b9d209c696355aa3ea3759afb808f50722"
+checksum = "d145410a268b41aa9077c34c12e5a6f2581836827c184b624cb14587e7de8eda"
 dependencies = [
  "amplify",
  "bitcoin",

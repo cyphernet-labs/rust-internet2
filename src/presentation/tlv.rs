@@ -201,10 +201,9 @@ impl lightning_encoding::LightningDecode for Stream {
         // Reading stream record by record until it is over
         while let Some(ty) = Type::lightning_decode(&mut d)
             .map(Option::Some)
-            .or_else(|err| match &err {
-                lightning_encoding::Error::BigSizeNotCanonical
-                | lightning_encoding::Error::BigSizeEof => Err(err),
-                _ => Ok(None),
+            .or_else(|err| match err {
+                lightning_encoding::Error::BigSizeNoValue => Ok(None),
+                err => Err(err),
             })?
         {
             let val = RawValue::lightning_decode(&mut d)?;
