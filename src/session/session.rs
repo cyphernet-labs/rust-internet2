@@ -19,7 +19,7 @@ use inet2_addr::InetSocketAddr;
 use super::{Decrypt, Encrypt, Transcode};
 #[cfg(feature = "keygen")]
 use crate::session::noise::HandshakeState;
-use crate::session::PlainTranscoder;
+use crate::session::{noise, PlainTranscoder};
 use crate::transport::{
     brontide, ftcp, Duplex, Error, RecvFrame, RoutedFrame, SendFrame,
 };
@@ -197,19 +197,16 @@ fn recv_brontide_message(
 ) -> Result<Vec<u8>, Error> {
     // Reading & decrypting length
     let encrypted_len = reader.recv_frame()?;
-    let len_slice = decrypt.decrypt(encrypted_len)?;
-    if len_slice.len() != 2 {
-        return Err(Error::InvalidLength {
-            expected: 2,
-            actual: len_slice.len() as u16,
-        });
+    decrypt.decrypt(encrypted_len)?;
+    let len = decrypt.pending_message_len();
+    if len == None {
+        return Err(Error::NoBrontideHeader);
     }
-    let mut len_bytes = [0u8; 2];
-    len_bytes.copy_from_slice(&len_slice);
-    let len = u16::from_be_bytes(len_bytes);
 
+    let len = len.unwrap_or_default();
     // Reading & decrypting payload
-    let encrypted_payload = reader.recv_raw(len as usize)?;
+    let encrypted_payload =
+        reader.recv_raw(len as usize + noise::chacha::TAG_SIZE)?;
     let payload = decrypt.decrypt(encrypted_payload)?;
     Ok(payload)
 }

@@ -12,10 +12,13 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 mod ceremony;
-mod chacha;
+pub mod chacha;
 mod handshake;
 mod hkdf;
 mod transcoder;
 
 pub use handshake::{HandshakeError, HandshakeState};
-pub use transcoder::{NoiseDecryptor, NoiseEncryptor, NoiseTranscoder};
+pub use transcoder::{
+    NoiseDecryptor, NoiseEncryptor, NoiseTranscoder,
+    MESSAGE_LENGTH_HEADER_SIZE, TAGGED_MESSAGE_LENGTH_HEADER_SIZE,
+};
