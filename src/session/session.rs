@@ -185,7 +185,7 @@ impl Session for Raw<PlainTranscoder, ftcp::Connection> {
         dest: &[u8],
         raw: &[u8],
     ) -> Result<usize, Error> {
-        InternalSession::send_raw_message(self, raw)
+        InternalSession::send_routed_message(self, source, route, dest, raw)
     }
     #[inline]
     fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
@@ -266,7 +266,7 @@ impl Session for Raw<PlainTranscoder, zmqsocket::Connection> {
         dest: &[u8],
         raw: &[u8],
     ) -> Result<usize, Error> {
-        InternalSession::send_raw_message(self, raw)
+        InternalSession::send_routed_message(self, source, route, dest, raw)
     }
     #[inline]
     fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
