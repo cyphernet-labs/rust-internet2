@@ -21,11 +21,14 @@ fn main() {
 }
 
 fn receiver(local_node: &LocalNode, node: RemoteNodeAddr) {
-    node.accept(local_node).unwrap();
-    std::thread::sleep(core::time::Duration::from_secs(3));
+    let mut session = node.accept(local_node).unwrap();
+    let msg = session.recv_raw_message().unwrap();
+    assert_eq!(msg, b"Hello world");
+    //std::thread::sleep(core::time::Duration::from_secs(3));
 }
 
 fn sender(local_node: &LocalNode, node: RemoteNodeAddr) {
-    std::thread::sleep(core::time::Duration::from_secs(1));
-    node.connect(local_node).unwrap();
+    //std::thread::sleep(core::time::Duration::from_secs(1));
+    let mut session = node.connect(local_node).unwrap();
+    session.send_raw_message(b"Hello world").unwrap();
 }

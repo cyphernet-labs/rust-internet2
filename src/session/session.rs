@@ -19,14 +19,13 @@ use inet2_addr::InetSocketAddr;
 use super::{Decrypt, Encrypt, Transcode};
 #[cfg(feature = "keygen")]
 use crate::session::noise::HandshakeState;
-use crate::session::PlainTranscoder;
+use crate::session::{noise, PlainTranscoder};
 use crate::transport::{
-    ftcp, Duplex, Error, RecvFrame, RoutedFrame, SendFrame,
+    brontide, ftcp, Duplex, Error, RecvFrame, RoutedFrame, SendFrame,
 };
 #[cfg(feature = "zmq")]
 use crate::zmqsocket;
-#[cfg(feature = "keygen")]
-use crate::NoiseTranscoder;
+use crate::{NoiseDecryptor, NoiseTranscoder};
 
 // Generics prevents us from using session as `&dyn` reference, so we have
 // to avoid `where Self: Input + Output` and generic parameters, unlike with
@@ -106,7 +105,21 @@ where
     pub(self) output: S,
 }
 
-impl<T, C> Session for Raw<T, C>
+// Private trait used to avoid code duplication below
+trait InternalSession {
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error>;
+    fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error>;
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error>;
+    fn send_routed_message(
+        &mut self,
+        source: &[u8],
+        route: &[u8],
+        dest: &[u8],
+        raw: &[u8],
+    ) -> Result<usize, Error>;
+}
+
+impl<T, C> InternalSession for Raw<T, C>
 where
     T: Transcode + 'static,
     T::Left: Decrypt,
@@ -147,7 +160,112 @@ where
         let writer = self.connection.as_sender();
         writer.send_routed(source, route, dest, &self.transcoder.encrypt(raw))
     }
+}
 
+impl Session for Raw<PlainTranscoder, ftcp::Connection> {
+    #[inline]
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
+        InternalSession::recv_raw_message(self)
+    }
+    #[inline]
+    fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error> {
+        InternalSession::send_raw_message(self, raw)
+    }
+    #[inline]
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
+        InternalSession::recv_routed_message(self)
+    }
+    #[inline]
+    fn send_routed_message(
+        &mut self,
+        source: &[u8],
+        route: &[u8],
+        dest: &[u8],
+        raw: &[u8],
+    ) -> Result<usize, Error> {
+        InternalSession::send_routed_message(self, source, route, dest, raw)
+    }
+    #[inline]
+    fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
+}
+
+fn recv_brontide_message(
+    reader: &mut dyn RecvFrame,
+    decrypt: &mut NoiseDecryptor,
+) -> Result<Vec<u8>, Error> {
+    // Reading & decrypting length
+    let encrypted_len = reader.recv_frame()?;
+    decrypt.decrypt(encrypted_len)?;
+    let len = decrypt.pending_message_len();
+    if len == None {
+        return Err(Error::NoBrontideHeader);
+    }
+
+    let len = len.unwrap_or_default();
+    // Reading & decrypting payload
+    let encrypted_payload =
+        reader.recv_raw(len as usize + noise::chacha::TAG_SIZE)?;
+    let payload = decrypt.decrypt(encrypted_payload)?;
+    Ok(payload)
+}
+
+impl Session for Raw<NoiseTranscoder, brontide::Connection> {
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
+        let reader = self.connection.as_receiver();
+        Ok(recv_brontide_message(
+            reader,
+            &mut self.transcoder.decryptor,
+        )?)
+    }
+
+    #[inline]
+    fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error> {
+        InternalSession::send_raw_message(self, raw)
+    }
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
+        unimplemented!(
+            "to route brontide messages use presentation-level onion routing"
+        )
+    }
+    fn send_routed_message(
+        &mut self,
+        source: &[u8],
+        route: &[u8],
+        dest: &[u8],
+        raw: &[u8],
+    ) -> Result<usize, Error> {
+        unimplemented!(
+            "to route brontide messages use presentation-level onion routing"
+        )
+    }
+    #[inline]
+    fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
+}
+
+#[cfg(feature = "zmq")]
+impl Session for Raw<PlainTranscoder, zmqsocket::Connection> {
+    #[inline]
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
+        InternalSession::recv_raw_message(self)
+    }
+    #[inline]
+    fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error> {
+        InternalSession::send_raw_message(self, raw)
+    }
+    #[inline]
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
+        InternalSession::recv_routed_message(self)
+    }
+    #[inline]
+    fn send_routed_message(
+        &mut self,
+        source: &[u8],
+        route: &[u8],
+        dest: &[u8],
+        raw: &[u8],
+    ) -> Result<usize, Error> {
+        InternalSession::send_routed_message(self, source, route, dest, raw)
+    }
     #[inline]
     fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
 }
@@ -160,6 +278,7 @@ where
     C: Duplex + Bipolar,
     C::Left: RecvFrame + Send + 'static,
     C::Right: SendFrame + Send + 'static,
+    RawInput<T::Left, C::Left>: Input,
     Error: From<T::Error> + From<<T::Left as Decrypt>::Error>,
 {
     #[inline]
@@ -204,7 +323,7 @@ impl Raw<PlainTranscoder, ftcp::Connection> {
 }
 
 #[cfg(feature = "keygen")]
-impl Raw<NoiseTranscoder, ftcp::Connection> {
+impl Raw<NoiseTranscoder, brontide::Connection> {
     pub fn connect_ftcp_encrypted(
         local_key: secp256k1::SecretKey,
         remote_key: secp256k1::PublicKey,
@@ -220,7 +339,7 @@ impl Raw<NoiseTranscoder, ftcp::Connection> {
             &ephemeral_key,
         );
 
-        let mut connection = ftcp::Connection::connect(remote_addr)?;
+        let mut connection = brontide::Connection::connect(remote_addr)?;
 
         let mut data = vec![];
         let transcoder = loop {
@@ -255,7 +374,7 @@ impl Raw<NoiseTranscoder, ftcp::Connection> {
         let mut handshake =
             HandshakeState::new_responder(&local_key, &ephemeral_key);
 
-        let mut connection = ftcp::Connection::accept(remote_addr)?;
+        let mut connection = brontide::Connection::accept(remote_addr)?;
 
         let mut data =
             connection.as_receiver().recv_raw(handshake.data_len())?;
@@ -319,7 +438,13 @@ where
     pub fn as_socket(&self) -> &zmq::Socket { self.connection.as_socket() }
 }
 
-impl<T, C> Input for RawInput<T, C>
+// Private trait used to avoid code duplication below
+trait InternalInput {
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error>;
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error>;
+}
+
+impl<T, C> InternalInput for RawInput<T, C>
 where
     T: Decrypt,
     C: RecvFrame,
@@ -333,6 +458,37 @@ where
         let mut routed_frame = self.input.recv_routed()?;
         routed_frame.msg = self.decryptor.decrypt(routed_frame.msg)?;
         Ok(routed_frame)
+    }
+}
+
+impl Input for RawInput<PlainTranscoder, ftcp::Stream> {
+    #[inline]
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
+        InternalInput::recv_raw_message(self)
+    }
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
+        InternalInput::recv_routed_message(self)
+    }
+}
+
+impl Input for RawInput<NoiseDecryptor, brontide::Stream> {
+    #[inline]
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
+        Ok(recv_brontide_message(&mut self.input, &mut self.decryptor)?)
+    }
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
+        InternalInput::recv_routed_message(self)
+    }
+}
+
+#[cfg(feature = "zmq")]
+impl Input for RawInput<PlainTranscoder, zmqsocket::WrappedSocket> {
+    #[inline]
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
+        InternalInput::recv_raw_message(self)
+    }
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
+        InternalInput::recv_routed_message(self)
     }
 }
 
@@ -380,11 +536,11 @@ mod test {
         .unwrap();
 
         let msg = b"Some message";
-        tx.send_raw_message(msg).unwrap();
-        assert_eq!(rx.recv_raw_message().unwrap(), msg);
+        Session::send_raw_message(&mut tx, msg).unwrap();
+        assert_eq!(Session::recv_raw_message(&mut rx).unwrap(), msg);
 
         let msg = b"";
-        rx.send_raw_message(msg).unwrap();
-        assert_eq!(tx.recv_raw_message().unwrap(), msg);
+        Session::send_raw_message(&mut rx, msg).unwrap();
+        assert_eq!(Session::recv_raw_message(&mut tx).unwrap(), msg);
     }
 }

@@ -20,7 +20,9 @@
 //! integrates with ZMQ such that the upper level can abstract for a particular
 //! transport protocol used.
 
+pub mod brontide;
 pub mod ftcp;
+pub mod generic;
 pub mod socket_addr;
 pub mod websocket;
 #[cfg(feature = "zmq")]
@@ -79,8 +81,11 @@ pub enum Error {
     /// frame structure broken: {0}
     FrameBroken(&'static str),
 
-    /// frame payload length is not equal to the actual frame payload provided
-    InvalidLength,
+    /// read length {actual} is not equal to the expected length {expected}
+    InvalidLength { expected: u16, actual: u16 },
+
+    /// message does not contain Brontide length header
+    NoBrontideHeader,
 
     /// connections over Tor protocol are not yet supported
     TorNotSupportedYet,

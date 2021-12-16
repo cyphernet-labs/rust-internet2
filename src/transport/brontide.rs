@@ -1,5 +1,5 @@
 // LNP/BP Core Library implementing LNPBP specifications & standards
-// Written in 2020 by
+// Written in 2020-2021 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
 //
 // To the extent possible under law, the author(s) have dedicated all
@@ -11,24 +11,31 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-//! Framed TCP protocol: reads & writes frames (corresponding to LNP messages)
-//! from TCP stream
+//! Brontide protocol: reads & writes frames (corresponding to LNP messages)
+//! from TCP stream according to BOLT-8 requirements.
 
+use std::io::Read;
 use std::net::TcpStream;
 
 use amplify::Bipolar;
 use inet2_addr::InetSocketAddr;
 
 use super::{Duplex, Error, RecvFrame, SendFrame};
+use crate::session::noise;
 use crate::transport::generic::{self, TcpInetStream};
 
-/// Type alias for FTCP connection which is [`generic::Connection`] with FTCP
-/// [`Stream`].
-pub type Connection = generic::Connection<Stream>;
-
-/// Wrapper type around TCP stream for implementing FTCP-specific traits
+/// Wraps TCP stream for doing framed reads according to BOLT-8 requirements.
 #[derive(Debug, From)]
 pub struct Stream(TcpStream);
+
+/// Type alias for Brontide connection which is [`generic::Connection`] with
+/// Brontide [`Stream`].
+pub type Connection = generic::Connection<Stream>;
+
+impl Stream {
+    #[inline]
+    pub fn with(stream: TcpStream) -> Stream { Stream::from(stream) }
+}
 
 impl Connection {
     pub fn connect(inet_addr: InetSocketAddr) -> Result<Self, Error> {
@@ -75,9 +82,17 @@ impl Duplex for Stream {
 }
 
 impl RecvFrame for Stream {
-    #[inline]
-    fn recv_frame(&mut self) -> Result<Vec<u8>, Error> { self.0.recv_frame() }
+    /// Receive Brontide header. It has a fixed size of 18 bytes and
+    /// represents encoded message length.
+    fn recv_frame(&mut self) -> Result<Vec<u8>, Error> {
+        let mut buf: Vec<u8> =
+            vec![0u8; noise::TAGGED_MESSAGE_LENGTH_HEADER_SIZE];
+        self.0.read_exact(&mut buf)?;
+        Ok(buf)
+    }
 
+    /// Receive Brontinde encrypted message of variable length. The length is
+    /// taken from decoding data returned by [`Stream::recv_frame`].
     #[inline]
     fn recv_raw(&mut self, len: usize) -> Result<Vec<u8>, Error> {
         self.0.recv_raw(len)

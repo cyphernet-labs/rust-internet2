@@ -80,7 +80,10 @@ impl Decrypt for PlainTranscoder {
         let data_len = u16::from_be_bytes(len_buf);
         let len = frame_len - FRAME_SUFFIX_SIZE;
         if data_len != (len - FRAME_PREFIX_SIZE) as u16 {
-            return Err(Error::InvalidLength);
+            return Err(Error::InvalidLength {
+                expected: (len - FRAME_PREFIX_SIZE) as u16,
+                actual: data_len,
+            });
         }
         Ok(buffer[FRAME_PREFIX_SIZE..len].to_vec())
     }
@@ -127,7 +130,10 @@ mod test {
 
         assert_eq!(
             decoder.decrypt(&frame[2..]).unwrap_err(),
-            Error::InvalidLength
+            Error::InvalidLength {
+                expected: 10,
+                actual: 0
+            }
         );
     }
 }

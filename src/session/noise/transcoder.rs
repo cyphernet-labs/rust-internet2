@@ -22,8 +22,8 @@ use crate::session::transcoders::{Decrypt, Encrypt, Transcode};
 
 pub type SymmetricKey = [u8; 32];
 
-const MESSAGE_LENGTH_HEADER_SIZE: usize = 2;
-const TAGGED_MESSAGE_LENGTH_HEADER_SIZE: usize =
+pub const MESSAGE_LENGTH_HEADER_SIZE: usize = 2;
+pub const TAGGED_MESSAGE_LENGTH_HEADER_SIZE: usize =
     MESSAGE_LENGTH_HEADER_SIZE + chacha::TAG_SIZE;
 
 const KEY_ROTATION_INDEX: u32 = 1000;
@@ -206,6 +206,18 @@ impl NoiseDecryptor {
             &Some(ref vec) => vec.len(),
             &None => 0,
         }
+    }
+
+    #[inline]
+    pub(crate) fn pending_message_len(&self) -> Option<u16> {
+        self.pending_message_length.map(|len| len as u16)
+    }
+
+    #[inline]
+    pub(crate) fn read_buffer(&self) -> Option<&[u8]> {
+        self.read_buffer
+            .as_ref()
+            .and_then(|buf| self.pending_message_length.map(|len| &buf[..len]))
     }
 }
 
