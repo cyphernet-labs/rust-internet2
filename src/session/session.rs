@@ -25,6 +25,7 @@ use crate::transport::{
 };
 #[cfg(feature = "zmq")]
 use crate::zmqsocket;
+use crate::NoiseDecryptor;
 #[cfg(feature = "keygen")]
 use crate::NoiseTranscoder;
 
@@ -190,27 +191,36 @@ impl Session for Raw<PlainTranscoder, ftcp::Connection> {
     fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
 }
 
+fn recv_brontide_message(
+    reader: &mut dyn RecvFrame,
+    decrypt: &mut NoiseDecryptor,
+) -> Result<Vec<u8>, Error> {
+    // Reading & decrypting length
+    let encrypted_len = reader.recv_frame()?;
+    let len_slice = decrypt.decrypt(encrypted_len)?;
+    if len_slice.len() != 2 {
+        return Err(Error::InvalidLength {
+            expected: 2,
+            actual: len_slice.len() as u16,
+        });
+    }
+    let mut len_bytes = [0u8; 2];
+    len_bytes.copy_from_slice(&len_slice);
+    let len = u16::from_be_bytes(len_bytes);
+
+    // Reading & decrypting payload
+    let encrypted_payload = reader.recv_raw(len as usize)?;
+    let payload = decrypt.decrypt(encrypted_payload)?;
+    Ok(payload)
+}
+
 impl Session for Raw<NoiseTranscoder, brontide::Connection> {
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
         let reader = self.connection.as_receiver();
-
-        // Reading & decrypting length
-        let encrypted_len = reader.recv_frame()?;
-        let len_slice = self.transcoder.decrypt(encrypted_len)?;
-        if len_slice.len() != 2 {
-            return Err(Error::InvalidLength {
-                expected: 2,
-                actual: len_slice.len() as u16,
-            });
-        }
-        let mut len_bytes = [0u8; 2];
-        len_bytes.copy_from_slice(&len_slice);
-        let len = u16::from_be_bytes(len_bytes);
-
-        // Reading & decrypting payload
-        let encrypted_payload = reader.recv_raw(len as usize)?;
-        let payload = self.transcoder.decrypt(encrypted_payload)?;
-        Ok(payload)
+        Ok(recv_brontide_message(
+            reader,
+            &mut self.transcoder.decryptor,
+        )?)
     }
 
     #[inline]
@@ -273,6 +283,7 @@ where
     C: Duplex + Bipolar,
     C::Left: RecvFrame + Send + 'static,
     C::Right: SendFrame + Send + 'static,
+    RawInput<T::Left, C::Left>: Input,
     Error: From<T::Error> + From<<T::Left as Decrypt>::Error>,
 {
     #[inline]
@@ -432,7 +443,13 @@ where
     pub fn as_socket(&self) -> &zmq::Socket { self.connection.as_socket() }
 }
 
-impl<T, C> Input for RawInput<T, C>
+// Private trait used to avoid code duplication below
+trait InternalInput {
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error>;
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error>;
+}
+
+impl<T, C> InternalInput for RawInput<T, C>
 where
     T: Decrypt,
     C: RecvFrame,
@@ -446,6 +463,40 @@ where
         let mut routed_frame = self.input.recv_routed()?;
         routed_frame.msg = self.decryptor.decrypt(routed_frame.msg)?;
         Ok(routed_frame)
+    }
+}
+
+impl Input for RawInput<PlainTranscoder, ftcp::Stream> {
+    #[inline]
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
+        InternalInput::recv_raw_message(self)
+    }
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
+        InternalInput::recv_routed_message(self)
+    }
+}
+
+impl Input for RawInput<NoiseTranscoder, brontide::Stream> {
+    #[inline]
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
+        Ok(recv_brontide_message(
+            &mut self.input,
+            &mut self.decryptor.decryptor,
+        )?)
+    }
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
+        InternalInput::recv_routed_message(self)
+    }
+}
+
+#[cfg(feature = "zmq")]
+impl Input for RawInput<PlainTranscoder, zmqsocket::WrappedSocket> {
+    #[inline]
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
+        InternalInput::recv_raw_message(self)
+    }
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
+        InternalInput::recv_routed_message(self)
     }
 }
 
