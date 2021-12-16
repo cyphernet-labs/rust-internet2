@@ -20,7 +20,9 @@
 //! integrates with ZMQ such that the upper level can abstract for a particular
 //! transport protocol used.
 
+pub mod brontide;
 pub mod ftcp;
+pub mod generic;
 pub mod socket_addr;
 pub mod websocket;
 #[cfg(feature = "zmq")]

@@ -1,5 +1,5 @@
 // LNP/BP Core Library implementing LNPBP specifications & standards
-// Written in 2020 by
+// Written in 2020-2021 by
 //     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
 //
 // To the extent possible under law, the author(s) have dedicated all
@@ -11,8 +11,8 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-//! Framed TCP protocol: reads & writes frames (corresponding to LNP messages)
-//! from TCP stream
+//! Brontide protocol: reads & writes frames (corresponding to LNP messages)
+//! from TCP stream according to BOLT-8 requirements.
 
 use std::io::{Read, Write};
 use std::net::TcpStream;
@@ -23,13 +23,18 @@ use inet2_addr::InetSocketAddr;
 use super::{Duplex, Error, RecvFrame, SendFrame};
 use crate::transport::generic::{self, TcpInetStream};
 
-/// Type alias for FTCP connection which is [`generic::Connection`] with FTCP
-/// [`Stream`].
-pub type Connection = generic::Connection<Stream>;
-
-/// Wrapper type around TCP stream for implementing FTCP-specific traits
+/// Wraps TCP stream for doing framed reads according to BOLT-8 requirements.
 #[derive(Debug, From)]
 pub struct Stream(TcpStream);
+
+/// Type alias for Brontide connection which is [`generic::Connection`] with
+/// Brontide [`Stream`].
+pub type Connection = generic::Connection<Stream>;
+
+impl Stream {
+    #[inline]
+    pub fn with(stream: TcpStream) -> Stream { Stream::from(stream) }
+}
 
 impl Connection {
     pub fn connect(inet_addr: InetSocketAddr) -> Result<Self, Error> {
@@ -76,19 +81,7 @@ impl Duplex for Stream {
 }
 
 impl RecvFrame for Stream {
-    fn recv_frame(&mut self) -> Result<Vec<u8>, Error> {
-        let mut len_buf = [0u8; 2];
-        self.0.read_exact(&mut len_buf)?;
-        let len = u16::from_be_bytes(len_buf) as usize;
-        let mut buf: Vec<u8> = vec![
-            0u8;
-            len + super::FRAME_PREFIX_SIZE
-                + super::FRAME_SUFFIX_SIZE
-        ];
-        buf[0..2].copy_from_slice(&len_buf);
-        self.0.read_exact(&mut buf[2..])?;
-        Ok(buf)
-    }
+    fn recv_frame(&mut self) -> Result<Vec<u8>, Error> { todo!() }
 
     fn recv_raw(&mut self, len: usize) -> Result<Vec<u8>, Error> {
         let mut buf: Vec<u8> = vec![0u8; len];
@@ -98,14 +91,7 @@ impl RecvFrame for Stream {
 }
 
 impl SendFrame for Stream {
-    fn send_frame(&mut self, data: &[u8]) -> Result<usize, Error> {
-        let len = data.len();
-        if len > super::MAX_FRAME_SIZE {
-            return Err(Error::OversizedFrame(len));
-        }
-        self.0.write_all(data)?;
-        Ok(len)
-    }
+    fn send_frame(&mut self, data: &[u8]) -> Result<usize, Error> { todo!() }
 
     fn send_raw(&mut self, data: &[u8]) -> Result<usize, Error> {
         self.0.write_all(data)?;
