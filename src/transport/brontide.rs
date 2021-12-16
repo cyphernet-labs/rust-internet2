@@ -81,8 +81,16 @@ impl Duplex for Stream {
 }
 
 impl RecvFrame for Stream {
-    fn recv_frame(&mut self) -> Result<Vec<u8>, Error> { todo!() }
+    /// Receive Brontide header. It has a fixed size of 18 bytes and
+    /// represents encoded message length.
+    fn recv_frame(&mut self) -> Result<Vec<u8>, Error> {
+        let mut buf: Vec<u8> = vec![0u8; 18];
+        self.0.read_exact(&mut buf)?;
+        Ok(buf)
+    }
 
+    /// Receive Brontinde encrypted message of variable length. The length is
+    /// taken from decoding data returned by [`Stream::recv_frame`].
     fn recv_raw(&mut self, len: usize) -> Result<Vec<u8>, Error> {
         let mut buf: Vec<u8> = vec![0u8; len];
         self.0.read_exact(&mut buf)?;
@@ -91,7 +99,14 @@ impl RecvFrame for Stream {
 }
 
 impl SendFrame for Stream {
-    fn send_frame(&mut self, data: &[u8]) -> Result<usize, Error> { todo!() }
+    fn send_frame(&mut self, data: &[u8]) -> Result<usize, Error> {
+        let len = data.len();
+        if len > super::MAX_FRAME_SIZE {
+            return Err(Error::OversizedFrame(len));
+        }
+        self.0.write_all(data)?;
+        Ok(len)
+    }
 
     fn send_raw(&mut self, data: &[u8]) -> Result<usize, Error> {
         self.0.write_all(data)?;
