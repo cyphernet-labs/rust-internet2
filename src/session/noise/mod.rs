@@ -11,11 +11,11 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-mod act;
+mod ceremony;
 mod chacha;
-mod conduit;
 mod handshake;
 mod hkdf;
+mod transcoder;
 
-pub use conduit::{NoiseDecryptor, NoiseEncryptor, NoiseTranscoder};
 pub use handshake::{HandshakeError, HandshakeState};
+pub use transcoder::{NoiseDecryptor, NoiseEncryptor, NoiseTranscoder};

@@ -15,11 +15,11 @@ use bitcoin_hashes::sha256::Hash as Sha256;
 use bitcoin_hashes::{Hash, HashEngine};
 use secp256k1::{PublicKey, SecretKey};
 
-use super::act::{
+use super::ceremony::{
     Act, ActBuilder, ACT_ONE_LENGTH, ACT_THREE_LENGTH, ACT_TWO_LENGTH,
     EMPTY_ACT_ONE, EMPTY_ACT_THREE, EMPTY_ACT_TWO,
 };
-use super::conduit::{NoiseTranscoder, SymmetricKey};
+use super::transcoder::{NoiseTranscoder, SymmetricKey};
 use super::{chacha, hkdf};
 
 // Alias type to help differentiate between temporary key and chaining key when
