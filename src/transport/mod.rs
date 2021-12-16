@@ -81,8 +81,8 @@ pub enum Error {
     /// frame structure broken: {0}
     FrameBroken(&'static str),
 
-    /// frame payload length is not equal to the actual frame payload provided
-    InvalidLength,
+    /// read length {actual} is not equal to the expected length {expected}
+    InvalidLength { expected: u16, actual: u16 },
 
     /// connections over Tor protocol are not yet supported
     TorNotSupportedYet,
