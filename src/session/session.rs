@@ -106,7 +106,21 @@ where
     pub(self) output: S,
 }
 
-impl<T, C> Session for Raw<T, C>
+// Private trait used to avoid code duplication below
+trait InternalSession {
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error>;
+    fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error>;
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error>;
+    fn send_routed_message(
+        &mut self,
+        source: &[u8],
+        route: &[u8],
+        dest: &[u8],
+        raw: &[u8],
+    ) -> Result<usize, Error>;
+}
+
+impl<T, C> InternalSession for Raw<T, C>
 where
     T: Transcode + 'static,
     T::Left: Decrypt,
@@ -147,7 +161,106 @@ where
         let writer = self.connection.as_sender();
         writer.send_routed(source, route, dest, &self.transcoder.encrypt(raw))
     }
+}
 
+impl Session for Raw<PlainTranscoder, ftcp::Connection> {
+    #[inline]
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
+        InternalSession::recv_raw_message(self)
+    }
+    #[inline]
+    fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error> {
+        InternalSession::send_raw_message(self, raw)
+    }
+    #[inline]
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
+        InternalSession::recv_routed_message(self)
+    }
+    #[inline]
+    fn send_routed_message(
+        &mut self,
+        source: &[u8],
+        route: &[u8],
+        dest: &[u8],
+        raw: &[u8],
+    ) -> Result<usize, Error> {
+        InternalSession::send_raw_message(self, raw)
+    }
+    #[inline]
+    fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
+}
+
+impl Session for Raw<NoiseTranscoder, brontide::Connection> {
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
+        let reader = self.connection.as_receiver();
+
+        // Reading & decrypting length
+        let encrypted_len = reader.recv_frame()?;
+        let len_slice = self.transcoder.decrypt(encrypted_len)?;
+        if len_slice.len() != 2 {
+            return Err(Error::InvalidLength {
+                expected: 2,
+                actual: len_slice.len() as u16,
+            });
+        }
+        let mut len_bytes = [0u8; 2];
+        len_bytes.copy_from_slice(&len_slice);
+        let len = u16::from_be_bytes(len_bytes);
+
+        // Reading & decrypting payload
+        let encrypted_payload = reader.recv_raw(len as usize)?;
+        let payload = self.transcoder.decrypt(encrypted_payload)?;
+        Ok(payload)
+    }
+
+    #[inline]
+    fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error> {
+        InternalSession::send_raw_message(self, raw)
+    }
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
+        unimplemented!(
+            "to route brontide messages use presentation-level onion routing"
+        )
+    }
+    fn send_routed_message(
+        &mut self,
+        source: &[u8],
+        route: &[u8],
+        dest: &[u8],
+        raw: &[u8],
+    ) -> Result<usize, Error> {
+        unimplemented!(
+            "to route brontide messages use presentation-level onion routing"
+        )
+    }
+    #[inline]
+    fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
+}
+
+#[cfg(feature = "zmq")]
+impl Session for Raw<PlainTranscoder, zmqsocket::Connection> {
+    #[inline]
+    fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
+        InternalSession::recv_raw_message(self)
+    }
+    #[inline]
+    fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error> {
+        InternalSession::send_raw_message(self, raw)
+    }
+    #[inline]
+    fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
+        InternalSession::recv_routed_message(self)
+    }
+    #[inline]
+    fn send_routed_message(
+        &mut self,
+        source: &[u8],
+        route: &[u8],
+        dest: &[u8],
+        raw: &[u8],
+    ) -> Result<usize, Error> {
+        InternalSession::send_raw_message(self, raw)
+    }
     #[inline]
     fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
 }
@@ -380,11 +493,11 @@ mod test {
         .unwrap();
 
         let msg = b"Some message";
-        tx.send_raw_message(msg).unwrap();
-        assert_eq!(rx.recv_raw_message().unwrap(), msg);
+        Session::send_raw_message(&mut tx, msg).unwrap();
+        assert_eq!(Session::recv_raw_message(&mut rx).unwrap(), msg);
 
         let msg = b"";
-        rx.send_raw_message(msg).unwrap();
-        assert_eq!(tx.recv_raw_message().unwrap(), msg);
+        Session::send_raw_message(&mut rx, msg).unwrap();
+        assert_eq!(Session::recv_raw_message(&mut tx).unwrap(), msg);
     }
 }
