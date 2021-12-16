@@ -172,6 +172,7 @@ impl std::hash::Hash for InetAddr {
         match self {
             InetAddr::IPv4(ipv4) => ipv4.hash(state),
             InetAddr::IPv6(ipv6) => ipv6.hash(state),
+            #[cfg(feature = "tor")]
             InetAddr::Tor(torv3) => torv3.as_bytes().hash(state),
         }
     }
