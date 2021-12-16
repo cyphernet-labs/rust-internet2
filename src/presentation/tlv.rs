@@ -12,7 +12,6 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use std::any::Any;
-use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::io;
 use std::io::{Read, Write};
@@ -236,11 +235,7 @@ impl Unmarshall for Unmarshaller {
     type Data = Stream;
     type Error = Error;
 
-    fn unmarshall(
-        &self,
-        data: &dyn Borrow<[u8]>,
-    ) -> Result<Stream, Self::Error> {
-        let mut reader = io::Cursor::new(data.borrow());
+    fn unmarshall(&self, mut reader: impl Read) -> Result<Stream, Self::Error> {
         let mut tlv = Stream::new();
         let mut prev_type_id = Type(0);
         loop {

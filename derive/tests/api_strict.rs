@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate inet2_derive;
 
+use std::io::Cursor;
 use std::str::FromStr;
 
 use internet2::{CreateUnmarshaller, TypedEnum, Unmarshall};
@@ -29,19 +30,19 @@ fn roundtrip() {
     let message = Request::Hello("world".to_owned());
     let payload = message.serialize();
     assert_eq!(payload, b"\x01\x00\x05\x00world".to_vec());
-    let roundtrip = &*unmarshaller.unmarshall(&payload).unwrap();
+    let roundtrip = &*unmarshaller.unmarshall(Cursor::new(payload)).unwrap();
     assert_eq!(&message, roundtrip);
 
     let message = Request::Empty();
     let payload = message.serialize();
     assert_eq!(payload, b"\x03\x00".to_vec());
-    let roundtrip = &*unmarshaller.unmarshall(&payload).unwrap();
+    let roundtrip = &*unmarshaller.unmarshall(Cursor::new(payload)).unwrap();
     assert_eq!(&message, roundtrip);
 
     let message = Request::NoArgs;
     let payload = message.serialize();
     assert_eq!(payload, b"\x05\x00".to_vec());
-    let roundtrip = &*unmarshaller.unmarshall(&payload).unwrap();
+    let roundtrip = &*unmarshaller.unmarshall(Cursor::new(payload)).unwrap();
     assert_eq!(&message, roundtrip);
 
     let keys: Vec<_> = vec![
@@ -57,6 +58,6 @@ fn roundtrip() {
     let mut expect = b"\x03\x01\x02\x00".to_vec();
     expect.extend(keys.iter().map(secp256k1::PublicKey::serialize).flatten());
     assert_eq!(payload, expect);
-    let roundtrip = &*unmarshaller.unmarshall(&payload).unwrap();
+    let roundtrip = &*unmarshaller.unmarshall(Cursor::new(payload)).unwrap();
     assert_eq!(&message, roundtrip);
 }

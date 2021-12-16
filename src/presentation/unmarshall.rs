@@ -12,9 +12,8 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use std::any::Any;
-use std::borrow::Borrow;
 use std::collections::BTreeMap;
-use std::io::{self, Read};
+use std::io;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
@@ -29,7 +28,7 @@ pub trait Unmarshall {
     type Error: std::error::Error;
     fn unmarshall(
         &self,
-        data: &dyn Borrow<[u8]>,
+        reader: impl io::Read,
     ) -> Result<Self::Data, Self::Error>;
 }
 
@@ -58,9 +57,8 @@ where
 
     fn unmarshall(
         &self,
-        data: &dyn Borrow<[u8]>,
+        mut reader: impl io::Read,
     ) -> Result<Self::Data, Self::Error> {
-        let mut reader = io::Cursor::new(data.borrow());
         let type_id = match self.encoding {
             EncodingType::Lightning => TypeId::lightning_decode(&mut reader)?,
             EncodingType::Strict => TypeId::strict_decode(&mut reader)?,
