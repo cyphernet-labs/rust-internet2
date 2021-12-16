@@ -25,9 +25,7 @@ use crate::transport::{
 };
 #[cfg(feature = "zmq")]
 use crate::zmqsocket;
-use crate::NoiseDecryptor;
-#[cfg(feature = "keygen")]
-use crate::NoiseTranscoder;
+use crate::{NoiseDecryptor, NoiseTranscoder};
 
 // Generics prevents us from using session as `&dyn` reference, so we have
 // to avoid `where Self: Input + Output` and generic parameters, unlike with
