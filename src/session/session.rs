@@ -21,7 +21,7 @@ use super::{Decrypt, Encrypt, Transcode};
 use crate::session::noise::HandshakeState;
 use crate::session::PlainTranscoder;
 use crate::transport::{
-    ftcp, Duplex, Error, RecvFrame, RoutedFrame, SendFrame,
+    brontide, ftcp, Duplex, Error, RecvFrame, RoutedFrame, SendFrame,
 };
 #[cfg(feature = "zmq")]
 use crate::zmqsocket;
@@ -204,7 +204,7 @@ impl Raw<PlainTranscoder, ftcp::Connection> {
 }
 
 #[cfg(feature = "keygen")]
-impl Raw<NoiseTranscoder, ftcp::Connection> {
+impl Raw<NoiseTranscoder, brontide::Connection> {
     pub fn connect_ftcp_encrypted(
         local_key: secp256k1::SecretKey,
         remote_key: secp256k1::PublicKey,
@@ -220,7 +220,7 @@ impl Raw<NoiseTranscoder, ftcp::Connection> {
             &ephemeral_key,
         );
 
-        let mut connection = ftcp::Connection::connect(remote_addr)?;
+        let mut connection = brontide::Connection::connect(remote_addr)?;
 
         let mut data = vec![];
         let transcoder = loop {
@@ -255,7 +255,7 @@ impl Raw<NoiseTranscoder, ftcp::Connection> {
         let mut handshake =
             HandshakeState::new_responder(&local_key, &ephemeral_key);
 
-        let mut connection = ftcp::Connection::accept(remote_addr)?;
+        let mut connection = brontide::Connection::accept(remote_addr)?;
 
         let mut data =
             connection.as_receiver().recv_raw(handshake.data_len())?;
