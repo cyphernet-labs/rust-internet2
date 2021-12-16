@@ -225,11 +225,17 @@ impl lightning_encoding::LightningDecode for Stream {
     }
 }
 
+// This structure is not used anywhere and should be removed
+#[deprecated(
+    since = "0.6.0",
+    note = "use Stream::lightning_decode and process the data afterwards"
+)]
 pub struct Unmarshaller {
     known_types: BTreeMap<Type, UnmarshallFn<Error>>,
     raw_parser: UnmarshallFn<Error>,
 }
 
+#[allow(deprecated)]
 impl Unmarshall for Unmarshaller {
     type Data = Stream;
     type Error = Error;
@@ -306,6 +312,7 @@ impl Unmarshall for Unmarshaller {
     }
 }
 
+#[allow(deprecated)]
 impl Unmarshaller {
     pub fn new() -> Self {
         Self {
@@ -342,6 +349,7 @@ impl Unmarshaller {
     }
 }
 
+#[allow(deprecated)]
 impl Default for Unmarshaller {
     fn default() -> Self { Unmarshaller::new() }
 }
