@@ -420,6 +420,7 @@ impl Connection {
         let socket = self.input.as_socket_mut();
         let endpoint = addr.zmq_socket_string();
         socket.disconnect(&endpoint)?;
+        *socket = ZMQ_CONTEXT.socket(self.api_type.socket_type())?;
         socket
             .set_identity(identity.as_ref())
             .map_err(Error::from)?;
