@@ -398,6 +398,11 @@ impl Connection {
 
     #[inline]
     pub(crate) fn as_socket(&self) -> &zmq::Socket { self.input.as_socket() }
+
+    #[inline]
+    pub fn set_identity(&mut self, identity: &[u8]) -> Result<(), Error> {
+        self.as_socket().set_identity(identity).map_err(Error::from)
+    }
 }
 
 impl WrappedSocket {

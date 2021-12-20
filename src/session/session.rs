@@ -436,6 +436,10 @@ where
     T::Right: Encrypt + Send + 'static,
 {
     pub fn as_socket(&self) -> &zmq::Socket { self.connection.as_socket() }
+
+    pub fn set_identity(&mut self, identity: &[u8]) -> Result<(), Error> {
+        self.connection.set_identity(identity).map_err(Error::from)
+    }
 }
 
 // Private trait used to avoid code duplication below
