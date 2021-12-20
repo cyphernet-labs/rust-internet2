@@ -338,6 +338,7 @@ pub struct WrappedSocket {
 
 pub struct Connection {
     api_type: ZmqType,
+    remote_addr: Option<ZmqSocketAddr>,
     input: WrappedSocket,
     output: Option<WrappedSocket>,
 }
@@ -383,6 +384,7 @@ impl Connection {
         .map(|s| WrappedSocket::from_zmq_socket(api_type, s));
         Ok(Self {
             api_type,
+            remote_addr: Some(remote.clone()),
             input: WrappedSocket::from_zmq_socket(api_type, socket),
             output,
         })
@@ -391,6 +393,7 @@ impl Connection {
     pub fn from_zmq_socket(api_type: ZmqType, socket: zmq::Socket) -> Self {
         Self {
             api_type,
+            remote_addr: None,
             input: WrappedSocket::from_zmq_socket(api_type, socket),
             output: None,
         }
@@ -400,8 +403,37 @@ impl Connection {
     pub(crate) fn as_socket(&self) -> &zmq::Socket { self.input.as_socket() }
 
     #[inline]
-    pub fn set_identity(&mut self, identity: &[u8]) -> Result<(), Error> {
-        self.as_socket().set_identity(identity).map_err(Error::from)
+    pub(crate) fn as_socket_mut(&mut self) -> &mut zmq::Socket {
+        self.input.as_socket_mut()
+    }
+
+    #[inline]
+    pub fn set_identity(
+        &mut self,
+        identity: &impl AsRef<[u8]>,
+    ) -> Result<(), Error> {
+        let addr = if let Some(addr) = &self.remote_addr {
+            addr
+        } else {
+            return Err(Error::from(zmq::Error::EINVAL));
+        };
+        let socket = self.input.as_socket_mut();
+        let endpoint = addr.zmq_socket_string();
+        socket.disconnect(&endpoint)?;
+        socket
+            .set_identity(identity.as_ref())
+            .map_err(Error::from)?;
+        match self.api_type {
+            ZmqType::Pull
+            | ZmqType::Rep
+            | ZmqType::Pub
+            | ZmqType::RouterBind => socket.bind(&endpoint)?,
+            ZmqType::Push
+            | ZmqType::Req
+            | ZmqType::Sub
+            | ZmqType::RouterConnect => socket.connect(&endpoint)?,
+        }
+        Ok(())
     }
 }
 
@@ -413,6 +445,11 @@ impl WrappedSocket {
 
     #[inline]
     pub(crate) fn as_socket(&self) -> &zmq::Socket { &self.socket }
+
+    #[inline]
+    pub(crate) fn as_socket_mut(&mut self) -> &mut zmq::Socket {
+        &mut self.socket
+    }
 }
 
 impl Duplex for Connection {
@@ -460,6 +497,7 @@ impl Bipolar for Connection {
         }
         Self {
             api_type: input.api_type,
+            remote_addr: None,
             input,
             output: Some(output),
         }

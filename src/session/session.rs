@@ -437,7 +437,10 @@ where
 {
     pub fn as_socket(&self) -> &zmq::Socket { self.connection.as_socket() }
 
-    pub fn set_identity(&mut self, identity: &[u8]) -> Result<(), Error> {
+    pub fn set_identity(
+        &mut self,
+        identity: &impl AsRef<[u8]>,
+    ) -> Result<(), Error> {
         self.connection.set_identity(identity).map_err(Error::from)
     }
 }
