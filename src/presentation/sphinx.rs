@@ -50,7 +50,9 @@ where
     }
 
     #[inline]
-    pub fn payload_size(&self) -> usize { self.payload.serialized_len() }
+    pub fn payload_size(&self) -> usize {
+        self.payload.serialized_len()
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -88,13 +90,15 @@ impl StrictDecode for SphinxPacket {
 #[display("onion_packet(v{version}, ...)")]
 pub struct OnionPacket {
     pub version: u8,
-    pub session_key: SecretKey,
+    pub point: PublicKey,
     pub hop_payloads: SphinxPacket,
     pub hmac: Hmac<sha256::Hash>,
 }
 
 impl Default for SphinxPacket {
-    fn default() -> Self { SphinxPacket::new() }
+    fn default() -> Self {
+        SphinxPacket::new()
+    }
 }
 
 fn construct_shared_secrets<C, Payload>(
@@ -309,6 +313,26 @@ impl OnionPacket {
         let mut rng = secp256k1::rand::thread_rng();
         let session_key = SecretKey::new(&mut rng);
 
+        OnionPacket::with_session_key(
+            secp,
+            session_key,
+            hops,
+            assoc_data,
+            strict_encode,
+        )
+    }
+
+    pub fn with_session_key<C, Payload>(
+        secp: &Secp256k1<C>,
+        session_key: SecretKey,
+        hops: &[Hop<Payload>],
+        assoc_data: &[u8],
+        strict_encode: bool,
+    ) -> OnionPacket
+    where
+        C: Signing,
+        Payload: SphinxPayload,
+    {
         let sphinx_packet = SphinxPacket::with(
             secp,
             session_key,
@@ -319,7 +343,7 @@ impl OnionPacket {
 
         OnionPacket {
             version: 0,
-            session_key,
+            point: PublicKey::from_secret_key(secp, &session_key),
             hmac: sphinx_packet.hmac(assoc_data),
             hop_payloads: sphinx_packet,
         }
@@ -335,9 +359,13 @@ mod test {
     use super::*;
 
     impl SphinxPayload for Vec<u8> {
-        fn serialize(&self) -> Vec<u8> { self.clone() }
+        fn serialize(&self) -> Vec<u8> {
+            self.clone()
+        }
 
-        fn serialized_len(&self) -> usize { self.len() }
+        fn serialized_len(&self) -> usize {
+            self.len()
+        }
     }
 
     fn hops() -> Vec<Hop<Vec<u8>>> {
