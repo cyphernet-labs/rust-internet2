@@ -427,4 +427,66 @@ mod test {
                 .unwrap()
         );
     }
+
+    #[test]
+    fn onion_packet() {
+        let session_key = SecretKey::from_str(
+            "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
+        )
+        .unwrap();
+
+        let packet = OnionPacket::with_session_key(
+            &Secp256k1::new(),
+            session_key,
+            &hops(),
+            &[],
+            false,
+        );
+
+        assert_eq!(
+            packet.lightning_serialize().unwrap(),
+            Vec::from_hex(
+            "0002629c3b947322792e4f3e30f7f260e404c706b0fcbd32ac105962cc5636f9e1\
+            023d52a24595b809b3927311f8bdc222d82ae38ffe7645efbc2644e01b2e5e17de6\
+            bd95133fa6872a62e06c5fbaaa3c6fe5c114b6c58f972427f09494f00c2b6fb44c1\
+            f9f7b35cd685ac53665c31c26eee6c898a2bcdd9b99e25f121b5bb69da814b4b448\
+            65bb6f4403e564f812c9210a7ab8bc78e7966f7a6f791be9a2f01f6fec1babbfe7e\
+            a089d6db9a56582dc256d38bf3ac8159ef9cb6373060b07e16003d8f103fd8a396d\
+            318d566529ef3653a55fdc760d81d26181ff4ea37e77d4978ab546d1b8d382e58c8\
+            850f0da08b4975e72566ed84f7012f08c8294e69560c489ed18380835cf22dc2094\
+            e488c49fa467b053e149701148868b88dd7fadbf4f86ae88419b4f98277f5d9b484\
+            35b628afbe305bdcc0d65ec3757d0e72bfbfc69ff0621bcff7178b4fd3d61be9d0e\
+            321e4602444e83a4265c5e032f8af9c67a273b908fb3eac68a31283dd187a1bd4be\
+            113bee45ae304c1646f92a6775d0f56ec5c44c32735d9a43903d8767f7a724828b7\
+            118e66910f2aba8bd10d7214b0e3fdfdc224f5230fae8ffe356d5d9054efbecf8d3\
+            261b2684b0e24986dc1ccedd978ca43d1be0a9e83ddf390a95142fe8d7c328837fe\
+            aa71d716afb6c1840c379f4c80d9c7b76d84ce1addb7f0e1d5b1e637223f7df3a3d\
+            6b140cfca1ed7258949efeb65139f9271eb02809f8d6596df7b1d103e1f54818039\
+            8a3fda76a89637880b9e8a583dccc5a03ae31e806855a8afeb05503df2aab222c93\
+            99533320e9f81884e4fba426ef4452ef3624c789d589314109b46eaf3a4b546b32e\
+            80f49e6b4e56567bcbc143e4536d9b0501e584662edcfde8b76344ddb336e08a682\
+            3d09252c475cf2683ff1639ee4458c10641a18146967c13bc27a621526f84c7fcdf\
+            aa7f248ff2408e4f4db011d9574978c9a9203409705ff2231c89c7e7a31ab73d01e\
+            537b0676fc3f7ca0f337c03d6a3ec009d6ef72ddd7f962dac3fbe4fcc864c441e91\
+            c06081bda17da456147e158c99a11295e35a1514ba79c473dc63e020091bc0bc2ab\
+            a23cdec4b1407c56d0d32064d06aeb42b24c48c4cc67e52db13714630b937ccb96e\
+            f235cfd090f734b7e820fe3f970a1eb283ff3ba2dccd0dfcbdb6f5a269da1cbd201\
+            718116d0ce0e2241f6989b98956113fe7b380cf20b42d62d4702f14665f172685ef\
+            13b0cf763edd868e0b78059146c9e865fd3d0ad273741631473d6920bc85909cdde\
+            0eed6fab1849b19ab59ea6a308006ba88885b6d45b497a6df9cf314c441347b4a33\
+            8a36c54b05428b5ede0d9e62931a22e2d777bfcdf7b22f77c3590d4ee5a82e058a9\
+            2fb716a9e232e0133e947e7bbc1d791e701ae02127f89e92db79d86b7d20f20d2b9\
+            346707b09766fb73add8b70ce509f4537cd86b51cce4f01fc5b2ce7cc59c2f1c12a\
+            10ff2dc10f638b8c1347d14c4f6966f0348724f5ffa1d96b044de9181312f7a1e80\
+            2ee9fc63b6e2f26fa560c2e77058b02a8a74e8501ab0dba8ed3c1192418b66736c7\
+            e036f4bd312a6ba912e0cfc056373b2c90b3107f28b82eaf7438168275ee6e76481\
+            bda20e15e91bacb749ae4e3c363b443ee78e5227f92d7a14ae3068e41cd1eb53af5\
+            f620cbec18b39ab5986e03174b376a6a196f4b979e58992b0d14f5fc9e36707a215\
+            120b4dbcb7ca2f76a5c8c77b3af07b1fc8326eee0da292a47264c6768d60003fc33\
+            5a014290d41d9f605a00bd4120962d58009429bb41e17c83f6c3d47b704e20e04d8\
+            eeaef2ef6d6f9756ce84c7ffe0adc9ac24483e3345f41d1c412cfd64524e2e307b7\
+            8b84c03d42fa29ab2855d043b21a922365a23168116bd6b73bde3631f3a273214da\
+            ee39143509722b8b1ceab8db5547cb0a13bf684b3595e83190f88").unwrap()
+        );
+    }
 }
