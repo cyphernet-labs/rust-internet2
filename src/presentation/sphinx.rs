@@ -45,6 +45,11 @@ where
     Payload: SphinxPayload,
 {
     #[inline]
+    pub fn with(pubkey: PublicKey, payload: Payload) -> Hop<Payload> {
+        Hop { pubkey, payload }
+    }
+
+    #[inline]
     pub fn payload_size(&self) -> usize { self.payload.serialized_len() }
 }
 
@@ -148,17 +153,18 @@ fn generate_cipher_stream(prng_seed: [u8; 32], len: usize) -> Vec<u8> {
 
 fn generate_filler<Payload>(
     key: &[u8],
+    filler_len: usize,
     hops: &[Hop<Payload>],
     shared_secrets: &[sha256::Hash],
 ) -> Vec<u8>
 where
     Payload: SphinxPayload,
 {
-    let hop_sizes = hops.iter().map(Hop::payload_size);
-    let filler_len = hop_sizes.clone().sum();
     let mut filler = vec![0u8; filler_len];
 
-    for (hop_size, secret) in hop_sizes.zip(shared_secrets).rev() {
+    for (hop_size, secret) in
+        hops.iter().map(Hop::payload_size).zip(shared_secrets).rev()
+    {
         filler.rotate_left(hop_size);
         // Zero-fill the last hop
         filler[filler_len - hop_size..].fill(0);
@@ -199,7 +205,8 @@ impl SphinxPacket {
         let shared_secrets = construct_shared_secrets(secp, hops, session_key);
 
         // Generate the padding, called "filler strings" in the paper.
-        let filler = generate_filler(RHO_KEY, hops, &shared_secrets);
+        let filler =
+            generate_filler(RHO_KEY, SPHINX_PACKET_LEN, hops, &shared_secrets);
 
         // Allocate and initialize fields to zero-filled slices
         let mut mix_header = [0u8; SPHINX_PACKET_LEN];
@@ -316,5 +323,80 @@ impl OnionPacket {
             hmac: sphinx_packet.hmac(assoc_data),
             hop_payloads: sphinx_packet,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::str::FromStr;
+
+    use bitcoin_hashes::hex::FromHex;
+
+    use super::*;
+
+    impl SphinxPayload for Vec<u8> {
+        fn serialize(&self) -> Vec<u8> { self.clone() }
+
+        fn serialized_len(&self) -> usize { self.len() }
+    }
+
+    fn hops() -> Vec<Hop<Vec<u8>>> {
+        vec![
+            Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), Vec::from_hex("00000067000001000100000000000003e90000007b000000000000000000000000000000000000000000000000").unwrap()),
+            Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap()),
+            Hop::with("0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap())
+        ]
+    }
+
+    // Test is written after c-lightning output generated with the following
+    // command: ```
+    // lightning-cli createonion '[
+    //   {
+    //      "pubkey":
+    // "022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59",
+    //      "payload":
+    // "00000067000001000100000000000003e90000007b000000000000000000000000000000000000000000000000"
+    //   }, {
+    //      "pubkey":
+    // "035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d",
+    //      "payload":
+    // "00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000"
+    //   }, {
+    //      "style": "legacy",
+    //      "pubkey":
+    // "0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199",
+    //      "payload":
+    // "00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000"
+    //   }
+    // ]' "" 07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2
+    // ```
+    #[test]
+    fn shared_secrets() {
+        let session_key = SecretKey::from_str(
+            "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
+        )
+        .unwrap();
+
+        let shared_secrets =
+            construct_shared_secrets(&Secp256k1::new(), &hops(), session_key);
+        assert_eq!(shared_secrets.len(), 3);
+        assert_eq!(
+            shared_secrets[0],
+            "f48d45829d50d1af09d9ac9bde5fa21147b396aba605bf8eee8728c5366eeefc"
+                .parse()
+                .unwrap()
+        );
+        assert_eq!(
+            shared_secrets[1],
+            "e51a387a3ae3900e9bf9d9607f0af04dc910a87336205427f1914dcec5061399"
+                .parse()
+                .unwrap()
+        );
+        assert_eq!(
+            shared_secrets[2],
+            "1f1ff5da2f0cf66db49e4b27e279a086e4817bf97e6e75bf3e5d8c4b2493e7da"
+                .parse()
+                .unwrap()
+        );
     }
 }
