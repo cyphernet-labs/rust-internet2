@@ -207,8 +207,19 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed8738f14471a99f0e316c327e68fc82a3611cc2895fcb604b89eedaf8f39d95"
 dependencies = [
- "cipher",
+ "cipher 0.2.5",
  "zeroize",
+]
+
+[[package]]
+name = "chacha20"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01b72a433d0cf2aef113ba70f62634c56fddb0f244e6377185c56a7cadbd8f91"
+dependencies = [
+ "cfg-if",
+ "cipher 0.3.0",
+ "cpufeatures",
 ]
 
 [[package]]
@@ -218,8 +229,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af1fc18e6d90c40164bf6c317476f2a98f04661e310e79830366b7e914c58a8e"
 dependencies = [
  "aead",
- "chacha20",
- "cipher",
+ "chacha20 0.6.0",
+ "cipher 0.2.5",
  "poly1305",
  "zeroize",
 ]
@@ -242,6 +253,15 @@ name = "cipher"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12f8e7987cbd042a63249497f41aed09f8e65add917ea6566effbc56578d6801"
+dependencies = [
+ "generic-array",
+]
+
+[[package]]
+name = "cipher"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ee52072ec15386f770805afd189a01c8841be8696bed250fa2f13c4c0d6dfb7"
 dependencies = [
  "generic-array",
 ]
@@ -692,6 +712,7 @@ version = "0.5.16"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
+ "chacha20 0.8.1",
  "chacha20poly1305",
  "compiletest_rs",
  "inet2_addr",
@@ -737,9 +758,9 @@ checksum = "f98a04dce437184842841303488f70d0188c5f51437d2a834dc097eafa909a01"
 
 [[package]]
 name = "lightning_encoding"
-version = "0.5.7"
+version = "0.5.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d145410a268b41aa9077c34c12e5a6f2581836827c184b624cb14587e7de8eda"
+checksum = "c1f759f90de091c69d83687a7e794ce986c7b830421cf18236232651ce359699"
 dependencies = [
  "amplify",
  "bitcoin",
