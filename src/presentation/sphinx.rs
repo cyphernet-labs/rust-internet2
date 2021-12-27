@@ -49,9 +49,10 @@ where
         Hop { pubkey, payload }
     }
 
-    #[inline]
     pub fn payload_size(&self) -> usize {
-        self.payload.serialized_len()
+        let hop_data_len = self.payload.serialized_len();
+        let hop_data_bigsize = BigSize::from(hop_data_len);
+        hop_data_len + 32
     }
 }
 
@@ -165,10 +166,10 @@ where
     Payload: SphinxPayload,
 {
     let mut filler = vec![0u8; filler_len];
+    let iter = hops.iter().map(|hop| hop.payload_size());
+    let total_len: usize = iter.clone().sum();
 
-    for (hop_size, secret) in
-        hops.iter().map(Hop::payload_size).zip(shared_secrets).rev()
-    {
+    for (hop_size, secret) in iter.zip(shared_secrets) {
         filler.rotate_left(hop_size);
         // Zero-fill the last hop
         filler[filler_len - hop_size..].fill(0);
@@ -183,7 +184,7 @@ where
             .for_each(|(byte, mask)| *byte ^= mask);
     }
 
-    filler
+    filler.split_off(filler_len - total_len)
 }
 
 impl SphinxPacket {
@@ -200,8 +201,7 @@ impl SphinxPacket {
         session_key: SecretKey,
         hops: &[Hop<Payload>],
         assoc_data: &[u8],
-        strict_encode: bool,
-    ) -> SphinxPacket
+    ) -> (SphinxPacket, Hmac<sha256::Hash>)
     where
         C: Signing,
         Payload: SphinxPayload,
@@ -232,28 +232,11 @@ impl SphinxPacket {
                 generate_cipher_stream(rho_key, SPHINX_PACKET_LEN);
 
             let hop_data = hop.payload.serialize();
-            let hop_data_len = hop_data.len();
-            let hop_data_bigsize = BigSize::from(hop_data_len);
-            let shift_size = hop_data_len
-                + 32
-                + if strict_encode {
-                    2
-                } else {
-                    hop_data_bigsize.len()
-                };
+            let shift_size = hop.payload_size();
             assert!(shift_size <= 1300, "payload is too big");
             mix_header.rotate_right(shift_size);
 
             let mut writer = Cursor::new(&mut mix_header[..]);
-            if strict_encode {
-                hop_data_len
-                    .strict_encode(&mut writer)
-                    .expect("memory writer does not error");
-            } else {
-                hop_data_bigsize
-                    .lightning_encode(&mut writer)
-                    .expect("memory writer does not error");
-            }
             writer
                 .write_all(&hop_data)
                 .expect("memory writer does not error");
@@ -272,26 +255,18 @@ impl SphinxPacket {
             // These need to be overwritten, so every node generates a correct
             // padding
             if first_hop {
-                mix_header[mix_header_len..].copy_from_slice(
-                    &filler[..SPHINX_PACKET_LEN - mix_header_len],
-                );
+                //mix_header[SPHINX_PACKET_LEN - filler.len()..]
+                //    .copy_from_slice(&filler);
                 first_hop = false;
             }
 
             let mut engine = HmacEngine::<sha256::Hash>::new(&mu_key);
-            engine.input(&mix_header[..mix_header_len]);
+            engine.input(&mix_header);
             engine.input(assoc_data);
             next_hmac = Hmac::from_engine(engine);
         }
 
-        SphinxPacket(mix_header)
-    }
-
-    pub fn hmac(&self, assoc_data: &[u8]) -> Hmac<sha256::Hash> {
-        let mut engine = Hmac::<sha256::Hash>::engine();
-        engine.input(&self.0);
-        engine.input(assoc_data);
-        Hmac::from_engine(engine)
+        (SphinxPacket(mix_header), next_hmac)
     }
 }
 
@@ -304,7 +279,6 @@ impl OnionPacket {
         secp: &Secp256k1<C>,
         hops: &[Hop<Payload>],
         assoc_data: &[u8],
-        strict_encode: bool,
     ) -> OnionPacket
     where
         C: Signing,
@@ -313,13 +287,7 @@ impl OnionPacket {
         let mut rng = secp256k1::rand::thread_rng();
         let session_key = SecretKey::new(&mut rng);
 
-        OnionPacket::with_session_key(
-            secp,
-            session_key,
-            hops,
-            assoc_data,
-            strict_encode,
-        )
+        OnionPacket::with_session_key(secp, session_key, hops, assoc_data)
     }
 
     pub fn with_session_key<C, Payload>(
@@ -327,31 +295,26 @@ impl OnionPacket {
         session_key: SecretKey,
         hops: &[Hop<Payload>],
         assoc_data: &[u8],
-        strict_encode: bool,
     ) -> OnionPacket
     where
         C: Signing,
         Payload: SphinxPayload,
     {
-        let sphinx_packet = SphinxPacket::with(
-            secp,
-            session_key,
-            hops,
-            assoc_data,
-            strict_encode,
-        );
+        let (sphinx_packet, hmac) =
+            SphinxPacket::with(secp, session_key, hops, assoc_data);
 
         OnionPacket {
             version: 0,
             point: PublicKey::from_secret_key(secp, &session_key),
-            hmac: sphinx_packet.hmac(assoc_data),
             hop_payloads: sphinx_packet,
+            hmac,
         }
     }
 }
 
 #[cfg(test)]
 mod test {
+    use amplify::hex::ToHex;
     use std::str::FromStr;
 
     use bitcoin_hashes::hex::FromHex;
@@ -373,6 +336,12 @@ mod test {
             Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), Vec::from_hex("00000067000001000100000000000003e90000007b000000000000000000000000000000000000000000000000").unwrap()),
             Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap()),
             Hop::with("0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap())
+        ]
+    }
+
+    fn single_hop_empty_payload() -> Vec<Hop<Vec<u8>>> {
+        vec![
+            Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), vec![]),
         ]
     }
 
@@ -429,6 +398,90 @@ mod test {
     }
 
     #[test]
+    fn onion_single_hop() {
+        let session_key = SecretKey::from_str(
+            "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
+        )
+        .unwrap();
+
+        let packet = OnionPacket::with_session_key(
+            &Secp256k1::new(),
+            session_key,
+            &single_hop_empty_payload(),
+            &[],
+        );
+
+        let clightning_data = Vec::from_hex(
+            "0002629c3b947322792e4f3e30f7f260e404c706b0fcbd32ac105962cc5636f9e1\
+            023d52a22295b808b3937311f8bdc222dbc3e38ffe0d45efbc2644e01b2e5e17de4\
+            59eafaf69320050f420915285f0381181469bfae5287bbb3b6d2f492e68c1612420\
+            74c72276ae996233553c90c17beb96b11969b4d35176ae00f27b8fc59bb08536a53\
+            50625cad3f908acd160922120732ab472a856be8a202ee96a01b3b619fc8af63ab0\
+            f0f77fa5710c2293fe1fb09d09d67d75fc56c7dd16787a6d99ee7e74a77e90568ea\
+            e4d6092fadbe2616608891d63cdaee807cb90af6da706ef3388a460348ee2dc0c76\
+            e3fc5c6d8f510010c653daf848961c4c9c59548e492d53294fb5b9ea92056f27fb0\
+            b837f3a99570a3713c1088765626317426fa6941e07cb70f9e6f25a93865253aa71\
+            f0e8e0b9dcbfa17412eab4c6b01373cfa0436f0bc382ef01013482aa0403bec8c07\
+            8c12d7184778716956307180e3459e20bf80b30852791f838466db3feee85437ee5\
+            aa5f7221ad7c42122867411d96b9036b4dfcaa5304939ce069aed30bc59379c9e14\
+            517894499eafdddf2393c8e9f3d173b3e40399f7aa1cdaa9a3df891001bb096e3c8\
+            146d65aae6bfc4bb7199eb28dacfda3c633794acfcd14103001434c3c4894a80de0\
+            ccc3d02549b17a6edd3f749789ca15b0f5d7d72a6b50216a9c2a2cce2e6d724c91c\
+            a746184267730aaa9f4b6809be8a74d72742296dbb609d4bc0128aed016311f42a7\
+            dd3a763bfb28d4271ffc98407de7c7c9b883498600f51cfb16697ee73023e8ec06f\
+            cdff47e9238189b2a38aaaaafb4bbd8ad67e247f566ed115eaaff5fe2b091e7623d\
+            dd2a4614743f44a859946a0a63ef1dce9c61d1e5fe70d8e72591c62c2b667a1d69b\
+            f6ade1895d984d4a1fca3ce4b9e99164c07b8a2bd39faf2c57b6f3e8d8541e7224a\
+            01944f56f3917be6e57abdec94adc1701ff58f4ea4d31329c337a366a5023480797\
+            5857efa3b3a3465e231d0b0b98d4900b1b94757ab5a4d861b121c0beab5fd16ed35\
+            cd2ed8b36a1120ebe920a2993837fc5866a9c4615ad945807632cd40c8ecfb72d1a\
+            0dabebbb53fcb97691ef30e4170cd9fb2a3957b906ff04bf4cf65a4304d49ca784d\
+            c23c66c32d81c61441c09e589e2b59007b5a4c388f1e97dff78f1d28ef3d666f2c1\
+            8c4d0014675363cf62e0f9d7729faf55dba99ecff1fac4314ae8b26d408e5ebbe56\
+            c78866f5dbc32db7a67c86c966757092b081b6187e2d0f8ae507fead6b69ac31ca3\
+            0d3222b08965c024fc7816ef429cf0826f152f244542aa5fd5d3debe4d3731414d5\
+            062b9d8985138d4f8956eeb0c2258a6bdbf775f5d735648b538ef918805bbcc05cf\
+            fe350a1d92fe8e2652ccdc6e347e83b585e6f69db78bc298ce44f6726e7ce6bb398\
+            71a87a454bcbc6bec43f1d33ff87608571e08228ccf9c7d4c6cbe2f533129c0e07c\
+            18b441cf7ad0c1dc9121e028d2ac6bc0ccd7d2f333788cb8adaff7e4856157cf875\
+            82828ad392da4d619784dc98695ce2bf7f38dcf1575d9207233d8db893ed6c9a18c\
+            501cf188a18d2efbd34d2f51528886f1be72242b3eb6eed688d52f872cee5a3f0e0\
+            162632f7ec7cb81ac5190ae672e4c26d849e60b59c6b38e66349393f91dddafa6f4\
+            83d70430f6eabdcdee5acf2668dfff6f3c24f928645e3ac18d84705df09e63f6f43\
+            c4eb49eccd111cb803dadf2c1bdddee0cd43ae925190280bfa7064b87cbb09f139c\
+            24269871818bab6d7f5b95cbd3afce30b6895872ceb676cc8f5aebb007f195fc433\
+            8e792a974e9537f9c5a4a66d4790caf0c75af989518c8e2d3f224d514dffe3a7b83\
+            9a60c6e3b7adb3e42f101da6bf49d0660d6a269799c7ba83b8164c5385b078795b9\
+            505fdf4938097baae37cad7ced3351e660ca5c674c26723c185da"
+        ).unwrap();
+
+        let shared_secret = construct_shared_secrets(
+            &Secp256k1::new(),
+            &single_hop_empty_payload(),
+            session_key,
+        )[0];
+        let rho_key = generate_key(RHO_KEY, shared_secret);
+        let stream_bytes = generate_cipher_stream(rho_key, SPHINX_PACKET_LEN);
+
+        let our_data = packet.lightning_serialize().unwrap();
+
+        let our_source: Vec<u8> = our_data[34..]
+            .iter()
+            .zip(&stream_bytes)
+            .map(|(b, m)| b ^ m)
+            .collect();
+        let clightning_source: Vec<u8> = clightning_data[34..]
+            .iter()
+            .zip(&stream_bytes)
+            .map(|(b, m)| b ^ m)
+            .collect();
+
+        assert_eq!(our_source.to_hex(), clightning_source.to_hex());
+
+        assert_eq!(our_data.to_hex(), clightning_data.to_hex());
+    }
+
+    #[test]
     fn onion_packet() {
         let session_key = SecretKey::from_str(
             "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
@@ -440,12 +493,9 @@ mod test {
             session_key,
             &hops(),
             &[],
-            false,
         );
 
-        assert_eq!(
-            packet.lightning_serialize().unwrap(),
-            Vec::from_hex(
+        let clightning_data = Vec::from_hex(
             "0002629c3b947322792e4f3e30f7f260e404c706b0fcbd32ac105962cc5636f9e1\
             023d52a24595b809b3927311f8bdc222d82ae38ffe7645efbc2644e01b2e5e17de6\
             bd95133fa6872a62e06c5fbaaa3c6fe5c114b6c58f972427f09494f00c2b6fb44c1\
@@ -486,7 +536,11 @@ mod test {
             5a014290d41d9f605a00bd4120962d58009429bb41e17c83f6c3d47b704e20e04d8\
             eeaef2ef6d6f9756ce84c7ffe0adc9ac24483e3345f41d1c412cfd64524e2e307b7\
             8b84c03d42fa29ab2855d043b21a922365a23168116bd6b73bde3631f3a273214da\
-            ee39143509722b8b1ceab8db5547cb0a13bf684b3595e83190f88").unwrap()
+            ee39143509722b8b1ceab8db5547cb0a13bf684b3595e83190f88").unwrap();
+
+        assert_eq!(
+            packet.lightning_serialize().unwrap().to_hex(),
+            clightning_data.to_hex()
         );
     }
 }
