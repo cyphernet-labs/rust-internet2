@@ -186,9 +186,7 @@ impl Session for Raw<PlainTranscoder, ftcp::Connection> {
         InternalSession::send_routed_message(self, source, route, dest, raw)
     }
     #[inline]
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
-        self
-    }
+    fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
 }
 
 fn recv_brontide_message(
@@ -238,9 +236,7 @@ impl Session for Raw<NoiseTranscoder, brontide::Connection> {
         )
     }
     #[inline]
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
-        self
-    }
+    fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
 }
 
 #[cfg(feature = "zmq")]
@@ -268,9 +264,7 @@ impl Session for Raw<PlainTranscoder, zmqsocket::Connection> {
         InternalSession::send_routed_message(self, source, route, dest, raw)
     }
     #[inline]
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
-        self
-    }
+    fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
 }
 
 impl<T, C> Split for Raw<T, C>
@@ -438,9 +432,7 @@ where
     T::Left: Decrypt + Send + 'static,
     T::Right: Encrypt + Send + 'static,
 {
-    pub fn as_socket(&self) -> &zmq::Socket {
-        self.connection.as_socket()
-    }
+    pub fn as_socket(&self) -> &zmq::Socket { self.connection.as_socket() }
 
     pub fn set_identity(
         &mut self,
