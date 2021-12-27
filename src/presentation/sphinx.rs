@@ -27,11 +27,20 @@ const RHO_KEY: &[u8] = &[0x72, 0x68, 0x6f];
 const UM_KEY: &[u8] = &[0x75, 0x6d];
 const PAD_KEY: &[u8] = &[0x70, 0x61, 0x64];
 
+/// Sphinx is abstracted from a specific encoding used by a packed payload:
+/// it may be BOLT-4 lightning, strict encoding or any other encoding. Specific
+/// payload types must implement this trait to provide Internet2 crate with a
+/// proper encoding implementation.
 pub trait SphinxPayload: Debug {
+    // TODO: Provide non-allocating methods
+    /// Serialize payload as a byte vector
     fn serialize(&self) -> Vec<u8>;
+
+    /// Calculate total size of the payload encoded data
     fn serialized_len(&self) -> usize;
 }
 
+/// Sphinx hop information
 #[derive(Debug)]
 pub struct Hop<Payload: SphinxPayload> {
     pub pubkey: PublicKey,
@@ -54,6 +63,7 @@ where
     }
 }
 
+/// Cyphered raw sphinx packet as it is sent over the wire
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(LightningEncode, LightningDecode)]
 pub struct SphinxPacket<const PACKET_LEN: usize>([u8; PACKET_LEN]);
@@ -80,6 +90,8 @@ impl<const PACKET_LEN: usize> StrictDecode for SphinxPacket<PACKET_LEN> {
     }
 }
 
+/// Onion packet encompassing sphinx data with outer information.
+///
 /// NB: A node upon receiving a higher version packet than it implements:
 /// - MUST report a route failure to the origin node.
 /// - MUST discard the packet.
