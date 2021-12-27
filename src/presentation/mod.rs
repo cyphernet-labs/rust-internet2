@@ -13,6 +13,7 @@
 
 mod error;
 pub mod message;
+pub mod sphinx;
 pub mod tlv;
 mod unmarshall;
 
