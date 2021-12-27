@@ -22,13 +22,13 @@ fn main() {
         )
         .unwrap();
         session
-            .send_routed_message(b"tx", b"tx", b"rx", b"ignored")
+            .send_routed_message(b"tx", b"rx", b"rx", b"ignored")
             .unwrap();
         let frame = session.recv_routed_message().unwrap();
         assert_eq!(frame.msg, b"hello");
         session.set_identity(&"tx_new").unwrap();
         session
-            .send_routed_message(b"tx_new", b"tx_new", b"rx", b"ignored")
+            .send_routed_message(b"tx_new", b"rx", b"rx", b"ignored")
             .unwrap();
         let frame = session.recv_routed_message().unwrap();
         assert_eq!(frame.msg, b"world");
@@ -36,11 +36,11 @@ fn main() {
 
     session.recv_routed_message().unwrap();
     session
-        .send_routed_message(b"rx", b"rx", b"tx", b"hello")
+        .send_routed_message(b"rx", b"tx", b"tx", b"hello")
         .unwrap();
     session.recv_routed_message().unwrap();
     session
-        .send_routed_message(b"rx", b"rx", b"tx", b"world")
+        .send_routed_message(b"rx", b"tx_new", b"tx_new", b"world")
         .unwrap();
 
     tx.join().unwrap();
