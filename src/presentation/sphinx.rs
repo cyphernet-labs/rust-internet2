@@ -22,8 +22,6 @@ use secp256k1::ecdh::SharedSecret;
 use secp256k1::{PublicKey, Secp256k1, SecretKey, Signing};
 use strict_encoding::{StrictDecode, StrictEncode};
 
-pub const SPHINX_PACKET_LEN: usize = 20 * 65;
-
 const MU_KEY: &[u8] = &[0x6d, 0x75];
 const RHO_KEY: &[u8] = &[0x72, 0x68, 0x6f];
 const UM_KEY: &[u8] = &[0x75, 0x6d];
@@ -58,25 +56,25 @@ where
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(LightningEncode, LightningDecode)]
-pub struct SphinxPacket([u8; SPHINX_PACKET_LEN]);
+pub struct SphinxPacket<const PACKET_LEN: usize>([u8; PACKET_LEN]);
 
 // TODO: Remove this implementation and do simple derives once strict encoding
 //       will merge const generics support
-impl StrictEncode for SphinxPacket {
+impl<const PACKET_LEN: usize> StrictEncode for SphinxPacket<PACKET_LEN> {
     fn strict_encode<E: Write>(
         &self,
         mut e: E,
     ) -> Result<usize, strict_encoding::Error> {
         e.write_all(&self.0)?;
-        Ok(SPHINX_PACKET_LEN)
+        Ok(PACKET_LEN)
     }
 }
 
-impl StrictDecode for SphinxPacket {
+impl<const PACKET_LEN: usize> StrictDecode for SphinxPacket<PACKET_LEN> {
     fn strict_decode<D: Read>(
         mut d: D,
     ) -> Result<Self, strict_encoding::Error> {
-        let mut buf = [0u8; SPHINX_PACKET_LEN];
+        let mut buf = [0u8; PACKET_LEN];
         d.read_exact(&mut buf)?;
         Ok(SphinxPacket(buf))
     }
@@ -89,10 +87,10 @@ impl StrictDecode for SphinxPacket {
 #[derive(LightningEncode, LightningDecode)]
 #[derive(StrictEncode, StrictDecode)]
 #[display("onion_packet(v{version}, ...)")]
-pub struct OnionPacket {
+pub struct OnionPacket<const PACKET_LEN: usize> {
     pub version: u8,
     pub point: PublicKey,
-    pub hop_payloads: SphinxPacket,
+    pub hop_payloads: SphinxPacket<PACKET_LEN>,
     pub hmac: Hmac<sha256::Hash>,
 }
 
@@ -196,7 +194,7 @@ where
     filler.split_off(packet_len - filler_len)
 }
 
-impl SphinxPacket {
+impl<const PACKET_LEN: usize> SphinxPacket<PACKET_LEN> {
     /// # Panics
     ///
     /// If serialization length of any of payloads exceeds 1300 - 32 - 3 bytes
@@ -205,7 +203,7 @@ impl SphinxPacket {
         session_key: SecretKey,
         hops: &[Hop<Payload>],
         assoc_data: &[u8],
-    ) -> (SphinxPacket, Hmac<sha256::Hash>)
+    ) -> (Self, Hmac<sha256::Hash>)
     where
         C: Signing,
         Payload: SphinxPayload,
@@ -214,16 +212,15 @@ impl SphinxPacket {
 
         // Generate the padding, called "filler strings" in the paper.
         let filler =
-            generate_filler(RHO_KEY, SPHINX_PACKET_LEN, hops, &shared_secrets);
+            generate_filler(RHO_KEY, PACKET_LEN, hops, &shared_secrets);
 
         // Allocate and initialize fields to zero-filled slices
-        let mut mix_header = [0u8; SPHINX_PACKET_LEN];
+        let mut mix_header = [0u8; PACKET_LEN];
         let mut mix_header_len = 0usize;
         let mut next_hmac = Hmac::<sha256::Hash>::default();
 
         let padding_key = generate_key(PAD_KEY, &session_key[..]);
-        let padding_bytes =
-            generate_cipher_stream(padding_key, SPHINX_PACKET_LEN);
+        let padding_bytes = generate_cipher_stream(padding_key, PACKET_LEN);
         mix_header.copy_from_slice(&padding_bytes);
 
         let mut last_hop = true;
@@ -232,8 +229,7 @@ impl SphinxPacket {
             let mu_key = generate_key(MU_KEY, shared_secret);
 
             // Shift and obduscate routing information
-            let stream_bytes =
-                generate_cipher_stream(rho_key, SPHINX_PACKET_LEN);
+            let stream_bytes = generate_cipher_stream(rho_key, PACKET_LEN);
 
             let hop_data = hop.payload.serialize();
             let shift_size = hop.payload_size();
@@ -259,7 +255,7 @@ impl SphinxPacket {
             // These need to be overwritten, so every node generates a correct
             // padding
             if last_hop {
-                mix_header[SPHINX_PACKET_LEN - filler.len()..]
+                mix_header[PACKET_LEN - filler.len()..]
                     .copy_from_slice(&filler);
                 last_hop = false;
             }
@@ -274,7 +270,7 @@ impl SphinxPacket {
     }
 }
 
-impl OnionPacket {
+impl<const PACKET_LEN: usize> OnionPacket<PACKET_LEN> {
     /// # Panics
     ///
     /// If serialization length of any of payloads exceeds 1300 - 32 - 3 bytes
@@ -283,7 +279,7 @@ impl OnionPacket {
         secp: &Secp256k1<C>,
         hops: &[Hop<Payload>],
         assoc_data: &[u8],
-    ) -> OnionPacket
+    ) -> Self
     where
         C: Signing,
         Payload: SphinxPayload,
@@ -299,7 +295,7 @@ impl OnionPacket {
         session_key: SecretKey,
         hops: &[Hop<Payload>],
         assoc_data: &[u8],
-    ) -> OnionPacket
+    ) -> Self
     where
         C: Signing,
         Payload: SphinxPayload,
@@ -324,10 +320,15 @@ mod test {
 
     use super::*;
 
+    const PACKET_LEN: usize = 20 * 65;
     impl SphinxPayload for Vec<u8> {
-        fn serialize(&self) -> Vec<u8> { self.clone() }
+        fn serialize(&self) -> Vec<u8> {
+            self.clone()
+        }
 
-        fn serialized_len(&self) -> usize { self.len() }
+        fn serialized_len(&self) -> usize {
+            self.len()
+        }
     }
 
     // Tests are written after c-lightning output generated with the following
@@ -404,11 +405,10 @@ mod test {
             session_key,
         );
         let rho_key = generate_key(RHO_KEY, shared_secrets[0]);
-        let mut our_filler =
-            generate_cipher_stream(rho_key, SPHINX_PACKET_LEN * 2);
+        let mut our_filler = generate_cipher_stream(rho_key, PACKET_LEN * 2);
         let (pregenerated_filler, filler_len) = generate_filler_stream(
             RHO_KEY,
-            SPHINX_PACKET_LEN,
+            PACKET_LEN,
             &double_hop,
             &shared_secrets,
         );
@@ -429,7 +429,7 @@ mod test {
             Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), vec![]),
         ];
 
-        let packet = OnionPacket::with_session_key(
+        let packet = OnionPacket::<PACKET_LEN>::with_session_key(
             &Secp256k1::new(),
             session_key,
             &double_hop,
@@ -437,26 +437,21 @@ mod test {
         );
 
         let mut our_data = packet.lightning_serialize().unwrap().split_off(34);
-        our_data.resize(SPHINX_PACKET_LEN, 0);
+        our_data.resize(PACKET_LEN, 0);
 
-        our_data.resize(SPHINX_PACKET_LEN * 2, 0);
+        our_data.resize(PACKET_LEN * 2, 0);
         let shared_secrets = construct_shared_secrets(
             &Secp256k1::new(),
             &double_hop,
             session_key,
         );
         let rho_key = generate_key(RHO_KEY, shared_secrets[0]);
-        let stream_bytes =
-            generate_cipher_stream(rho_key, SPHINX_PACKET_LEN * 2);
-        let filler = generate_filler(
-            RHO_KEY,
-            SPHINX_PACKET_LEN,
-            &double_hop,
-            &shared_secrets,
-        );
+        let stream_bytes = generate_cipher_stream(rho_key, PACKET_LEN * 2);
+        let filler =
+            generate_filler(RHO_KEY, PACKET_LEN, &double_hop, &shared_secrets);
         assert_eq!(
             filler.to_hex(),
-            stream_bytes[SPHINX_PACKET_LEN..SPHINX_PACKET_LEN + 32].to_hex()
+            stream_bytes[PACKET_LEN..PACKET_LEN + 32].to_hex()
         );
         let mut our_source: Vec<u8> = our_data
             .iter()
@@ -466,7 +461,7 @@ mod test {
 
         our_source.rotate_left(32);
         assert_eq!(
-            our_source[SPHINX_PACKET_LEN - 32..SPHINX_PACKET_LEN].to_hex(),
+            our_source[PACKET_LEN - 32..PACKET_LEN].to_hex(),
             filler.to_hex(),
         );
     }
@@ -483,7 +478,7 @@ mod test {
             Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), vec![]),
         ];
 
-        let packet = OnionPacket::with_session_key(
+        let packet = OnionPacket::<PACKET_LEN>::with_session_key(
             &Secp256k1::new(),
             session_key,
             &double_hop,
@@ -537,29 +532,24 @@ mod test {
         assert_eq!(clightning_data.to_hex(), our_data.to_hex());
 
         let mut clightning_data = clightning_data.split_off(34);
-        clightning_data.resize(SPHINX_PACKET_LEN, 0);
+        clightning_data.resize(PACKET_LEN, 0);
         let mut our_data = our_data.split_off(34);
-        our_data.resize(SPHINX_PACKET_LEN, 0);
+        our_data.resize(PACKET_LEN, 0);
 
-        our_data.resize(SPHINX_PACKET_LEN * 2, 0);
-        clightning_data.resize(SPHINX_PACKET_LEN * 2, 0);
+        our_data.resize(PACKET_LEN * 2, 0);
+        clightning_data.resize(PACKET_LEN * 2, 0);
         let shared_secrets = construct_shared_secrets(
             &Secp256k1::new(),
             &double_hop,
             session_key,
         );
         let rho_key = generate_key(RHO_KEY, shared_secrets[0]);
-        let stream_bytes =
-            generate_cipher_stream(rho_key, SPHINX_PACKET_LEN * 2);
-        let filler = generate_filler(
-            RHO_KEY,
-            SPHINX_PACKET_LEN,
-            &double_hop,
-            &shared_secrets,
-        );
+        let stream_bytes = generate_cipher_stream(rho_key, PACKET_LEN * 2);
+        let filler =
+            generate_filler(RHO_KEY, PACKET_LEN, &double_hop, &shared_secrets);
         assert_eq!(
             filler.to_hex(),
-            stream_bytes[SPHINX_PACKET_LEN..SPHINX_PACKET_LEN + 32].to_hex()
+            stream_bytes[PACKET_LEN..PACKET_LEN + 32].to_hex()
         );
         let mut clightning_source: Vec<u8> = clightning_data
             .iter()
@@ -575,12 +565,11 @@ mod test {
         our_source.rotate_left(32);
         clightning_source.rotate_left(32);
         assert_eq!(
-            our_source[..SPHINX_PACKET_LEN].to_hex(),
-            clightning_source[..SPHINX_PACKET_LEN].to_hex()
+            our_source[..PACKET_LEN].to_hex(),
+            clightning_source[..PACKET_LEN].to_hex()
         );
         assert_eq!(
-            clightning_source[SPHINX_PACKET_LEN - 32..SPHINX_PACKET_LEN]
-                .to_hex(),
+            clightning_source[PACKET_LEN - 32..PACKET_LEN].to_hex(),
             filler.to_hex(),
         );
     }
@@ -596,7 +585,7 @@ mod test {
             Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), vec![]),
         ];
 
-        let packet = OnionPacket::with_session_key(
+        let packet = OnionPacket::<PACKET_LEN>::with_session_key(
             &Secp256k1::new(),
             session_key,
             &single_hop,
@@ -653,7 +642,7 @@ mod test {
             session_key,
         )[0];
         let rho_key = generate_key(RHO_KEY, shared_secret);
-        let stream_bytes = generate_cipher_stream(rho_key, SPHINX_PACKET_LEN);
+        let stream_bytes = generate_cipher_stream(rho_key, PACKET_LEN);
 
         let our_data = packet.lightning_serialize().unwrap();
 
@@ -686,7 +675,7 @@ mod test {
             Hop::with("0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199".parse().unwrap(), vec![])
         ];
 
-        let packet = OnionPacket::with_session_key(
+        let packet = OnionPacket::<PACKET_LEN>::with_session_key(
             &Secp256k1::new(),
             session_key,
             &hops,
@@ -755,7 +744,7 @@ mod test {
             Hop::with("0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap())
         ];
 
-        let packet = OnionPacket::with_session_key(
+        let packet = OnionPacket::<PACKET_LEN>::with_session_key(
             &Secp256k1::new(),
             session_key,
             &hops,
