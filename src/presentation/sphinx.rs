@@ -34,14 +34,15 @@ const PAD_KEY: &[u8] = &[0x70, 0x61, 0x64];
 )]
 #[display(doc_comments)]
 pub enum EncodeError {
-    /// payload size {payload_size} plus 32 HMAC bytes exceed Sphinx packet size
-    /// {packet_size}
+    /// payload size {payload_size} plus 32 HMAC bytes exceed Sphinx packet
+    /// size {packet_size}
     PayloadTooLarge {
         payload_size: usize,
         packet_size: usize,
     },
 
-    /// cumulative payload and HMAC sizes size exceeds packet size {packet_size}
+    /// cumulative payload and HMAC sizes size exceeds packet size
+    /// {packet_size}
     NotFittingData { packet_size: usize },
 }
 
@@ -63,7 +64,7 @@ pub trait SphinxPayload {
 
     /// Calculate total size of the payload encoded data.
     ///
-    /// Must not call [`SphinxPayload::seriazlise`] otherwise this will result
+    /// Must not call [`SphinxPayload::serialize`] otherwise this will result
     /// in infinite call loop.
     fn serialized_len(&self) -> usize;
 
@@ -176,17 +177,20 @@ impl<const PACKET_LEN: usize> SphinxPacket<PACKET_LEN> {
 
             let mut writer = Cursor::new(&mut mix_header[..]);
             let written_len = hop.payload.encode(&mut writer).expect(
-                "reported lengths does not match number of bytes in encoded representation",
+                "reported lengths does not match number of bytes in encoded \
+                 representation",
             );
             debug_assert_eq!(
                 writer.position(),
                 written_len as u64,
-                "reported lengths does not match number of bytes in encoded representation",
+                "reported lengths does not match number of bytes in encoded \
+                 representation",
             );
             debug_assert_eq!(
                 written_len + 32,
                 shift_size,
-                "amount of serialized payload bytes does not match pre-computed value"
+                "amount of serialized payload bytes does not match \
+                 pre-computed value"
             );
             writer
                 .write_all(next_hmac.as_inner())
@@ -222,8 +226,8 @@ impl<const PACKET_LEN: usize> SphinxPacket<PACKET_LEN> {
         Ok((SphinxPacket(mix_header), next_hmac))
     }
 
-    /// Computes HMAC committing to the cyphered sphinx packet data with optional
-    /// associate data.
+    /// Computes HMAC committing to the cyphered sphinx packet data with
+    /// optional associate data.
     pub fn hmac(
         &self,
         mu_key: [u8; 32],
@@ -362,7 +366,8 @@ impl<const PACKET_LEN: usize> OnionPacket<PACKET_LEN> {
     }
 
     /// Unfolds one layer of the onion, returning decrypted data from the inner
-    /// sphinx package and transforming the self into a packet for the next node.
+    /// sphinx package and transforming the self into a packet for the next
+    /// node.
     ///
     /// NB: Does not check for the package integrity; use
     /// [`OnionPacket::check_hmac`] first!
