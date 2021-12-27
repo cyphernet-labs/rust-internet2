@@ -164,7 +164,6 @@ where
     let filler_len: usize = iter.clone().sum();
 
     for (hop_size, secret) in iter.zip(shared_secrets) {
-        filler[packet_len + hop_size..].rotate_left(hop_size);
         // Zero-fill the last hop
         filler[packet_len..].fill(0);
 
@@ -176,6 +175,8 @@ where
             .iter_mut()
             .zip(stream_bytes)
             .for_each(|(byte, mask)| *byte ^= mask);
+
+        filler.rotate_left(hop_size);
     }
     (filler, filler_len)
 }
@@ -191,9 +192,8 @@ where
 {
     let (mut filler, filler_len) =
         generate_filler_stream(key, packet_len, hops, shared_secrets);
-    let mut filler = filler.split_off(packet_len - filler_len);
-    filler.resize(filler_len, 0);
-    filler
+    filler.resize(packet_len, 0);
+    filler.split_off(packet_len - filler_len)
 }
 
 impl SphinxPacket {
@@ -318,36 +318,19 @@ impl OnionPacket {
 
 #[cfg(test)]
 mod test {
-    use amplify::hex::{FromHex, ToHex};
     use std::str::FromStr;
+
+    use amplify::hex::{FromHex, ToHex};
 
     use super::*;
 
     impl SphinxPayload for Vec<u8> {
-        fn serialize(&self) -> Vec<u8> {
-            if self.is_empty() {
-                return vec![];
-            }
-            let len = BigSize::from(self.len());
-            let mut buf = len.lightning_serialize().unwrap();
-            buf.extend(self);
-            buf
-        }
+        fn serialize(&self) -> Vec<u8> { self.clone() }
 
-        fn serialized_len(&self) -> usize {
-            self.serialize().len()
-        }
+        fn serialized_len(&self) -> usize { self.len() }
     }
 
-    fn hops() -> Vec<Hop<Vec<u8>>> {
-        vec![
-            Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), Vec::from_hex("00000067000001000100000000000003e90000007b000000000000000000000000000000000000000000000000").unwrap()),
-            Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap()),
-            Hop::with("0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap())
-        ]
-    }
-
-    // Test is written after c-lightning output generated with the following
+    // Tests are written after c-lightning output generated with the following
     // command: ```
     // lightning-cli createonion '[
     //   {
@@ -361,7 +344,6 @@ mod test {
     //      "payload":
     // "00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000"
     //   }, {
-    //      "style": "legacy",
     //      "pubkey":
     // "0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199",
     //      "payload":
@@ -369,6 +351,7 @@ mod test {
     //   }
     // ]' "" 07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2
     // ```
+
     #[test]
     fn shared_secrets() {
         let session_key = SecretKey::from_str(
@@ -376,8 +359,14 @@ mod test {
         )
         .unwrap();
 
+        let hops = vec![
+            Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), vec![]),
+            Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), vec![]),
+            Hop::with("0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199".parse().unwrap(), vec![])
+        ];
+
         let shared_secrets =
-            construct_shared_secrets(&Secp256k1::new(), &hops(), session_key);
+            construct_shared_secrets(&Secp256k1::new(), &hops, session_key);
         assert_eq!(shared_secrets.len(), 3);
         assert_eq!(
             shared_secrets[0],
@@ -400,7 +389,7 @@ mod test {
     }
 
     #[test]
-    fn filler() {
+    fn filler_stream() {
         let session_key = SecretKey::from_str(
             "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
         )
@@ -415,18 +404,75 @@ mod test {
             session_key,
         );
         let rho_key = generate_key(RHO_KEY, shared_secrets[0]);
-        let our_filler = generate_cipher_stream(rho_key, SPHINX_PACKET_LEN * 2);
-        let (pregenerated_filler, _) = generate_filler_stream(
+        let mut our_filler =
+            generate_cipher_stream(rho_key, SPHINX_PACKET_LEN * 2);
+        let (pregenerated_filler, filler_len) = generate_filler_stream(
             RHO_KEY,
             SPHINX_PACKET_LEN,
             &double_hop,
             &shared_secrets,
         );
+        our_filler.rotate_left(32);
+        assert_eq!(filler_len, 32);
         assert_eq!(pregenerated_filler.to_hex(), our_filler.to_hex());
     }
 
     #[test]
-    fn onion_double_hop() {
+    fn filler() {
+        let session_key = SecretKey::from_str(
+            "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
+        )
+        .unwrap();
+
+        let double_hop = vec![
+            Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), vec![]),
+            Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), vec![]),
+        ];
+
+        let packet = OnionPacket::with_session_key(
+            &Secp256k1::new(),
+            session_key,
+            &double_hop,
+            &[],
+        );
+
+        let mut our_data = packet.lightning_serialize().unwrap().split_off(34);
+        our_data.resize(SPHINX_PACKET_LEN, 0);
+
+        our_data.resize(SPHINX_PACKET_LEN * 2, 0);
+        let shared_secrets = construct_shared_secrets(
+            &Secp256k1::new(),
+            &double_hop,
+            session_key,
+        );
+        let rho_key = generate_key(RHO_KEY, shared_secrets[0]);
+        let stream_bytes =
+            generate_cipher_stream(rho_key, SPHINX_PACKET_LEN * 2);
+        let filler = generate_filler(
+            RHO_KEY,
+            SPHINX_PACKET_LEN,
+            &double_hop,
+            &shared_secrets,
+        );
+        assert_eq!(
+            filler.to_hex(),
+            stream_bytes[SPHINX_PACKET_LEN..SPHINX_PACKET_LEN + 32].to_hex()
+        );
+        let mut our_source: Vec<u8> = our_data
+            .iter()
+            .zip(&stream_bytes)
+            .map(|(b, m)| b ^ m)
+            .collect();
+
+        our_source.rotate_left(32);
+        assert_eq!(
+            our_source[SPHINX_PACKET_LEN - 32..SPHINX_PACKET_LEN].to_hex(),
+            filler.to_hex(),
+        );
+    }
+
+    #[test]
+    fn onion_two_empty_hops() {
         let session_key = SecretKey::from_str(
             "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
         )
@@ -486,10 +532,13 @@ mod test {
             b53c12fdfd0ccfb4d682f0fff6d8cf97ffbc2c96a4a5dde51fe6f6e43a265f59ff6\
             747d6933ad026957fc5cc4fafbda9570d5cb9be8ec69452d321de4bb7d99c78094b\
             f10f8a292a1858d5c27f93d58ab556a44518966b430b9e0ff5d1f"
-        ).unwrap().split_off(34);
-        clightning_data.resize(SPHINX_PACKET_LEN, 0);
+        ).unwrap();
+        let mut our_data = packet.lightning_serialize().unwrap();
+        assert_eq!(clightning_data.to_hex(), our_data.to_hex());
 
-        let mut our_data = packet.lightning_serialize().unwrap().split_off(34);
+        let mut clightning_data = clightning_data.split_off(34);
+        clightning_data.resize(SPHINX_PACKET_LEN, 0);
+        let mut our_data = our_data.split_off(34);
         our_data.resize(SPHINX_PACKET_LEN, 0);
 
         our_data.resize(SPHINX_PACKET_LEN * 2, 0);
@@ -502,22 +551,21 @@ mod test {
         let rho_key = generate_key(RHO_KEY, shared_secrets[0]);
         let stream_bytes =
             generate_cipher_stream(rho_key, SPHINX_PACKET_LEN * 2);
-        let (mut filler, _) = generate_filler_stream(
+        let filler = generate_filler(
             RHO_KEY,
             SPHINX_PACKET_LEN,
             &double_hop,
             &shared_secrets,
         );
-        assert_eq!(filler.to_hex(), stream_bytes.to_hex());
+        assert_eq!(
+            filler.to_hex(),
+            stream_bytes[SPHINX_PACKET_LEN..SPHINX_PACKET_LEN + 32].to_hex()
+        );
         let mut clightning_source: Vec<u8> = clightning_data
             .iter()
             .zip(&stream_bytes)
             .map(|(b, m)| b ^ m)
             .collect();
-        assert_eq!(
-            clightning_source[SPHINX_PACKET_LEN..].to_hex(),
-            filler[SPHINX_PACKET_LEN..].to_hex()
-        );
         let mut our_source: Vec<u8> = our_data
             .iter()
             .zip(&stream_bytes)
@@ -526,7 +574,6 @@ mod test {
 
         our_source.rotate_left(32);
         clightning_source.rotate_left(32);
-        filler.rotate_left(32);
         assert_eq!(
             our_source[..SPHINX_PACKET_LEN].to_hex(),
             clightning_source[..SPHINX_PACKET_LEN].to_hex()
@@ -534,12 +581,12 @@ mod test {
         assert_eq!(
             clightning_source[SPHINX_PACKET_LEN - 32..SPHINX_PACKET_LEN]
                 .to_hex(),
-            filler[SPHINX_PACKET_LEN - 32..SPHINX_PACKET_LEN].to_hex(),
+            filler.to_hex(),
         );
     }
 
     #[test]
-    fn onion_single_hop() {
+    fn onion_single_empty_hop() {
         let session_key = SecretKey::from_str(
             "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
         )
@@ -627,16 +674,91 @@ mod test {
     }
 
     #[test]
-    fn onion_packet() {
+    fn onion_three_empty_hops() {
         let session_key = SecretKey::from_str(
             "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
         )
         .unwrap();
 
+        let hops = vec![
+            Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), vec![]),
+            Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), vec![]),
+            Hop::with("0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199".parse().unwrap(), vec![])
+        ];
+
         let packet = OnionPacket::with_session_key(
             &Secp256k1::new(),
             session_key,
-            &hops(),
+            &hops,
+            &[],
+        );
+
+        let clightning_data = Vec::from_hex(
+            "0002629c3b947322792e4f3e30f7f260e404c706b0fcbd32ac105962cc5636f9e1\
+            0262109b86888619335b951db86ec8f4bf2f7b6749ad290cc8cb8fe3ad693dcfa9e\
+            bb60c59438671bcc6eb963a4c2cf0441ea342ba2d219673b31cf6d62179f0828ca8\
+            1357fe9d24c68d8075407b1834e912f5cef2e46feeb405fc5d7032b4416f0c49871\
+            9f39b08692f7752ee866da23df24d26a5942b04cc37854584cddcbe75ccd479e6f4\
+            ca1ed0fb639177be145b18e0b94334e305dab2ffb4f44317e45e86894b562fa832c\
+            9c3b932828a3fbe1a4cee4d8e0857ba5c78efab354e35f6737d89435036d34d58e7\
+            0b1e436f0b4bf2641d0d929268a42e0d08704aa876dc0fe0e64f5ead81481c6654e\
+            cb593d4039925a1876580addf4e72f37753cb82647f83b701da52ee9ae44df5f33a\
+            5b59c160d2feec5c2b04877582d6c1c10ee84f783f709476119e2e08a53a55ce9ef\
+            12c771f8c49c8ea228b0bacd0aeeba300690734579d1406c6f24d02847552b8de0b\
+            87180593c43256a38d29070f06e20fdcf239f9f60c85ca4ed71ae927072e503599a\
+            b9c6f4bae51ecf222fd943f29c4466ff02e1e080b5fe63a08e14437056c78ccb817\
+            ee1f65fa8563603731b009b0ff2764c081f749f89766202ee5580d8610a6572f3e5\
+            e765fd5eb6d68c54f405884ba4f26269c6a1eb090164ee8aa9d480135cb1d5a9841\
+            16ec39d592002dcaef0390008af68f1f19e584ea17b0494c6bd2f98e27180c3b1bb\
+            ca6a552f188b9587c4acc5cbab09d188b2a51ac56793e466c0d1df44b7c25a0d708\
+            269e4f3c96fb4b2bc0d588512afa95c53aaf5ebdb41599d068c2ff05e78f7808cb0\
+            0bfdc8bd4a482d4eb9ad2409f47869e81bf4b0085d4a6d05c4836d3e43d567dd583\
+            a3eea1f18d07c05888fa384a5a95cc61fa17c5399422578643fa74ab94a8a3ce98c\
+            0a0b9ea667eb577178b22cb27075e67ad6552b0b338807e95397c22cd81f786b272\
+            f8980e8b6c863bbdfac505ade1effe2db4847d0644f36e70f17f3fbcad2f0d2ba76\
+            1355a25722b25890e61508f0390f3ad310155925d29ca84860d5f1c9dfed4c59e3c\
+            d28d9db649d828d416fbb6afb77ddf339b84b6e6e5a9f2631b20cdc873b32c69a32\
+            75667286fd59275dc29b531158ea9bb2fc7f86687ffc9a8b9add1117ab4ffc0aa3e\
+            cbc1c14102b25622d71171d6de244c2ceb3260d14c163b9428ced5b29079cac7c48\
+            777da17c687e699812d10e89877147a91ba990666f6eff9c766813749e7f51cb741\
+            dcb37ff014bed3f0e7c2546232e9ddcc99106268c3d933f8c66e4e0f6237d6f4156\
+            73cd133d54218203cb179bb74d60a4bee67d0e7da48da3b7f6088c9fc93789cdbb7\
+            8b090904ee29f75e8536c02ab5c8b4d03a1afb554c62e8434e79d43a3ef1c45c37d\
+            c25ae23da67f9642b3a13611a591a1ee86cf6aa35e31955450d4b7f94340abdb988\
+            e688d5f84fe733d57616936af5aaf2606b80068687de4e19e503b6fac14f8f0efa3\
+            995e643b8bf503c8dc683ae83937679510879a9ed978fc270db0c7fae0f113682c9\
+            9737c0bd35021a3499dc3932e30a8dc3c567205c4fbdf429153766fbfb97eb7ef15\
+            3e7186d0d0abac15a50d41f90849dc1dcce2c248d9c00ccac0d903c852a75369f48\
+            c46065170b07ef9fe357ae9973f48006a1b5002657e550f735b3826a9c1d30fde63\
+            6d568f05d92f89b3d779c9adc800de1d77a3451901ae0e516ae4b5cadc0791726cf\
+            84c44303b653de52624f362913aa720bff114893c318a379a6d99bc29501a1cb3c5\
+            72510a92e868553b346239ab81c6b87cb16679ed98257e3cd018096f06998428f06\
+            dc91105c3f5960f7e93f680e8b3af63f2371c00d8a1f715374093a5057b8825b8f7\
+            0f7376fdc8360c827f070f71858441729787e0d01d42248f05425").unwrap();
+
+        assert_eq!(
+            packet.lightning_serialize().unwrap().to_hex(),
+            clightning_data.to_hex()
+        );
+    }
+
+    #[test]
+    fn onion_three_hops() {
+        let session_key = SecretKey::from_str(
+            "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
+        )
+        .unwrap();
+
+        let hops = vec![
+            Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), Vec::from_hex("00000067000001000100000000000003e90000007b000000000000000000000000000000000000000000000000").unwrap()),
+            Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap()),
+            Hop::with("0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap())
+        ];
+
+        let packet = OnionPacket::with_session_key(
+            &Secp256k1::new(),
+            session_key,
+            &hops,
             &[],
         );
 
