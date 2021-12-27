@@ -96,12 +96,6 @@ pub struct OnionPacket {
     pub hmac: Hmac<sha256::Hash>,
 }
 
-impl Default for SphinxPacket {
-    fn default() -> Self {
-        SphinxPacket::new()
-    }
-}
-
 fn construct_shared_secrets<C, Payload>(
     secp: &Secp256k1<C>,
     hops: &[Hop<Payload>],
@@ -156,43 +150,53 @@ fn generate_cipher_stream(prng_seed: [u8; 32], len: usize) -> Vec<u8> {
     stream
 }
 
-fn generate_filler<Payload>(
+fn generate_filler_stream<Payload>(
     key: &[u8],
-    filler_len: usize,
+    packet_len: usize,
     hops: &[Hop<Payload>],
     shared_secrets: &[sha256::Hash],
-) -> Vec<u8>
+) -> (Vec<u8>, usize)
 where
     Payload: SphinxPayload,
 {
-    let mut filler = vec![0u8; filler_len];
-    let iter = hops.iter().map(|hop| hop.payload_size());
-    let total_len: usize = iter.clone().sum();
+    let mut filler = vec![0u8; packet_len * 2];
+    let iter = hops.iter().take(hops.len() - 1).map(Hop::payload_size);
+    let filler_len: usize = iter.clone().sum();
 
     for (hop_size, secret) in iter.zip(shared_secrets) {
-        filler.rotate_left(hop_size);
+        filler[packet_len + hop_size..].rotate_left(hop_size);
         // Zero-fill the last hop
-        filler[filler_len - hop_size..].fill(0);
+        filler[packet_len..].fill(0);
 
         // Generate pseudo-random byte stream
         let stream_key = generate_key(key, secret);
-        let stream_bytes = generate_cipher_stream(stream_key, filler_len);
+        let stream_bytes = generate_cipher_stream(stream_key, packet_len * 2);
 
         filler
             .iter_mut()
             .zip(stream_bytes)
             .for_each(|(byte, mask)| *byte ^= mask);
     }
+    (filler, filler_len)
+}
 
-    filler.split_off(filler_len - total_len)
+fn generate_filler<Payload>(
+    key: &[u8],
+    packet_len: usize,
+    hops: &[Hop<Payload>],
+    shared_secrets: &[sha256::Hash],
+) -> Vec<u8>
+where
+    Payload: SphinxPayload,
+{
+    let (mut filler, filler_len) =
+        generate_filler_stream(key, packet_len, hops, shared_secrets);
+    let mut filler = filler.split_off(packet_len - filler_len);
+    filler.resize(filler_len, 0);
+    filler
 }
 
 impl SphinxPacket {
-    pub fn new() -> SphinxPacket {
-        // Generate public and secret keys
-        todo!("Generate data filled with noise")
-    }
-
     /// # Panics
     ///
     /// If serialization length of any of payloads exceeds 1300 - 32 - 3 bytes
@@ -222,7 +226,7 @@ impl SphinxPacket {
             generate_cipher_stream(padding_key, SPHINX_PACKET_LEN);
         mix_header.copy_from_slice(&padding_bytes);
 
-        let mut first_hop = true;
+        let mut last_hop = true;
         for (hop, shared_secret) in hops.iter().zip(shared_secrets).rev() {
             let rho_key = generate_key(RHO_KEY, shared_secret);
             let mu_key = generate_key(MU_KEY, shared_secret);
@@ -254,10 +258,10 @@ impl SphinxPacket {
 
             // These need to be overwritten, so every node generates a correct
             // padding
-            if first_hop {
-                //mix_header[SPHINX_PACKET_LEN - filler.len()..]
-                //    .copy_from_slice(&filler);
-                first_hop = false;
+            if last_hop {
+                mix_header[SPHINX_PACKET_LEN - filler.len()..]
+                    .copy_from_slice(&filler);
+                last_hop = false;
             }
 
             let mut engine = HmacEngine::<sha256::Hash>::new(&mu_key);
@@ -314,20 +318,24 @@ impl OnionPacket {
 
 #[cfg(test)]
 mod test {
-    use amplify::hex::ToHex;
+    use amplify::hex::{FromHex, ToHex};
     use std::str::FromStr;
-
-    use bitcoin_hashes::hex::FromHex;
 
     use super::*;
 
     impl SphinxPayload for Vec<u8> {
         fn serialize(&self) -> Vec<u8> {
-            self.clone()
+            if self.is_empty() {
+                return vec![];
+            }
+            let len = BigSize::from(self.len());
+            let mut buf = len.lightning_serialize().unwrap();
+            buf.extend(self);
+            buf
         }
 
         fn serialized_len(&self) -> usize {
-            self.len()
+            self.serialize().len()
         }
     }
 
@@ -336,12 +344,6 @@ mod test {
             Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), Vec::from_hex("00000067000001000100000000000003e90000007b000000000000000000000000000000000000000000000000").unwrap()),
             Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap()),
             Hop::with("0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap())
-        ]
-    }
-
-    fn single_hop_empty_payload() -> Vec<Hop<Vec<u8>>> {
-        vec![
-            Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), vec![]),
         ]
     }
 
@@ -398,16 +400,159 @@ mod test {
     }
 
     #[test]
+    fn filler() {
+        let session_key = SecretKey::from_str(
+            "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
+        )
+        .unwrap();
+        let double_hop = vec![
+            Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), vec![]),
+            Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), vec![]),
+        ];
+        let shared_secrets = construct_shared_secrets(
+            &Secp256k1::new(),
+            &double_hop,
+            session_key,
+        );
+        let rho_key = generate_key(RHO_KEY, shared_secrets[0]);
+        let our_filler = generate_cipher_stream(rho_key, SPHINX_PACKET_LEN * 2);
+        let (pregenerated_filler, _) = generate_filler_stream(
+            RHO_KEY,
+            SPHINX_PACKET_LEN,
+            &double_hop,
+            &shared_secrets,
+        );
+        assert_eq!(pregenerated_filler.to_hex(), our_filler.to_hex());
+    }
+
+    #[test]
+    fn onion_double_hop() {
+        let session_key = SecretKey::from_str(
+            "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
+        )
+        .unwrap();
+
+        let double_hop = vec![
+            Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), vec![]),
+            Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), vec![]),
+        ];
+
+        let packet = OnionPacket::with_session_key(
+            &Secp256k1::new(),
+            session_key,
+            &double_hop,
+            &[],
+        );
+
+        let mut clightning_data = Vec::from_hex(
+            "0002629c3b947322792e4f3e30f7f260e404c706b0fcbd32ac105962cc5636f9e1\
+            02870aefc85a5a39045cba91e6b540625b98c998ad3b76278d1d2dd9f458688195c\
+            40ff8e48df9b2caee33107561a94bff729eb723156680dfedff11605b2d9874865f\
+            dd0f1cccf5c75f0fdf5d4ff11458b8eb140cc15161ce3ff82132d4ae425f78262ca\
+            270be8e4851c0c82d618e9638e40e9b174e5704859c03855f97f0dc293bd40195d9\
+            47ad7400d2e0236d92d05a1f3a617414c893dae3e82a73ec32ae9099d484f4eb716\
+            1ab5da18ca2cdc79bca1a8daeb4976d5b4e0a3450a3fc3eb599fcda71c79804f604\
+            fd5ac92dda11f5d4151cc8ea91f7dfe00c155e12f962f4364d62158938d0a939e82\
+            d463c1c6411ebb452a9c4d1ca859dfac46a4350c2fc2c7fe9bb9baf971ece58f804\
+            55c29c15bf896880cdc46dee58c1ee4771a3d7abb1ddf5ec7817b7a0400e51959a0\
+            0e9989c2132a8d85fb33b50f2f22ff1914cbca7842aa67324c737b1a1ae45dcac2c\
+            4caf501c81d0d70c07772aa7b76f59dd7315c5c537205b02923b86f1bccfd14e93b\
+            9778552844792ca4ae25602f948eac78cc5ddf673fdc2243c0f8ff236aa805a95da\
+            18230755c8d5e85cee104923cff90b2c183401039acea81fd2bb8446dfb9d1fd9b7\
+            915b8cf5317890ef6329fa44fb4a757e829107d60957e595bc29a6d42bd3ec26381\
+            e30494b0d247521eae65e42074d626cd2200a60e10fb913ac82da38b81f961ceadb\
+            00249a77df6436bce36217a8a3811fce1776151bbdcf6ec327b354211775231abba\
+            9f8d45785f4dba750cdfaf711b08c1c9fbe5197c7a773fe65f460802de54339fed3\
+            90bf42b239d531cd2534a217ae74b9799c1521c3e6d6f9a9880249056bc9e89d4e1\
+            7668cf898b621f964e42b9d6bac390636e3df6f3baf9b986753c3eb7c20eaa2ac61\
+            118d36ddf504f0cf065f78cff034fb7547ecbb56b4b3a45e3674bf63bbd83b731e9\
+            25012ee31017e071c58d2030c96bebd6ad2934cf40ff774d5b15de95e13a371cc2d\
+            080b763b6c243c51da57b5d5f9582fbfecaff33d7665e5dd0a23dfec88a977e078a\
+            0ec8d437802a5f273f411fb8ce39736f457e78b889fa77238a1f55cab94ba1a1b41\
+            0eda02da4850a9247c35f95940f502ee04520431720a98b64556ad2083d01edc073\
+            1f386ab919455ceb81313df480e0f6dd1381ebe7a8936155bbead22afa95289ea5a\
+            e2248bda384aa4b4ac0a8b0d5fe2f3e781387fd73c51bfb89ed0d04ff25303f038c\
+            5909c01261a4ed1f7013aaa8b0ac53d6d12e08aaa468bdfe61e5fbeab383d381076\
+            3f187642322f20e4d81c4fe8470ec49928f54bbfca557e4be48a4e6330d50fc79ce\
+            262c337de224d62a475d5cbff0dad6530165d6c09e1648cb8f67637ed4af79df19e\
+            410fae4ba195a94482e4cb7a948b03b5a28b7ea9bb9cb7190542f55164aab1d50a5\
+            f2c1868722b8d363d1bac43637613132e9ab51602dcb95c2aba5087e17d67dd6fd2\
+            09d4a5bf2111cfe2b43af87ef04e53a1b1beec4fd149c8fac42fb9e61b423e231aa\
+            468e0a65982ce8dc9767d8534d69e569484a3326270d68b3ae824ee17621eb2fab0\
+            5118bdb08f773997f228514a55701b30bc50c1fa8428b3580eb82d5ebf897aa937f\
+            10d06ad403f5c76278503930dd81c32270277e8801c249efe1f95c97ddecbbda5aa\
+            cea421a9a7fbab536d5573807b0f18f00ad4a7da936f0687abf76154b7e34b51ffc\
+            c34074c94bacb8fe44ecd5774ec39baaf7e4769a7a71d8e801636ab79cd85a6c089\
+            b53c12fdfd0ccfb4d682f0fff6d8cf97ffbc2c96a4a5dde51fe6f6e43a265f59ff6\
+            747d6933ad026957fc5cc4fafbda9570d5cb9be8ec69452d321de4bb7d99c78094b\
+            f10f8a292a1858d5c27f93d58ab556a44518966b430b9e0ff5d1f"
+        ).unwrap().split_off(34);
+        clightning_data.resize(SPHINX_PACKET_LEN, 0);
+
+        let mut our_data = packet.lightning_serialize().unwrap().split_off(34);
+        our_data.resize(SPHINX_PACKET_LEN, 0);
+
+        our_data.resize(SPHINX_PACKET_LEN * 2, 0);
+        clightning_data.resize(SPHINX_PACKET_LEN * 2, 0);
+        let shared_secrets = construct_shared_secrets(
+            &Secp256k1::new(),
+            &double_hop,
+            session_key,
+        );
+        let rho_key = generate_key(RHO_KEY, shared_secrets[0]);
+        let stream_bytes =
+            generate_cipher_stream(rho_key, SPHINX_PACKET_LEN * 2);
+        let (mut filler, _) = generate_filler_stream(
+            RHO_KEY,
+            SPHINX_PACKET_LEN,
+            &double_hop,
+            &shared_secrets,
+        );
+        assert_eq!(filler.to_hex(), stream_bytes.to_hex());
+        let mut clightning_source: Vec<u8> = clightning_data
+            .iter()
+            .zip(&stream_bytes)
+            .map(|(b, m)| b ^ m)
+            .collect();
+        assert_eq!(
+            clightning_source[SPHINX_PACKET_LEN..].to_hex(),
+            filler[SPHINX_PACKET_LEN..].to_hex()
+        );
+        let mut our_source: Vec<u8> = our_data
+            .iter()
+            .zip(&stream_bytes)
+            .map(|(b, m)| b ^ m)
+            .collect();
+
+        our_source.rotate_left(32);
+        clightning_source.rotate_left(32);
+        filler.rotate_left(32);
+        assert_eq!(
+            our_source[..SPHINX_PACKET_LEN].to_hex(),
+            clightning_source[..SPHINX_PACKET_LEN].to_hex()
+        );
+        assert_eq!(
+            clightning_source[SPHINX_PACKET_LEN - 32..SPHINX_PACKET_LEN]
+                .to_hex(),
+            filler[SPHINX_PACKET_LEN - 32..SPHINX_PACKET_LEN].to_hex(),
+        );
+    }
+
+    #[test]
     fn onion_single_hop() {
         let session_key = SecretKey::from_str(
             "07ddd42ccc4e179475aeb031d618dd3bf6815406aa1cfe4e1f712f9ed6b43bf2",
         )
         .unwrap();
 
+        let single_hop = vec![
+            Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), vec![]),
+        ];
+
         let packet = OnionPacket::with_session_key(
             &Secp256k1::new(),
             session_key,
-            &single_hop_empty_payload(),
+            &single_hop,
             &[],
         );
 
@@ -457,7 +602,7 @@ mod test {
 
         let shared_secret = construct_shared_secrets(
             &Secp256k1::new(),
-            &single_hop_empty_payload(),
+            &single_hop,
             session_key,
         )[0];
         let rho_key = generate_key(RHO_KEY, shared_secret);
