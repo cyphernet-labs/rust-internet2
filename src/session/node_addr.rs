@@ -97,7 +97,9 @@ impl UrlString for NodeAddr {
 
 #[cfg(feature = "url")]
 impl From<NodeAddr> for Url {
-    fn from(addr: NodeAddr) -> Self { Url::from(&addr) }
+    fn from(addr: NodeAddr) -> Self {
+        Url::from(&addr)
+    }
 }
 
 #[cfg(feature = "url")]
@@ -118,11 +120,15 @@ impl TryFrom<Url> for NodeAddr {
 }
 
 impl From<RemoteNodeAddr> for NodeAddr {
-    fn from(addr: RemoteNodeAddr) -> Self { NodeAddr::Remote(addr) }
+    fn from(addr: RemoteNodeAddr) -> Self {
+        NodeAddr::Remote(addr)
+    }
 }
 
 impl From<LocalSocketAddr> for NodeAddr {
-    fn from(addr: LocalSocketAddr) -> Self { NodeAddr::Local(addr) }
+    fn from(addr: LocalSocketAddr) -> Self {
+        NodeAddr::Local(addr)
+    }
 }
 
 #[cfg(feature = "zmq")]
@@ -203,14 +209,20 @@ impl FromStr for RemoteNodeAddr {
 }
 
 impl UrlString for RemoteNodeAddr {
-    fn url_scheme(&self) -> &'static str { self.remote_addr.url_scheme() }
+    fn url_scheme(&self) -> &'static str {
+        self.remote_addr.url_scheme()
+    }
 
-    fn to_url_string(&self) -> String { format!("{:#}", self) }
+    fn to_url_string(&self) -> String {
+        format!("{:#}", self)
+    }
 }
 
 #[cfg(feature = "url")]
 impl From<RemoteNodeAddr> for Url {
-    fn from(addr: RemoteNodeAddr) -> Self { Url::from(&addr) }
+    fn from(addr: RemoteNodeAddr) -> Self {
+        Url::from(&addr)
+    }
 }
 
 #[cfg(feature = "url")]
@@ -231,7 +243,9 @@ impl TryFrom<Url> for RemoteNodeAddr {
 }
 
 impl From<RemoteNodeAddr> for RemoteSocketAddr {
-    fn from(addr: RemoteNodeAddr) -> RemoteSocketAddr { addr.remote_addr }
+    fn from(addr: RemoteNodeAddr) -> RemoteSocketAddr {
+        addr.remote_addr
+    }
 }
 
 /// Trait allowing generic function arguments for application-level
@@ -457,7 +471,7 @@ impl PartialNodeAddr {
     /// has no port information. In case if it does not, performs no action.
     /// Returns cloned `Self` with the updated data.
     pub fn with_default_port(self, port: u16) -> Self {
-        match self.clone() {
+        match self {
             PartialNodeAddr::Native(a, b, None) => {
                 PartialNodeAddr::Native(a, b, Some(port))
             }
@@ -553,22 +567,30 @@ impl PartialNodeAddr {
     /// Returns [`InetAddr`] for the given locator, if any, or [`Option::None`]
     /// otherwise
     #[inline]
-    pub fn inet_addr(&self) -> Option<InetAddr> { self.components().1 }
+    pub fn inet_addr(&self) -> Option<InetAddr> {
+        self.components().1
+    }
 
     /// Returns port number for the given locator, if any, or [`Option::None`]
     /// otherwise
     #[inline]
-    pub fn port(&self) -> Option<u16> { self.components().2 }
+    pub fn port(&self) -> Option<u16> {
+        self.components().2
+    }
 
     /// Returns socket name if for the given locator, if any, or
     /// [`Option::None`] otherwise
     #[inline]
-    pub fn socket_name(&self) -> Option<String> { self.components().3 }
+    pub fn socket_name(&self) -> Option<String> {
+        self.components().3
+    }
 
     /// Returns [`ZmqType`] for the given locator, if any, or [`Option::None`]
     /// otherwise
     #[inline]
-    pub fn api_type(&self) -> Option<ZmqType> { self.components().4 }
+    pub fn api_type(&self) -> Option<ZmqType> {
+        self.components().4
+    }
 }
 
 impl Display for PartialNodeAddr {
@@ -714,7 +736,9 @@ impl UrlString for PartialNodeAddr {
 
 #[cfg(feature = "url")]
 impl From<PartialNodeAddr> for Url {
-    fn from(addr: PartialNodeAddr) -> Self { Url::from(&addr) }
+    fn from(addr: PartialNodeAddr) -> Self {
+        Url::from(&addr)
+    }
 }
 
 #[cfg(feature = "url")]

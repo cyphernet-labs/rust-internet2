@@ -186,7 +186,9 @@ impl Session for Raw<PlainTranscoder, ftcp::Connection> {
         InternalSession::send_routed_message(self, source, route, dest, raw)
     }
     #[inline]
-    fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
 }
 
 fn recv_brontide_message(
@@ -212,10 +214,7 @@ fn recv_brontide_message(
 impl Session for Raw<NoiseTranscoder, brontide::Connection> {
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
         let reader = self.connection.as_receiver();
-        Ok(recv_brontide_message(
-            reader,
-            &mut self.transcoder.decryptor,
-        )?)
+        recv_brontide_message(reader, &mut self.transcoder.decryptor)
     }
 
     #[inline]
@@ -239,7 +238,9 @@ impl Session for Raw<NoiseTranscoder, brontide::Connection> {
         )
     }
     #[inline]
-    fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
 }
 
 #[cfg(feature = "zmq")]
@@ -267,7 +268,9 @@ impl Session for Raw<PlainTranscoder, zmqsocket::Connection> {
         InternalSession::send_routed_message(self, source, route, dest, raw)
     }
     #[inline]
-    fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
 }
 
 impl<T, C> Split for Raw<T, C>
@@ -435,7 +438,9 @@ where
     T::Left: Decrypt + Send + 'static,
     T::Right: Encrypt + Send + 'static,
 {
-    pub fn as_socket(&self) -> &zmq::Socket { self.connection.as_socket() }
+    pub fn as_socket(&self) -> &zmq::Socket {
+        self.connection.as_socket()
+    }
 
     pub fn set_identity(
         &mut self,
@@ -481,7 +486,7 @@ impl Input for RawInput<PlainTranscoder, ftcp::Stream> {
 impl Input for RawInput<NoiseDecryptor, brontide::Stream> {
     #[inline]
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
-        Ok(recv_brontide_message(&mut self.input, &mut self.decryptor)?)
+        recv_brontide_message(&mut self.input, &mut self.decryptor)
     }
     fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
         InternalInput::recv_routed_message(self)
