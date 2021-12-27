@@ -12,6 +12,7 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use std::fmt::Debug;
+use std::io;
 use std::io::{Cursor, Read, Write};
 
 use bitcoin_hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
@@ -27,23 +28,60 @@ const RHO_KEY: &[u8] = &[0x72, 0x68, 0x6f];
 const UM_KEY: &[u8] = &[0x75, 0x6d];
 const PAD_KEY: &[u8] = &[0x70, 0x61, 0x64];
 
+/// Errors during Sphinx payload encoding
+#[derive(
+    Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Error
+)]
+#[display(doc_comments)]
+pub enum EncodeError {
+    /// payload size {payload_size} plus 32 HMAC bytes exceed Sphinx packet size
+    /// {packet_size}
+    PayloadTooLarge {
+        payload_size: usize,
+        packet_size: usize,
+    },
+
+    /// cumulative payload and HMAC sizes size exceeds packet size {packet_size}
+    NotFittingData { packet_size: usize },
+}
+
 /// Sphinx is abstracted from a specific encoding used by a packed payload:
 /// it may be BOLT-4 lightning, strict encoding or any other encoding. Specific
 /// payload types must implement this trait to provide Internet2 crate with a
 /// proper encoding implementation.
-pub trait SphinxPayload: Debug {
-    // TODO: Provide non-allocating methods
-    /// Serialize payload as a byte vector
-    fn serialize(&self) -> Vec<u8>;
+pub trait SphinxPayload {
+    /// Errors during payload decoding
+    type DecodeError: std::error::Error;
 
-    /// Calculate total size of the payload encoded data
+    /// Serialize payload as a byte vector
+    fn serialize(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(self.serialized_len());
+        self.encode(&mut buf)
+            .expect("memory writers does not error");
+        buf
+    }
+
+    /// Calculate total size of the payload encoded data.
+    ///
+    /// Must not call [`SphinxPayload::seriazlise`] otherwise this will result
+    /// in infinite call loop.
     fn serialized_len(&self) -> usize;
+
+    /// Encodes payload data into a binary byte stream. Must return number of
+    /// bytes added to the stream.
+    fn encode(&self, writer: impl io::Write) -> Result<usize, io::Error>;
+
+    /// Decodes payload from a binary byte stream
+    fn decode(reader: impl io::Read) -> Result<Self, Self::DecodeError>
+    where
+        Self: Sized;
 }
 
 /// Sphinx hop information
-#[derive(Debug)]
 pub struct Hop<Payload: SphinxPayload> {
+    /// Public key of the hop node
     pub pubkey: PublicKey,
+    /// Payload data specific for that node
     pub payload: Payload,
 }
 
@@ -102,7 +140,7 @@ impl<const PACKET_LEN: usize> StrictDecode for SphinxPacket<PACKET_LEN> {
 pub struct OnionPacket<const PACKET_LEN: usize> {
     pub version: u8,
     pub point: PublicKey,
-    pub hop_payloads: SphinxPacket<PACKET_LEN>,
+    pub packet: SphinxPacket<PACKET_LEN>,
     pub hmac: Hmac<sha256::Hash>,
 }
 
@@ -207,15 +245,15 @@ where
 }
 
 impl<const PACKET_LEN: usize> SphinxPacket<PACKET_LEN> {
-    /// # Panics
-    ///
-    /// If serialization length of any of payloads exceeds 1300 - 32 - 3 bytes
+    /// Constructs Sphinx packet for a given multi-hop route and hop-secific
+    /// messages represented as an array of [`Hop`]s. Requires pre-generated
+    /// `session_key`.
     pub fn with<C, Payload>(
         secp: &Secp256k1<C>,
         session_key: SecretKey,
         hops: &[Hop<Payload>],
         assoc_data: &[u8],
-    ) -> (Self, Hmac<sha256::Hash>)
+    ) -> Result<(Self, Hmac<sha256::Hash>), EncodeError>
     where
         C: Signing,
         Payload: SphinxPayload,
@@ -240,22 +278,41 @@ impl<const PACKET_LEN: usize> SphinxPacket<PACKET_LEN> {
             let rho_key = generate_key(RHO_KEY, shared_secret);
             let mu_key = generate_key(MU_KEY, shared_secret);
 
-            // Shift and obduscate routing information
+            // Shift and obfuscate routing information
             let stream_bytes = generate_cipher_stream(rho_key, PACKET_LEN);
 
-            let hop_data = hop.payload.serialize();
             let shift_size = hop.payload_size();
-            assert!(shift_size <= 1300, "payload is too big");
+            if shift_size > PACKET_LEN {
+                return Err(EncodeError::PayloadTooLarge {
+                    payload_size: shift_size - 32,
+                    packet_size: PACKET_LEN,
+                });
+            }
             mix_header.rotate_right(shift_size);
 
             let mut writer = Cursor::new(&mut mix_header[..]);
-            writer
-                .write_all(&hop_data)
-                .expect("memory writer does not error");
+            let written_len = hop.payload.encode(&mut writer).expect(
+                "reported lengths does not match number of bytes in encoded representation",
+            );
+            debug_assert_eq!(
+                writer.position(),
+                written_len as u64,
+                "reported lengths does not match number of bytes in encoded representation",
+            );
+            debug_assert_eq!(
+                written_len + 32,
+                shift_size,
+                "amount of serialized payload bytes does not match pre-computed value"
+            );
             writer
                 .write_all(next_hmac.as_inner())
                 .expect("memory writer does not error");
             mix_header_len += shift_size;
+            if mix_header_len > PACKET_LEN {
+                return Err(EncodeError::NotFittingData {
+                    packet_size: PACKET_LEN,
+                });
+            }
 
             mix_header
                 .iter_mut()
@@ -278,20 +335,75 @@ impl<const PACKET_LEN: usize> SphinxPacket<PACKET_LEN> {
             next_hmac = Hmac::from_engine(engine);
         }
 
-        (SphinxPacket(mix_header), next_hmac)
+        Ok((SphinxPacket(mix_header), next_hmac))
+    }
+
+    /// Computes HMAC committing to the cyphered sphinx packet data with optional
+    /// associate data.
+    pub fn hmac(
+        &self,
+        mu_key: [u8; 32],
+        assoc_data: &[u8],
+    ) -> Hmac<sha256::Hash> {
+        let mut engine = HmacEngine::<sha256::Hash>::new(&mu_key);
+        engine.input(&self.0);
+        engine.input(assoc_data);
+        Hmac::from_engine(engine)
+    }
+
+    /// Unfolds one layer of the onion, returning decrypted data from the sphinx
+    /// packet.
+    ///
+    /// # Panics
+    ///
+    /// If `Payload::PACKET_LEN` <= 32 bytes.
+    pub fn unfold<Payload>(
+        &mut self,
+        shared_secret: sha256::Hash,
+    ) -> Result<(Payload, Hmac<sha256::Hash>), Payload::DecodeError>
+    where
+        Payload: SphinxPayload,
+    {
+        let rho_key = generate_key(RHO_KEY, shared_secret);
+        let stream_bytes = generate_cipher_stream(rho_key, PACKET_LEN * 2);
+
+        let mut packet = self.0.to_vec();
+        packet.resize(PACKET_LEN * 2, 0);
+
+        let data = packet
+            .iter()
+            .zip(&stream_bytes)
+            .map(|(b, m)| b ^ m)
+            .collect::<Vec<u8>>();
+        let mut cursor = io::Cursor::new(data);
+
+        let mut hmac_slice = [0u8; 32];
+        cursor
+            .read_exact(&mut hmac_slice)
+            .expect("Payload::PACKET_LEN must be greater than 32");
+        let hmac = Hmac::<sha256::Hash>::from_slice(&hmac_slice)
+            .expect("32-byte slice");
+        let payload = Payload::decode(&mut cursor)?;
+
+        cursor
+            .read_exact(&mut self.0)
+            .expect("Payload::PACKET_LEN must be greater than 32");
+
+        Ok((payload, hmac))
     }
 }
 
 impl<const PACKET_LEN: usize> OnionPacket<PACKET_LEN> {
-    /// # Panics
+    /// Assembles onion packed from the provided hop data, generating random
+    /// session key from a standard randomness source.
     ///
-    /// If serialization length of any of payloads exceeds 1300 - 32 - 3 bytes
+    /// Requires compilation with `keygen` feature.
     #[cfg(feature = "keygen")]
     pub fn with<C, Payload>(
         secp: &Secp256k1<C>,
         hops: &[Hop<Payload>],
         assoc_data: &[u8],
-    ) -> Self
+    ) -> Result<Self, EncodeError>
     where
         C: Signing,
         Payload: SphinxPayload,
@@ -302,25 +414,68 @@ impl<const PACKET_LEN: usize> OnionPacket<PACKET_LEN> {
         OnionPacket::with_session_key(secp, session_key, hops, assoc_data)
     }
 
+    /// Assembles onion packed from the provided hop data using provided
+    /// pre-generated session key.
+    ///
+    /// NB: The session keys must not be re-used! See [`OnionPacket::with`] for
+    /// convenience generating new session key per each packet.
     pub fn with_session_key<C, Payload>(
         secp: &Secp256k1<C>,
         session_key: SecretKey,
         hops: &[Hop<Payload>],
         assoc_data: &[u8],
-    ) -> Self
+    ) -> Result<Self, EncodeError>
     where
         C: Signing,
         Payload: SphinxPayload,
     {
         let (sphinx_packet, hmac) =
-            SphinxPacket::with(secp, session_key, hops, assoc_data);
+            SphinxPacket::with(secp, session_key, hops, assoc_data)?;
 
-        OnionPacket {
+        Ok(OnionPacket {
             version: 0,
             point: PublicKey::from_secret_key(secp, &session_key),
-            hop_payloads: sphinx_packet,
+            packet: sphinx_packet,
             hmac,
-        }
+        })
+    }
+
+    /// Checks that HMAC commits to the inner sphinx packet with optional
+    /// associate data.
+    pub fn check_hmac(
+        &self,
+        node_secret: SecretKey,
+        assoc_data: &[u8],
+    ) -> bool {
+        let shared_secret = self.shared_secret(node_secret);
+        let mu_key = generate_key(MU_KEY, shared_secret);
+        let hmac = self.packet.hmac(mu_key, assoc_data);
+        self.hmac == hmac
+    }
+
+    /// Computes shared secret between the sender and the local node private key
+    pub fn shared_secret(&self, node_secret: SecretKey) -> sha256::Hash {
+        let shared_secret = SharedSecret::new(&self.point, &node_secret);
+        sha256::Hash::from_slice(shared_secret.as_ref())
+            .expect("ECDH result is not a 32-byte hash")
+    }
+
+    /// Unfolds one layer of the onion, returning decrypted data from the inner
+    /// sphinx package and transforming the self into a packet for the next node.
+    ///
+    /// NB: Does not check for the package integrity; use
+    /// [`OnionPacket::check_hmac`] first!
+    pub fn unfold<Payload>(
+        &mut self,
+        node_secret: SecretKey,
+    ) -> Result<Payload, Payload::DecodeError>
+    where
+        Payload: SphinxPayload,
+    {
+        let shared_secret = self.shared_secret(node_secret);
+        let (payload, hmac) = self.packet.unfold(shared_secret)?;
+        self.hmac = hmac;
+        Ok(payload)
     }
 }
 
@@ -333,13 +488,25 @@ mod test {
     use super::*;
 
     const PACKET_LEN: usize = 20 * 65;
+
     impl SphinxPayload for Vec<u8> {
-        fn serialize(&self) -> Vec<u8> {
-            self.clone()
-        }
+        type DecodeError = io::Error;
 
         fn serialized_len(&self) -> usize {
             self.len()
+        }
+
+        fn encode(&self, mut writer: impl Write) -> Result<usize, io::Error> {
+            writer.write_all(self).map(|_| self.len())
+        }
+
+        fn decode(mut reader: impl Read) -> Result<Self, Self::DecodeError>
+        where
+            Self: Sized,
+        {
+            let mut buf = [0u8; 30];
+            reader.read_exact(&mut buf)?;
+            Ok(buf.to_vec())
         }
     }
 
@@ -446,7 +613,8 @@ mod test {
             session_key,
             &double_hop,
             &[],
-        );
+        )
+        .unwrap();
 
         let mut our_data = packet.lightning_serialize().unwrap().split_off(34);
         our_data.resize(PACKET_LEN, 0);
@@ -495,7 +663,8 @@ mod test {
             session_key,
             &double_hop,
             &[],
-        );
+        )
+        .unwrap();
 
         let mut clightning_data = Vec::from_hex(
             "0002629c3b947322792e4f3e30f7f260e404c706b0fcbd32ac105962cc5636f9e1\
@@ -602,7 +771,8 @@ mod test {
             session_key,
             &single_hop,
             &[],
-        );
+        )
+        .unwrap();
 
         let clightning_data = Vec::from_hex(
             "0002629c3b947322792e4f3e30f7f260e404c706b0fcbd32ac105962cc5636f9e1\
@@ -692,7 +862,8 @@ mod test {
             session_key,
             &hops,
             &[],
-        );
+        )
+        .unwrap();
 
         let clightning_data = Vec::from_hex(
             "0002629c3b947322792e4f3e30f7f260e404c706b0fcbd32ac105962cc5636f9e1\
@@ -751,9 +922,18 @@ mod test {
         .unwrap();
 
         let hops = vec![
-            Hop::with("022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), Vec::from_hex("00000067000001000100000000000003e90000007b000000000000000000000000000000000000000000000000").unwrap()),
-            Hop::with("035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap()),
-            Hop::with("0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199".parse().unwrap(), Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap())
+            Hop::with(
+                "022d223620a359a47ff7f7ac447c85c46c923da53389221a0054c11c1e3ca31d59".parse().unwrap(), 
+                Vec::from_hex("00000067000001000100000000000003e90000007b000000000000000000000000000000000000000000000000").unwrap()
+            ),
+            Hop::with(
+                "035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d".parse().unwrap(), 
+                Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap()
+            ),
+            Hop::with(
+                "0382ce59ebf18be7d84677c2e35f23294b9992ceca95491fcf8a56c6cb2d9de199".parse().unwrap(), 
+                Vec::from_hex("00000067000003000100000000000003e800000075000000000000000000000000000000000000000000000000").unwrap()
+            )
         ];
 
         let packet = OnionPacket::<PACKET_LEN>::with_session_key(
@@ -761,7 +941,8 @@ mod test {
             session_key,
             &hops,
             &[],
-        );
+        )
+        .unwrap();
 
         let clightning_data = Vec::from_hex(
             "0002629c3b947322792e4f3e30f7f260e404c706b0fcbd32ac105962cc5636f9e1\
