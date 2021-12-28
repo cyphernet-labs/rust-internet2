@@ -1,6 +1,6 @@
 [package]
 name = "internet2"
-version = "0.5.17"
+version = "0.5.18"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Rust implementation for the stack of Internet2 protocols"

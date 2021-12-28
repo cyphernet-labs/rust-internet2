@@ -16,13 +16,12 @@
 //! BOLT-4 is implemented in LNP Core library and not here.
 
 use std::fmt::Debug;
-use std::io;
-use std::io::{Cursor, Read, Write};
+use std::io::{self, Cursor, Read, Write};
 
 use bitcoin_hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use chacha20::cipher::{NewCipher, StreamCipher};
 use chacha20::ChaCha20;
-use lightning_encoding::LightningEncode;
+use lightning_encoding::{LightningDecode, LightningEncode};
 use secp256k1::ecdh::SharedSecret;
 use secp256k1::{PublicKey, Secp256k1, SecretKey, Signing};
 use strict_encoding::{StrictDecode, StrictEncode};
@@ -54,7 +53,16 @@ pub enum EncodeError {
 /// it may be BOLT-4 lightning, strict encoding or any other encoding. Specific
 /// payload types must implement this trait to provide Internet2 crate with a
 /// proper encoding implementation.
-pub trait SphinxPayload {
+pub trait SphinxPayload:
+    LightningEncode
+    + LightningDecode
+    + StrictEncode
+    + StrictDecode
+    + Debug
+    + Clone
+    + std::hash::Hash
+    + Eq
+{
     /// Errors during payload decoding
     type DecodeError: std::error::Error;
 
@@ -74,15 +82,18 @@ pub trait SphinxPayload {
 
     /// Encodes payload data into a binary byte stream. Must return number of
     /// bytes added to the stream.
-    fn encode(&self, writer: impl io::Write) -> Result<usize, io::Error>;
+    fn encode(&self, writer: impl Write) -> Result<usize, io::Error>;
 
     /// Decodes payload from a binary byte stream
-    fn decode(reader: impl io::Read) -> Result<Self, Self::DecodeError>
+    fn decode(reader: impl Read) -> Result<Self, Self::DecodeError>
     where
         Self: Sized;
 }
 
 /// Sphinx hop information
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(NetworkEncode, NetworkDecode)]
+#[derive(LightningEncode, LightningDecode)]
 pub struct Hop<Payload: SphinxPayload> {
     /// Public key of the hop node
     pub node_id: PublicKey,
@@ -104,6 +115,125 @@ where
     pub fn payload_size(&self) -> usize {
         let hop_data_len = self.payload.serialized_len();
         hop_data_len + 32
+    }
+}
+
+/// Onion packet with optional decoded hop-specific payload.
+///
+/// This is drop-in replacemend for [`OnionPacket`] which can be seamlessly
+/// put everywhere in your data structures where [`OnionPacket`] can be. It will
+/// encode/decode from the lightning- or strict-encoded stream the same way
+/// as the onion packet - unless you explicitly unfold the outer layer. Then
+/// it will insert a special flag byte 0x66 at the secod position (right after
+/// version) which will indicate that the following data are prefixed with
+/// addition plain payload.
+#[derive(Clone, PartialEq, Eq, Hash, Debug, From)]
+pub enum Onion<Payload: SphinxPayload, const PACKET_LEN: usize> {
+    /// Sphinx packet as it was received/will be transmitted over the wire in
+    /// encrypted form
+    #[from]
+    Onion(OnionPacket<PACKET_LEN>),
+    /// Sphinx packet with its outer layer unfolded
+    Unfolded {
+        /// Hop payload stored in the outer layer of the packet
+        payload: Payload,
+        /// The remaining part of the onion packet which will be sent to the
+        /// next host
+        onion: OnionPacket<PACKET_LEN>,
+    },
+}
+
+impl<Payload: SphinxPayload, const PACKET_LEN: usize> LightningEncode
+    for Onion<Payload, PACKET_LEN>
+{
+    fn lightning_encode<E: Write>(
+        &self,
+        mut e: E,
+    ) -> Result<usize, lightning_encoding::Error> {
+        match self {
+            Onion::Onion(onion) => onion.lightning_encode(e),
+            Onion::Unfolded { payload, onion } => {
+                // We manually encode version
+                0u8.lightning_encode(&mut e)?;
+                // then flag to signal special format - the second byte in
+                // OnionPacket is a compressed public key, which always starts
+                // with either 0x02 or 0x03. We use 0x66 to signal that the
+                // following data are in fact an unfolded onion.
+                0x66u8.lightning_encode(&mut e)?;
+                payload.lightning_encode(&mut e)?;
+                // We still encode full onion package for the next hop, with the
+                // version byte
+                onion.lightning_encode(e)
+            }
+        }
+    }
+}
+
+impl<Payload: SphinxPayload, const PACKET_LEN: usize> LightningDecode
+    for Onion<Payload, PACKET_LEN>
+{
+    fn lightning_decode<D: Read>(
+        mut d: D,
+    ) -> Result<Self, lightning_encoding::Error> {
+        let ver = u8::lightning_decode(&mut d)?;
+        let flag = u8::lightning_decode(&mut d)?;
+        if ver == 0x00 && flag == 0x66 {
+            let payload = Payload::lightning_decode(&mut d)?;
+            let onion = OnionPacket::lightning_decode(d)?;
+            Ok(Onion::Unfolded { payload, onion })
+        } else {
+            let cursor = Cursor::new(vec![ver, flag]);
+            let reader = cursor.chain(d);
+            let onion = OnionPacket::lightning_decode(reader)?;
+            Ok(Onion::Onion(onion))
+        }
+    }
+}
+
+impl<Payload: SphinxPayload, const PACKET_LEN: usize> StrictEncode
+    for Onion<Payload, PACKET_LEN>
+{
+    fn strict_encode<E: Write>(
+        &self,
+        mut e: E,
+    ) -> Result<usize, strict_encoding::Error> {
+        match self {
+            Onion::Onion(onion) => onion.strict_encode(e),
+            Onion::Unfolded { payload, onion } => {
+                // We manually encode version
+                0u8.strict_encode(&mut e)?;
+                // then flag to signal special format - the second byte in
+                // OnionPacket is a compressed public key, which always starts
+                // with either 0x02 or 0x03. We use 0x66 to signal that the
+                // following data are in fact an unfolded onion.
+                0x66u8.strict_encode(&mut e)?;
+                payload.strict_encode(&mut e)?;
+                // We still encode full onion package for the next hop, with the
+                // version byte
+                onion.strict_encode(e)
+            }
+        }
+    }
+}
+
+impl<Payload: SphinxPayload, const PACKET_LEN: usize> StrictDecode
+    for Onion<Payload, PACKET_LEN>
+{
+    fn strict_decode<D: Read>(
+        mut d: D,
+    ) -> Result<Self, strict_encoding::Error> {
+        let ver = u8::strict_decode(&mut d)?;
+        let flag = u8::strict_decode(&mut d)?;
+        if ver == 0x00 && flag == 0x66 {
+            let payload = Payload::strict_decode(&mut d)?;
+            let onion = OnionPacket::strict_decode(d)?;
+            Ok(Onion::Unfolded { payload, onion })
+        } else {
+            let cursor = Cursor::new(vec![ver, flag]);
+            let reader = cursor.chain(d);
+            let onion = OnionPacket::strict_decode(reader)?;
+            Ok(Onion::Onion(onion))
+        }
     }
 }
 
@@ -268,7 +398,7 @@ impl<const PACKET_LEN: usize> SphinxPacket<PACKET_LEN> {
             .zip(&stream_bytes)
             .map(|(b, m)| b ^ m)
             .collect::<Vec<u8>>();
-        let mut cursor = io::Cursor::new(data);
+        let mut cursor = Cursor::new(data);
 
         let payload = Payload::decode(&mut cursor)?;
 
@@ -288,7 +418,7 @@ impl<const PACKET_LEN: usize> SphinxPacket<PACKET_LEN> {
 }
 
 /// Onion packet encompassing sphinx data with outer information.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Display)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Display)]
 #[derive(LightningEncode, LightningDecode)]
 #[derive(StrictEncode, StrictDecode)]
 #[display("onion_packet(v{version}, ...)")]
@@ -513,7 +643,9 @@ mod test {
     impl SphinxPayload for Vec<u8> {
         type DecodeError = io::Error;
 
-        fn serialized_len(&self) -> usize { self.len() }
+        fn serialized_len(&self) -> usize {
+            self.len()
+        }
 
         fn encode(&self, mut writer: impl Write) -> Result<usize, io::Error> {
             writer.write_all(self).map(|_| self.len())

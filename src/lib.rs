@@ -31,8 +31,6 @@ extern crate amplify;
 #[macro_use]
 extern crate strict_encoding;
 #[macro_use]
-extern crate lightning_encoding;
-#[macro_use]
 extern crate lazy_static;
 
 extern crate chacha20poly1305;
