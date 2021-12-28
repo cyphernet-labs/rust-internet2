@@ -11,6 +11,10 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+//! Network sphinx packet encoding and onion packet construction as described
+//! in BOLT-4, based on Secp256k1 curve. The lightning-network-specific part of
+//! BOLT-4 is implemented in LNP Core library and not here.
+
 use std::fmt::Debug;
 use std::io;
 use std::io::{Cursor, Read, Write};
@@ -18,7 +22,7 @@ use std::io::{Cursor, Read, Write};
 use bitcoin_hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use chacha20::cipher::{NewCipher, StreamCipher};
 use chacha20::ChaCha20;
-use lightning_encoding::{BigSize, LightningEncode};
+use lightning_encoding::LightningEncode;
 use secp256k1::ecdh::SharedSecret;
 use secp256k1::{PublicKey, Secp256k1, SecretKey, Signing};
 use strict_encoding::{StrictDecode, StrictEncode};
@@ -81,7 +85,7 @@ pub trait SphinxPayload {
 /// Sphinx hop information
 pub struct Hop<Payload: SphinxPayload> {
     /// Public key of the hop node
-    pub pubkey: PublicKey,
+    pub node_id: PublicKey,
     /// Payload data specific for that node
     pub payload: Payload,
 }
@@ -90,14 +94,15 @@ impl<Payload> Hop<Payload>
 where
     Payload: SphinxPayload,
 {
+    /// Constructs sphinx hop from a remote node public key and a payload data
     #[inline]
-    pub fn with(pubkey: PublicKey, payload: Payload) -> Hop<Payload> {
-        Hop { pubkey, payload }
+    pub fn with(node_id: PublicKey, payload: Payload) -> Hop<Payload> {
+        Hop { node_id, payload }
     }
 
+    /// Returns size of the serialized payload plus 32 bytes for HMAC
     pub fn payload_size(&self) -> usize {
         let hop_data_len = self.payload.serialized_len();
-        let hop_data_bigsize = BigSize::from(hop_data_len);
         hop_data_len + 32
     }
 }
@@ -283,18 +288,27 @@ impl<const PACKET_LEN: usize> SphinxPacket<PACKET_LEN> {
 }
 
 /// Onion packet encompassing sphinx data with outer information.
-///
-/// NB: A node upon receiving a higher version packet than it implements:
-/// - MUST report a route failure to the origin node.
-/// - MUST discard the packet.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Display)]
 #[derive(LightningEncode, LightningDecode)]
 #[derive(StrictEncode, StrictDecode)]
 #[display("onion_packet(v{version}, ...)")]
 pub struct OnionPacket<const PACKET_LEN: usize> {
+    /// Version of the packet encoding.
+    ///
+    /// Currently, the only supported version is 0. A node upon receiving a
+    /// higher version packet than it implements:
+    /// - MUST report a route failure to the origin node.
+    /// - MUST discard the packet.
     pub version: u8,
+
+    /// Session key created by the originating/sending node to construct the
+    /// packet. Used for constructing shared secret with each hop.
     pub point: PublicKey,
+
+    /// Encrypted sphinx packet data
     pub packet: SphinxPacket<PACKET_LEN>,
+
+    /// Outer HMAC over sphinx packet data
     pub hmac: Hmac<sha256::Hash>,
 }
 
@@ -399,7 +413,7 @@ where
 
     for hop in hops {
         // Perform ECDH
-        let shared_secret = SharedSecret::new(&hop.pubkey, &ephemeral_key);
+        let shared_secret = SharedSecret::new(&hop.node_id, &ephemeral_key);
         let shared_secret = sha256::Hash::from_slice(shared_secret.as_ref())
             .expect("ECDH result is not a 32-byte hash");
         shared_secrets.push(shared_secret);
@@ -499,9 +513,7 @@ mod test {
     impl SphinxPayload for Vec<u8> {
         type DecodeError = io::Error;
 
-        fn serialized_len(&self) -> usize {
-            self.len()
-        }
+        fn serialized_len(&self) -> usize { self.len() }
 
         fn encode(&self, mut writer: impl Write) -> Result<usize, io::Error> {
             writer.write_all(self).map(|_| self.len())
