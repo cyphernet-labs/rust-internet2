@@ -643,9 +643,7 @@ mod test {
     impl SphinxPayload for Vec<u8> {
         type DecodeError = io::Error;
 
-        fn serialized_len(&self) -> usize {
-            self.len()
-        }
+        fn serialized_len(&self) -> usize { self.len() }
 
         fn encode(&self, mut writer: impl Write) -> Result<usize, io::Error> {
             writer.write_all(self).map(|_| self.len())

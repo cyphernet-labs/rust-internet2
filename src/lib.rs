@@ -57,8 +57,8 @@ pub mod session;
 pub mod transport;
 
 pub use presentation::{
-    tlv, CreateUnmarshaller, Payload, TypeId, TypedEnum, UnknownTypeError,
-    Unmarshall, UnmarshallFn, Unmarshaller,
+    sphinx, tlv, CreateUnmarshaller, Payload, TypeId, TypedEnum,
+    UnknownTypeError, Unmarshall, UnmarshallFn, Unmarshaller,
 };
 pub use session::{
     Accept, Connect, Decrypt, Encrypt, LocalNode, NodeAddr, NoiseDecryptor,
