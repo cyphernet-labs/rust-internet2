@@ -56,8 +56,8 @@ urldecode = { version = "0.1.1", optional = true }
 
 [dev-dependencies]
 torut = "0.2.0"
-strict_encoding_test = { version = "1.7.3", git = "https://github.com/LNP-BP/client_side_validation", branch = "develop" }
-strict_encoding_derive = "1.7.6-beta.1"
+strict_encoding_test = "1.8.0"
+strict_encoding_derive = "1.7.6"
 compiletest_rs = "0.7.0"
 
 [target.'cfg(target_os="android")'.dependencies]
