@@ -82,7 +82,9 @@ impl<S: Stream + Bipolar<Left = S, Right = S>> Bipolar for Connection<S> {
 pub trait TcpInetStream: Sized {
     fn connect_inet_socket(inet_addr: InetSocketAddr) -> Result<Self, Error>;
 
-    fn accept_inet_socket(inet_addr: InetSocketAddr) -> Result<Self, Error>;
+    fn accept_inet_socket(
+        listener: &TcpListener,
+    ) -> Result<(Self, SocketAddr), Error>;
 
     fn join(left: Self, right: Self) -> Self;
 
@@ -101,16 +103,13 @@ impl TcpInetStream for TcpStream {
         }
     }
 
-    fn accept_inet_socket(inet_addr: InetSocketAddr) -> Result<Self, Error> {
-        if let Ok(socket_addr) = SocketAddr::try_from(inet_addr) {
-            let listener = TcpListener::bind(socket_addr)?;
-            let (stream, remote_addr) = listener.accept()?;
-            // NB: This is how we handle ping-pong cycles
-            stream.set_read_timeout(Some(Duration::from_secs(30)))?;
-            Ok(stream)
-        } else {
-            Err(Error::TorNotSupportedYet)
-        }
+    fn accept_inet_socket(
+        listener: &TcpListener,
+    ) -> Result<(Self, SocketAddr), Error> {
+        let (stream, remote_addr) = listener.accept()?;
+        // NB: This is how we handle ping-pong cycles
+        stream.set_read_timeout(Some(Duration::from_secs(30)))?;
+        Ok((stream, remote_addr))
     }
 
     fn join(left: Self, right: Self) -> Self {

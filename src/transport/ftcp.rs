@@ -14,7 +14,7 @@
 //! Framed TCP protocol: reads & writes frames (corresponding to LNP messages)
 //! from TCP stream
 
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream};
 
 use amplify::Bipolar;
 use inet2_addr::InetSocketAddr;
@@ -36,9 +36,9 @@ impl Connection {
         Ok(Connection::with(stream, inet_addr))
     }
 
-    pub fn accept(inet_addr: InetSocketAddr) -> Result<Self, Error> {
-        let stream = TcpStream::accept_inet_socket(inet_addr)?;
-        Ok(Connection::with(stream, inet_addr))
+    pub fn accept(listener: &TcpListener) -> Result<Self, Error> {
+        let (stream, remote_addr) = TcpStream::accept_inet_socket(listener)?;
+        Ok(Connection::with(stream, remote_addr.into()))
     }
 }
 

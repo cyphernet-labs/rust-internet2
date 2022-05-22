@@ -12,6 +12,7 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use std::any::Any;
+use std::net::TcpListener;
 
 use amplify::Bipolar;
 use inet2_addr::InetSocketAddr;
@@ -310,11 +311,11 @@ impl Raw<PlainTranscoder, ftcp::Connection> {
     }
 
     pub fn accept_ftcp_unencrypted(
-        socket_addr: InetSocketAddr,
+        listener: &TcpListener,
     ) -> Result<Self, Error> {
         Ok(Self {
             transcoder: PlainTranscoder,
-            connection: ftcp::Connection::accept(socket_addr)?,
+            connection: ftcp::Connection::accept(listener)?,
         })
     }
 }
@@ -362,7 +363,7 @@ impl Raw<NoiseTranscoder, brontide::Connection> {
 
     pub fn accept_ftcp_encrypted(
         local_key: secp256k1::SecretKey,
-        remote_addr: InetSocketAddr,
+        listener: &TcpListener,
     ) -> Result<Self, Error> {
         use secp256k1::rand::thread_rng;
 
@@ -371,7 +372,7 @@ impl Raw<NoiseTranscoder, brontide::Connection> {
         let mut handshake =
             HandshakeState::new_responder(&local_key, &ephemeral_key);
 
-        let mut connection = brontide::Connection::accept(remote_addr)?;
+        let mut connection = brontide::Connection::accept(listener)?;
 
         let mut data =
             connection.as_receiver().recv_raw(handshake.data_len())?;
