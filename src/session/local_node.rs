@@ -15,7 +15,7 @@ use std::fmt::{self, Display, Formatter};
 
 #[cfg(feature = "keygen")]
 use secp256k1::rand::thread_rng;
-use secp256k1::{Secp256k1, Signing};
+use secp256k1::{ecdsa, Secp256k1, Signing};
 
 /// Local node private keys
 #[derive(Clone, PartialEq, Eq, Debug, StrictEncode, StrictDecode)]
@@ -60,8 +60,8 @@ impl LocalNode {
         &self,
         secp: &Secp256k1<C>,
         message: &secp256k1::Message,
-    ) -> secp256k1::Signature {
-        secp.sign(message, &self.private_key)
+    ) -> ecdsa::Signature {
+        secp.sign_ecdsa(message, &self.private_key)
     }
 }
 
