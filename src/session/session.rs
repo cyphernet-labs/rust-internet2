@@ -293,11 +293,11 @@ where
 impl Raw<PlainTranscoder, ftcp::Connection> {
     pub fn with_ftcp(
         stream: std::net::TcpStream,
-        socket_addr: InetSocketAddr,
+        remote_addr: InetSocketAddr,
     ) -> Result<Self, Error> {
         Ok(Self {
             transcoder: PlainTranscoder,
-            connection: ftcp::Connection::with(stream, socket_addr),
+            connection: ftcp::Connection::with(stream, remote_addr),
         })
     }
 
@@ -318,6 +318,17 @@ impl Raw<PlainTranscoder, ftcp::Connection> {
 
 #[cfg(feature = "keygen")]
 impl Raw<NoiseTranscoder, brontide::Connection> {
+    pub fn with_brontide(
+        stream: std::net::TcpStream,
+        local_key: secp256k1::SecretKey,
+        remote_addr: InetSocketAddr,
+    ) -> Result<Self, Error> {
+        Self::init_brontide(
+            brontide::Connection::with(stream, remote_addr.into()),
+            local_key,
+        )
+    }
+
     pub fn connect_brontide(
         local_key: secp256k1::SecretKey,
         remote_key: secp256k1::PublicKey,
@@ -361,14 +372,19 @@ impl Raw<NoiseTranscoder, brontide::Connection> {
         local_key: secp256k1::SecretKey,
         listener: &TcpListener,
     ) -> Result<Self, Error> {
+        Self::init_brontide(brontide::Connection::accept(listener)?, local_key)
+    }
+
+    fn init_brontide(
+        mut connection: brontide::Connection,
+        local_key: secp256k1::SecretKey,
+    ) -> Result<Self, Error> {
         use secp256k1::rand::thread_rng;
 
         let mut rng = thread_rng();
         let ephemeral_key = secp256k1::SecretKey::new(&mut rng);
         let mut handshake =
             HandshakeState::new_responder(&local_key, &ephemeral_key);
-
-        let mut connection = brontide::Connection::accept(listener)?;
 
         let mut data =
             connection.as_receiver().recv_raw(handshake.data_len())?;
