@@ -291,7 +291,7 @@ where
 }
 
 impl Raw<PlainTranscoder, ftcp::Connection> {
-    pub fn with_ftcp_unencrypted(
+    pub fn with_ftcp(
         stream: std::net::TcpStream,
         socket_addr: InetSocketAddr,
     ) -> Result<Self, Error> {
@@ -301,18 +301,14 @@ impl Raw<PlainTranscoder, ftcp::Connection> {
         })
     }
 
-    pub fn connect_ftcp_unencrypted(
-        socket_addr: InetSocketAddr,
-    ) -> Result<Self, Error> {
+    pub fn connect_ftcp(socket_addr: InetSocketAddr) -> Result<Self, Error> {
         Ok(Self {
             transcoder: PlainTranscoder,
             connection: ftcp::Connection::connect(socket_addr)?,
         })
     }
 
-    pub fn accept_ftcp_unencrypted(
-        listener: &TcpListener,
-    ) -> Result<Self, Error> {
+    pub fn accept_ftcp(listener: &TcpListener) -> Result<Self, Error> {
         Ok(Self {
             transcoder: PlainTranscoder,
             connection: ftcp::Connection::accept(listener)?,
@@ -322,7 +318,7 @@ impl Raw<PlainTranscoder, ftcp::Connection> {
 
 #[cfg(feature = "keygen")]
 impl Raw<NoiseTranscoder, brontide::Connection> {
-    pub fn connect_ftcp_encrypted(
+    pub fn connect_brontide(
         local_key: secp256k1::SecretKey,
         remote_key: secp256k1::PublicKey,
         remote_addr: InetSocketAddr,
@@ -361,7 +357,7 @@ impl Raw<NoiseTranscoder, brontide::Connection> {
         })
     }
 
-    pub fn accept_ftcp_encrypted(
+    pub fn accept_brontide(
         local_key: secp256k1::SecretKey,
         listener: &TcpListener,
     ) -> Result<Self, Error> {

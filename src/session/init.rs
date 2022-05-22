@@ -69,7 +69,7 @@ impl Connect for RemoteNodeAddr {
     fn connect(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
         Ok(match self.remote_addr {
             RemoteSocketAddr::Ftcp(inet) => {
-                Box::new(session::Raw::connect_ftcp_encrypted(
+                Box::new(session::Raw::connect_brontide(
                     local.private_key(),
                     self.node_id,
                     inet,
