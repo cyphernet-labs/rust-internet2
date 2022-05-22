@@ -12,6 +12,7 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use std::any::Any;
+use std::net::TcpListener;
 
 use amplify::Bipolar;
 use inet2_addr::InetSocketAddr;
@@ -290,38 +291,45 @@ where
 }
 
 impl Raw<PlainTranscoder, ftcp::Connection> {
-    pub fn with_ftcp_unencrypted(
+    pub fn with_ftcp(
         stream: std::net::TcpStream,
-        socket_addr: InetSocketAddr,
+        remote_addr: InetSocketAddr,
     ) -> Result<Self, Error> {
         Ok(Self {
             transcoder: PlainTranscoder,
-            connection: ftcp::Connection::with(stream, socket_addr),
+            connection: ftcp::Connection::with(stream, remote_addr),
         })
     }
 
-    pub fn connect_ftcp_unencrypted(
-        socket_addr: InetSocketAddr,
-    ) -> Result<Self, Error> {
+    pub fn connect_ftcp(socket_addr: InetSocketAddr) -> Result<Self, Error> {
         Ok(Self {
             transcoder: PlainTranscoder,
             connection: ftcp::Connection::connect(socket_addr)?,
         })
     }
 
-    pub fn accept_ftcp_unencrypted(
-        socket_addr: InetSocketAddr,
-    ) -> Result<Self, Error> {
+    pub fn accept_ftcp(listener: &TcpListener) -> Result<Self, Error> {
         Ok(Self {
             transcoder: PlainTranscoder,
-            connection: ftcp::Connection::accept(socket_addr)?,
+            connection: ftcp::Connection::accept(listener)?,
         })
     }
 }
 
 #[cfg(feature = "keygen")]
 impl Raw<NoiseTranscoder, brontide::Connection> {
-    pub fn connect_ftcp_encrypted(
+    pub fn with_brontide(
+        stream: std::net::TcpStream,
+        local_key: secp256k1::SecretKey,
+        remote_addr: InetSocketAddr,
+    ) -> Result<Self, Error> {
+        Self::init_brontide(
+            brontide::Connection::with(stream, remote_addr.into()),
+            local_key,
+        )
+    }
+
+    pub fn connect_brontide(
         local_key: secp256k1::SecretKey,
         remote_key: secp256k1::PublicKey,
         remote_addr: InetSocketAddr,
@@ -360,9 +368,16 @@ impl Raw<NoiseTranscoder, brontide::Connection> {
         })
     }
 
-    pub fn accept_ftcp_encrypted(
+    pub fn accept_brontide(
         local_key: secp256k1::SecretKey,
-        remote_addr: InetSocketAddr,
+        listener: &TcpListener,
+    ) -> Result<Self, Error> {
+        Self::init_brontide(brontide::Connection::accept(listener)?, local_key)
+    }
+
+    fn init_brontide(
+        mut connection: brontide::Connection,
+        local_key: secp256k1::SecretKey,
     ) -> Result<Self, Error> {
         use secp256k1::rand::thread_rng;
 
@@ -370,8 +385,6 @@ impl Raw<NoiseTranscoder, brontide::Connection> {
         let ephemeral_key = secp256k1::SecretKey::new(&mut rng);
         let mut handshake =
             HandshakeState::new_responder(&local_key, &ephemeral_key);
-
-        let mut connection = brontide::Connection::accept(remote_addr)?;
 
         let mut data =
             connection.as_receiver().recv_raw(handshake.data_len())?;

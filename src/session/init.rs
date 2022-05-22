@@ -69,7 +69,7 @@ impl Connect for RemoteNodeAddr {
     fn connect(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
         Ok(match self.remote_addr {
             RemoteSocketAddr::Ftcp(inet) => {
-                Box::new(session::Raw::connect_ftcp_encrypted(
+                Box::new(session::Raw::connect_brontide(
                     local.private_key(),
                     self.node_id,
                     inet,
@@ -98,9 +98,7 @@ impl Connect for RemoteNodeAddr {
 impl Accept for RemoteNodeAddr {
     fn accept(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
         Ok(match self.remote_addr {
-            RemoteSocketAddr::Ftcp(inet) => Box::new(
-                session::Raw::accept_ftcp_encrypted(local.private_key(), inet)?,
-            ) as Box<dyn Session>,
+            RemoteSocketAddr::Ftcp(inet) => unimplemented!(),
             #[cfg(feature = "zmq")]
             // TODO: (v0.3) pass specific ZMQ API type using additional
             //       `RemoteAddr` field
