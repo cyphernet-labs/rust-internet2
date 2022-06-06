@@ -56,34 +56,22 @@ use crate::{AddrError, UrlString};
 #[non_exhaustive]
 /// Possible transport-layer protocols with framing support
 pub enum FramingProtocol {
-    /// Framed raw LNP messages according to BOLT-8 pt. 2 and LNPBP-18. Used
-    /// with:
-    /// * Framed TCP socket connection
-    /// * Framed POSIX connections
-    #[display("framed", alt = "tcp")]
-    FramedRaw,
+    /// Framed raw LNP messages according to BOLT-8 pt. 2. Used with framed TCP
+    /// socket connection.
+    #[display("bolt", alt = "tcp")]
+    Brontide,
+
+    /// Framed raw LNP messages according to LNPBP-18. Used with Framed TCP
+    /// socket connection.
+    #[display("bifrost", alt = "tcp")]
+    Brontide3,
 
     /// Microservices connected using ZeroMQ protocol remotely (ZeroMQ
     /// Transport Protocol). Used with both IPC, Inproc and TCP-based SMQ
     /// connections.
     #[cfg(feature = "zmq")]
-    #[display("ZMTP", alt = "zmq")]
-    Zmtp,
-
-    /// Text-encoded LNP messages over HTTP connection
-    #[display("HTTP", alt = "http")]
-    Http,
-
-    /// Binary LNP data send over Websocket connection
-    #[cfg(feature = "websocket")]
-    #[display("Websocket", alt = "ws")]
-    Websocket,
-
-    /// SMTP connection: asynchronous end-to-end-over SMTP information transfer
-    /// which is useful for ultra-low bandwidth non-real-time connections like
-    /// satellite networks
-    #[display("SMTP", alt = "smtp")]
-    Smtp,
+    #[display("i2z", alt = "zmq")]
+    I2z,
 }
 
 impl FromStr for FramingProtocol {
@@ -91,15 +79,12 @@ impl FromStr for FramingProtocol {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "ftcp" | "tcp" | "ipc" | "posix" | "unix" => {
-                Ok(FramingProtocol::FramedRaw)
-            }
+            "bolt" => Ok(FramingProtocol::Brontide),
+            "bifrost" => Ok(FramingProtocol::Brontide3),
             #[cfg(feature = "zmq")]
-            "zmtp" | "zmq" => Ok(FramingProtocol::Zmtp),
-            "http" | "https" => Ok(FramingProtocol::Http),
-            #[cfg(feature = "websocket")]
-            "ws" | "wss" | "websocket" => Ok(FramingProtocol::Websocket),
-            "smtp" => Ok(FramingProtocol::Smtp),
+            "i2z" | "zmtp" | "zmq" | "ipc" | "posix" | "unix" => {
+                Ok(FramingProtocol::I2z)
+            }
             other => Err(AddrError::UnknownProtocol(other.to_owned())),
         }
     }
@@ -140,7 +125,8 @@ pub enum LocalSocketAddr {
     Posix(String),
 }
 
-/// Represents a connection to a generic remote peer operating with LNP protocol
+/// Represents a connection to a generic remote peer operating with Internet2
+/// protocol
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
@@ -159,33 +145,21 @@ pub enum LocalSocketAddr {
 )]
 #[non_exhaustive]
 pub enum RemoteSocketAddr {
-    /// Framed TCP socket connection, that may be served either over plain IP,
-    /// IPSec or Tor v3
-    #[display("{0}", alt = "lnp://{0}")]
-    Ftcp(InetSocketAddr),
+    /// Brontide TCP socket connection as defined in BOLT-8, that may be served
+    /// either over plain IP, IPSec or Tor v3
+    #[display("{0}", alt = "bolt://{0}")]
+    Bolt(InetSocketAddr),
+
+    /// Brontide TCP socket connection as defined in Bifrost, that may be
+    /// served either over plain IP, IPSec or Tor v3
+    #[display("{0}", alt = "bifrost://{0}")]
+    Bifrost(InetSocketAddr),
 
     /// Microservices connected using ZeroMQ protocol remotely. Can be used
     /// only with TCP-based ZMQ
     #[cfg(feature = "zmq")]
-    #[display("{0}", alt = "lnpz://{0}")]
-    Zmq(SocketAddr),
-
-    /// End-to-end encryption over web connection: think of this as LN protocol
-    /// streamed over HTTP
-    #[display("{0}", alt = "lnph://{0}")]
-    Http(InetSocketAddr),
-
-    /// End-to-end encryption over web connection: think of this as LN protocol
-    /// streamed over Websocket
-    #[cfg(feature = "websocket")]
-    #[display("{0}", alt = "lnpws://{0}")]
-    Websocket(InetSocketAddr),
-
-    /// SMTP connection: asynchronous end-to-end-over SMTP information transfer
-    /// which is useful for ultra-low bandwidth non-real-time connections like
-    /// satellite networks
-    #[display("{0}", alt = "lnpm://{0}")]
-    Smtp(InetSocketAddr),
+    #[display("{0}", alt = "i2z://{0}")]
+    I2z(SocketAddr),
 }
 
 // Fake implementation required to use node addresses with StrictEncode
@@ -210,13 +184,10 @@ impl RemoteSocketAddr {
 
     pub fn with_socket_addr(proto: FramingProtocol, addr: SocketAddr) -> Self {
         match proto {
-            FramingProtocol::FramedRaw => Self::Ftcp(addr.into()),
+            FramingProtocol::Brontide => Self::Bolt(addr.into()),
+            FramingProtocol::Brontide3 => Self::Bifrost(addr.into()),
             #[cfg(feature = "zmq")]
-            FramingProtocol::Zmtp => Self::Zmq(addr),
-            FramingProtocol::Http => Self::Http(addr.into()),
-            #[cfg(feature = "websocket")]
-            FramingProtocol::Websocket => Self::Websocket(addr.into()),
-            FramingProtocol::Smtp => Self::Smtp(addr.into()),
+            FramingProtocol::I2z => Self::I2z(addr),
         }
     }
 
@@ -225,29 +196,23 @@ impl RemoteSocketAddr {
         addr: InetSocketAddr,
     ) -> Result<Self, NoOnionSupportError> {
         Ok(match proto {
-            FramingProtocol::FramedRaw => Self::Ftcp(addr),
+            FramingProtocol::Brontide => Self::Bolt(addr),
+            FramingProtocol::Brontide3 => Self::Bifrost(addr),
             #[cfg(all(feature = "zmq", feature = "tor"))]
-            FramingProtocol::Zmtp => Self::Zmq(addr.try_into()?),
+            FramingProtocol::I2z => Self::I2z(addr.try_into()?),
             #[cfg(all(feature = "zmq", not(feature = "tor")))]
-            FramingProtocol::Zmtp => {
-                Self::Zmq(addr.try_into().map_err(|_| NoOnionSupportError)?)
+            FramingProtocol::I2z => {
+                Self::I2z(addr.try_into().map_err(|_| NoOnionSupportError)?)
             }
-            FramingProtocol::Http => Self::Http(addr),
-            #[cfg(feature = "websocket")]
-            FramingProtocol::Websocket => Self::Websocket(addr),
-            FramingProtocol::Smtp => Self::Smtp(addr),
         })
     }
 
     pub fn framing_protocol(&self) -> FramingProtocol {
         match self {
-            RemoteSocketAddr::Ftcp(_) => FramingProtocol::FramedRaw,
+            RemoteSocketAddr::Bolt(_) => FramingProtocol::Brontide,
+            RemoteSocketAddr::Bifrost(_) => FramingProtocol::Brontide3,
             #[cfg(feature = "zmq")]
-            RemoteSocketAddr::Zmq(_) => FramingProtocol::Zmtp,
-            RemoteSocketAddr::Http(_) => FramingProtocol::Http,
-            #[cfg(feature = "websocket")]
-            RemoteSocketAddr::Websocket(_) => FramingProtocol::Websocket,
-            RemoteSocketAddr::Smtp(_) => FramingProtocol::Smtp,
+            RemoteSocketAddr::I2z(_) => FramingProtocol::I2z,
         }
     }
 }
@@ -255,13 +220,11 @@ impl RemoteSocketAddr {
 impl From<RemoteSocketAddr> for InetSocketAddr {
     fn from(rsa: RemoteSocketAddr) -> Self {
         match rsa {
-            RemoteSocketAddr::Ftcp(inet) => inet,
+            RemoteSocketAddr::Bolt(inet) | RemoteSocketAddr::Bifrost(inet) => {
+                inet
+            }
             #[cfg(feature = "zmq")]
-            RemoteSocketAddr::Zmq(sa) => sa.into(),
-            RemoteSocketAddr::Http(inet) => inet,
-            #[cfg(feature = "websocket")]
-            RemoteSocketAddr::Websocket(inet) => inet,
-            RemoteSocketAddr::Smtp(inet) => inet,
+            RemoteSocketAddr::I2z(sa) => sa.into(),
         }
     }
 }
@@ -322,12 +285,9 @@ impl UrlString for RemoteSocketAddr {
     fn url_scheme(&self) -> &'static str {
         match self {
             #[cfg(feature = "zmq")]
-            RemoteSocketAddr::Zmq(_) => "lnpz://",
-            RemoteSocketAddr::Ftcp(_) => "lnp://",
-            RemoteSocketAddr::Smtp(_) => "lnpm://",
-            RemoteSocketAddr::Http(_) => "lnph://",
-            #[cfg(feature = "websocket")]
-            RemoteSocketAddr::Websocket(_) => "lnpws://",
+            RemoteSocketAddr::I2z(_) => "i2z://",
+            RemoteSocketAddr::Bolt(_) => "bolt://",
+            RemoteSocketAddr::Bifrost(_) => "bifrost://",
         }
     }
 
@@ -372,19 +332,16 @@ impl TryFrom<Url> for RemoteSocketAddr {
         let port = url.port().ok_or(AddrError::PortRequired)?;
         let inet_socket_addr = InetSocketAddr::new(inet_addr, port);
         Ok(match url.scheme() {
-            "lnp" => RemoteSocketAddr::Ftcp(inet_socket_addr),
+            "bolt" => RemoteSocketAddr::Bolt(inet_socket_addr),
+            "bifrost" => RemoteSocketAddr::Bifrost(inet_socket_addr),
             #[cfg(all(feature = "zmq", feature = "tor"))]
-            "lnpz" => RemoteSocketAddr::Zmq(inet_socket_addr.try_into()?),
+            "i2z" => RemoteSocketAddr::I2z(inet_socket_addr.try_into()?),
             #[cfg(all(feature = "zmq", not(feature = "tor")))]
-            "lnpz" => RemoteSocketAddr::Zmq(
+            "i2z" => RemoteSocketAddr::I2z(
                 inet_socket_addr
                     .try_into()
                     .map_err(|_| AddrError::NoOnionSupport)?,
             ),
-            "lnph" => RemoteSocketAddr::Http(inet_socket_addr),
-            #[cfg(feature = "websocket")]
-            "lnpws" => RemoteSocketAddr::Websocket(inet_socket_addr),
-            "lnpm" => RemoteSocketAddr::Smtp(inet_socket_addr),
             other => return Err(AddrError::UnknownUrlScheme(other.to_owned())),
         })
     }

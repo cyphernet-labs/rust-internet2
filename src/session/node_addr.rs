@@ -134,7 +134,7 @@ impl TryFrom<NodeAddr> for ZmqSocketAddr {
             NodeAddr::Local(LocalSocketAddr::Zmq(locator)) => locator,
             NodeAddr::Remote(RemoteNodeAddr {
                 node_id: _,
-                remote_addr: RemoteSocketAddr::Zmq(addr),
+                remote_addr: RemoteSocketAddr::I2z(addr),
             }) => ZmqSocketAddr::Tcp(addr),
             _ => return Err(AddrError::Unsupported("ZMQ socket")),
         })
@@ -879,7 +879,7 @@ impl TryFrom<PartialNodeAddr> for RemoteNodeAddr {
             PartialNodeAddr::Native(pubkey, address, Some(port)) => {
                 Ok(RemoteNodeAddr {
                     node_id: pubkey,
-                    remote_addr: RemoteSocketAddr::Ftcp(InetSocketAddr {
+                    remote_addr: RemoteSocketAddr::Bolt(InetSocketAddr {
                         address,
                         port,
                     }),
@@ -889,7 +889,7 @@ impl TryFrom<PartialNodeAddr> for RemoteNodeAddr {
             PartialNodeAddr::ZmqTcpEncrypted(pubkey, _, ip, Some(port)) => {
                 Ok(RemoteNodeAddr {
                     node_id: pubkey,
-                    remote_addr: RemoteSocketAddr::Zmq(SocketAddr::new(
+                    remote_addr: RemoteSocketAddr::I2z(SocketAddr::new(
                         ip, port,
                     )),
                 })
@@ -914,13 +914,15 @@ impl TryFrom<PartialNodeAddr> for RemoteNodeAddr {
 impl From<RemoteNodeAddr> for PartialNodeAddr {
     fn from(node_addr: RemoteNodeAddr) -> PartialNodeAddr {
         match node_addr.remote_addr {
-            RemoteSocketAddr::Ftcp(addr) => PartialNodeAddr::Native(
-                node_addr.node_id,
-                addr.address,
-                Some(addr.port),
-            ),
+            RemoteSocketAddr::Bolt(addr) | RemoteSocketAddr::Bifrost(addr) => {
+                PartialNodeAddr::Native(
+                    node_addr.node_id,
+                    addr.address,
+                    Some(addr.port),
+                )
+            }
             #[cfg(feature = "zmq")]
-            RemoteSocketAddr::Zmq(addr) => PartialNodeAddr::ZmqTcpEncrypted(
+            RemoteSocketAddr::I2z(addr) => PartialNodeAddr::ZmqTcpEncrypted(
                 node_addr.node_id,
                 ZmqType::Rep,
                 InetSocketAddr::from(addr)
@@ -929,20 +931,6 @@ impl From<RemoteNodeAddr> for PartialNodeAddr {
                     .expect("Conversion from just generated type can't fail"),
                 Some(addr.port()),
             ),
-            RemoteSocketAddr::Http(addr) => PartialNodeAddr::Http(
-                node_addr.node_id,
-                addr.address,
-                Some(addr.port),
-            ),
-            #[cfg(feature = "websocket")]
-            RemoteSocketAddr::Websocket(addr) => PartialNodeAddr::Websocket(
-                node_addr.node_id,
-                addr.address,
-                Some(addr.port),
-            ),
-            RemoteSocketAddr::Smtp(_) => {
-                PartialNodeAddr::Text(node_addr.node_id)
-            }
         }
     }
 }
@@ -981,7 +969,7 @@ mod test {
             "022e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af"
         ).unwrap();
         let inet1 = InetSocketAddr::from_str("127.0.0.1:2345").unwrap();
-        let remote_addr = RemoteSocketAddr::Ftcp(inet1);
+        let remote_addr = RemoteSocketAddr::Bolt(inet1);
         let addr = NodeAddr::Remote(RemoteNodeAddr {
             node_id,
             remote_addr,
@@ -1022,7 +1010,7 @@ mod test {
         };
         let node_addr = RemoteNodeAddr {
             node_id: pubkey1,
-            remote_addr: RemoteSocketAddr::Ftcp(socket_addr),
+            remote_addr: RemoteSocketAddr::Bolt(socket_addr),
         };
         let l = PartialNodeAddr::from(node_addr.clone());
         assert_eq!(l, locator_with_port);
@@ -1275,7 +1263,7 @@ mod test {
             RemoteNodeAddr::try_from(locator_with_port.clone()),
             Ok(RemoteNodeAddr {
                 node_id: pubkey1,
-                remote_addr: RemoteSocketAddr::Zmq(SocketAddr::new(inet1, 24))
+                remote_addr: RemoteSocketAddr::I2z(SocketAddr::new(inet1, 24))
             })
         );
 

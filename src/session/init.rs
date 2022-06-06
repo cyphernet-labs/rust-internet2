@@ -71,7 +71,7 @@ impl Accept for LocalSocketAddr {
 impl Connect for RemoteNodeAddr {
     fn connect(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
         Ok(match self.remote_addr {
-            RemoteSocketAddr::Ftcp(inet) => {
+            RemoteSocketAddr::Bolt(inet) => {
                 Box::new(session::Raw::<
                     NoiseTranscoder<
                         { TransportProtocol::BrontideBolt.message_len_size() },
@@ -81,10 +81,21 @@ impl Connect for RemoteNodeAddr {
                     local.private_key(), self.node_id, inet
                 )?) as Box<dyn Session>
             }
+            RemoteSocketAddr::Bifrost(inet) => Box::new(session::Raw::<
+                NoiseTranscoder<
+                    { TransportProtocol::BrontideBifrost.message_len_size() },
+                >,
+                _,
+            >::connect_brontide(
+                local.private_key(),
+                self.node_id,
+                inet,
+            )?)
+                as Box<dyn Session>,
             #[cfg(feature = "zmq")]
             // TODO: (v0.3) pass specific ZMQ API type using additional
             //       `RemoteAddr` field
-            RemoteSocketAddr::Zmq(socket) => {
+            RemoteSocketAddr::I2z(socket) => {
                 Box::new(session::Raw::with_zmq_unencrypted(
                     zmqsocket::ZmqType::Req,
                     &zmqsocket::ZmqSocketAddr::Tcp(socket),
@@ -92,10 +103,6 @@ impl Connect for RemoteNodeAddr {
                     None,
                 )?)
             }
-            RemoteSocketAddr::Http(_) => unimplemented!(),
-            #[cfg(feature = "websocket")]
-            RemoteSocketAddr::Websocket(_) => unimplemented!(),
-            RemoteSocketAddr::Smtp(_) => unimplemented!(),
         })
     }
 }
@@ -104,11 +111,13 @@ impl Connect for RemoteNodeAddr {
 impl Accept for RemoteNodeAddr {
     fn accept(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
         Ok(match self.remote_addr {
-            RemoteSocketAddr::Ftcp(inet) => unimplemented!(),
+            RemoteSocketAddr::Bolt(_) | RemoteSocketAddr::Bifrost(_) => {
+                unimplemented!()
+            }
             #[cfg(feature = "zmq")]
             // TODO: (v0.3) pass specific ZMQ API type using additional
             //       `RemoteAddr` field
-            RemoteSocketAddr::Zmq(socket) => {
+            RemoteSocketAddr::I2z(socket) => {
                 Box::new(session::Raw::with_zmq_unencrypted(
                     zmqsocket::ZmqType::Req,
                     &zmqsocket::ZmqSocketAddr::Tcp(socket),
@@ -116,10 +125,6 @@ impl Accept for RemoteNodeAddr {
                     None,
                 )?)
             }
-            RemoteSocketAddr::Http(_) => unimplemented!(),
-            #[cfg(feature = "websocket")]
-            RemoteSocketAddr::Websocket(_) => unimplemented!(),
-            RemoteSocketAddr::Smtp(_) => unimplemented!(),
         })
     }
 }
