@@ -13,6 +13,7 @@
 
 use std::borrow::Borrow;
 
+use amplify::num::u24;
 use amplify::Bipolar;
 use chacha20poly1305::aead::Error;
 
@@ -22,27 +23,46 @@ use crate::session::transcoders::{Decrypt, Encrypt, Transcode};
 
 pub type SymmetricKey = [u8; 32];
 
-pub const MESSAGE_LENGTH_HEADER_SIZE: usize = 2;
-pub const TAGGED_MESSAGE_LENGTH_HEADER_SIZE: usize =
-    MESSAGE_LENGTH_HEADER_SIZE + chacha::TAG_SIZE;
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
+pub enum TransportProtocol {
+    BrontideBolt = 2,
+    BrontideBifrost = 3,
+}
 
-const KEY_ROTATION_INDEX: u32 = 1000;
+impl TransportProtocol {
+    pub const fn message_len_size(self) -> usize {
+        match self {
+            TransportProtocol::BrontideBolt => 2,
+            TransportProtocol::BrontideBifrost => 3,
+        }
+    }
+
+    pub const fn header_size(self) -> usize {
+        self.message_len_size() + chacha::TAG_SIZE
+    }
+}
+
+pub const KEY_ROTATION_PERIOD: u32 = 1000;
 
 #[derive(Debug)]
-pub struct NoiseEncryptor {
+pub struct NoiseEncryptor<const LEN_SIZE: usize> {
     sending_key: SymmetricKey,
     sending_chaining_key: SymmetricKey,
     sending_nonce: u32,
 }
 
-impl NoiseEncryptor {
+impl<const LEN_SIZE: usize> NoiseEncryptor<LEN_SIZE> {
+    pub const TAGGED_MESSAGE_LENGTH_HEADER_SIZE: usize =
+        LEN_SIZE + chacha::TAG_SIZE;
+    const MESSAGE_LEN_SIZE: usize = LEN_SIZE;
+
     pub fn encrypt_buf(&mut self, buffer: &[u8]) -> Result<Vec<u8>, Error> {
         let length = buffer.len() as u16;
         let length_bytes = length.to_be_bytes();
 
         let mut ciphertext = vec![
             0u8;
-            TAGGED_MESSAGE_LENGTH_HEADER_SIZE
+            Self::TAGGED_MESSAGE_LENGTH_HEADER_SIZE
                 + length as usize
                 + chacha::TAG_SIZE
         ];
@@ -52,7 +72,7 @@ impl NoiseEncryptor {
             self.sending_nonce as u64,
             &[0; 0],
             &length_bytes,
-            &mut ciphertext[..TAGGED_MESSAGE_LENGTH_HEADER_SIZE],
+            &mut ciphertext[..Self::TAGGED_MESSAGE_LENGTH_HEADER_SIZE],
         )?;
         self.increment_nonce();
 
@@ -61,7 +81,7 @@ impl NoiseEncryptor {
             self.sending_nonce as u64,
             &[0; 0],
             buffer,
-            &mut ciphertext[TAGGED_MESSAGE_LENGTH_HEADER_SIZE..],
+            &mut ciphertext[Self::TAGGED_MESSAGE_LENGTH_HEADER_SIZE..],
         )?;
         self.increment_nonce();
 
@@ -69,7 +89,7 @@ impl NoiseEncryptor {
     }
 
     fn increment_nonce(&mut self) {
-        NoiseTranscoder::increment_nonce(
+        NoiseTranscoder::<LEN_SIZE>::increment_nonce(
             &mut self.sending_nonce,
             &mut self.sending_chaining_key,
             &mut self.sending_key,
@@ -77,7 +97,7 @@ impl NoiseEncryptor {
     }
 }
 
-impl Encrypt for NoiseEncryptor {
+impl<const LEN_SIZE: usize> Encrypt for NoiseEncryptor<LEN_SIZE> {
     fn encrypt(&mut self, buffer: impl Borrow<[u8]>) -> Vec<u8> {
         match self.encrypt_buf(buffer.borrow()) {
             Ok(values) => values,
@@ -87,7 +107,7 @@ impl Encrypt for NoiseEncryptor {
 }
 
 #[derive(Debug)]
-pub struct NoiseDecryptor {
+pub struct NoiseDecryptor<const LEN_SIZE: usize> {
     receiving_key: SymmetricKey,
     receiving_chaining_key: SymmetricKey,
     receiving_nonce: u32,
@@ -98,7 +118,11 @@ pub struct NoiseDecryptor {
                      * iteration after failure */
 }
 
-impl NoiseDecryptor {
+impl<const LEN_SIZE: usize> NoiseDecryptor<LEN_SIZE> {
+    pub const TAGGED_MESSAGE_LENGTH_HEADER_SIZE: usize =
+        LEN_SIZE + chacha::TAG_SIZE;
+    const MESSAGE_LEN_SIZE: usize = LEN_SIZE;
+
     pub fn read_buf(&mut self, data: &[u8]) {
         let read_buffer = self.read_buffer.get_or_insert(Vec::new());
         read_buffer.extend_from_slice(data);
@@ -137,31 +161,44 @@ impl NoiseDecryptor {
             // we have already decrypted the header
             length
         } else {
-            if buffer.len() < TAGGED_MESSAGE_LENGTH_HEADER_SIZE {
+            if buffer.len() < Self::TAGGED_MESSAGE_LENGTH_HEADER_SIZE {
                 // A message must be at least 18 bytes (2 for encrypted length,
                 // 16 for the tag)
                 return Ok((None, 0));
             }
 
             let encrypted_length =
-                &buffer[0..TAGGED_MESSAGE_LENGTH_HEADER_SIZE];
-            let mut length_bytes = [0u8; MESSAGE_LENGTH_HEADER_SIZE];
-            chacha::decrypt(
-                &self.receiving_key,
-                self.receiving_nonce as u64,
-                &[0; 0],
-                encrypted_length,
-                &mut length_bytes,
-            )?;
+                &buffer[0..Self::TAGGED_MESSAGE_LENGTH_HEADER_SIZE];
 
-            self.increment_nonce();
+            let mut decrypt = |length_bytes: &mut [u8]| -> Result<(), _> {
+                chacha::decrypt(
+                    &self.receiving_key,
+                    self.receiving_nonce as u64,
+                    &[0; 0],
+                    encrypted_length,
+                    length_bytes,
+                )?;
+                self.increment_nonce();
+                Ok(())
+            };
 
             // the message length
-            //byte_utils::slice_to_be16(&length_bytes) as usize
-            u16::from_be_bytes(length_bytes) as usize
+            match LEN_SIZE {
+                2 => {
+                    let mut length_bytes = [0u8; 2];
+                    decrypt(&mut length_bytes)?;
+                    u16::from_be_bytes(length_bytes) as usize
+                }
+                3 => {
+                    let mut length_bytes = [0u8; 3];
+                    decrypt(&mut length_bytes)?;
+                    u24::from_be_bytes(length_bytes).as_u32() as usize
+                }
+                _ => panic!("unsupported brontide message size"),
+            }
         };
 
-        let message_end_index = TAGGED_MESSAGE_LENGTH_HEADER_SIZE
+        let message_end_index = Self::TAGGED_MESSAGE_LENGTH_HEADER_SIZE
             + message_length
             + chacha::TAG_SIZE;
 
@@ -173,7 +210,7 @@ impl NoiseDecryptor {
         self.pending_message_length = None;
 
         let encrypted_message =
-            &buffer[TAGGED_MESSAGE_LENGTH_HEADER_SIZE..message_end_index];
+            &buffer[Self::TAGGED_MESSAGE_LENGTH_HEADER_SIZE..message_end_index];
         let mut message = vec![0u8; message_length];
 
         chacha::decrypt(
@@ -190,7 +227,7 @@ impl NoiseDecryptor {
     }
 
     fn increment_nonce(&mut self) {
-        NoiseTranscoder::increment_nonce(
+        NoiseTranscoder::<LEN_SIZE>::increment_nonce(
             &mut self.receiving_nonce,
             &mut self.receiving_chaining_key,
             &mut self.receiving_key,
@@ -221,7 +258,7 @@ impl NoiseDecryptor {
     }
 }
 
-impl Iterator for NoiseDecryptor {
+impl<const LEN_SIZE: usize> Iterator for NoiseDecryptor<LEN_SIZE> {
     type Item = Result<Option<Vec<u8>>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -240,7 +277,7 @@ impl Iterator for NoiseDecryptor {
     }
 }
 
-impl Decrypt for NoiseDecryptor {
+impl<const LEN_SIZE: usize> Decrypt for NoiseDecryptor<LEN_SIZE> {
     type Error = HandshakeError;
     fn decrypt(
         &mut self,
@@ -260,12 +297,12 @@ impl Decrypt for NoiseDecryptor {
 /// For decryption, it is recommended to call `decrypt_message_stream` for
 /// automatic buffering.
 #[derive(Debug)]
-pub struct NoiseTranscoder {
-    pub encryptor: NoiseEncryptor,
-    pub decryptor: NoiseDecryptor,
+pub struct NoiseTranscoder<const LEN_SIZE: usize> {
+    pub encryptor: NoiseEncryptor<LEN_SIZE>,
+    pub decryptor: NoiseDecryptor<LEN_SIZE>,
 }
 
-impl NoiseTranscoder {
+impl<const LEN_SIZE: usize> NoiseTranscoder<LEN_SIZE> {
     /// Instantiate a new Conduit with specified sending and receiving keys
     pub fn new(
         sending_key: SymmetricKey,
@@ -314,7 +351,7 @@ impl NoiseTranscoder {
         key: &mut SymmetricKey,
     ) {
         *nonce += 1;
-        if *nonce == KEY_ROTATION_INDEX {
+        if *nonce == KEY_ROTATION_PERIOD {
             Self::rotate_key(chaining_key, key);
             *nonce = 0;
         }
@@ -327,7 +364,7 @@ impl NoiseTranscoder {
     }
 }
 
-impl Encrypt for NoiseTranscoder {
+impl<const LEN_SIZE: usize> Encrypt for NoiseTranscoder<LEN_SIZE> {
     fn encrypt(&mut self, buffer: impl Borrow<[u8]>) -> Vec<u8> {
         match self.encrypt_buf(buffer.borrow()) {
             Ok(values) => values,
@@ -336,7 +373,7 @@ impl Encrypt for NoiseTranscoder {
     }
 }
 
-impl Decrypt for NoiseTranscoder {
+impl<const LEN_SIZE: usize> Decrypt for NoiseTranscoder<LEN_SIZE> {
     type Error = HandshakeError;
     fn decrypt(
         &mut self,
@@ -350,12 +387,12 @@ impl Decrypt for NoiseTranscoder {
     }
 }
 
-impl Transcode for NoiseTranscoder {
-    type Encryptor = NoiseEncryptor;
-    type Decryptor = NoiseDecryptor;
+impl<const LEN_SIZE: usize> Transcode for NoiseTranscoder<LEN_SIZE> {
+    type Encryptor = NoiseEncryptor<LEN_SIZE>;
+    type Decryptor = NoiseDecryptor<LEN_SIZE>;
 }
 
-impl Bipolar for NoiseTranscoder {
+impl<const LEN_SIZE: usize> Bipolar for NoiseTranscoder<LEN_SIZE> {
     type Left = <Self as Transcode>::Decryptor;
     type Right = <Self as Transcode>::Encryptor;
 
@@ -378,7 +415,10 @@ mod tests {
     use super::*;
     use crate::LNP_MSG_MAX_LEN;
 
-    fn setup_peers() -> (NoiseTranscoder, NoiseTranscoder) {
+    fn setup_peers() -> (
+        NoiseTranscoder<{ TransportProtocol::BrontideBolt.message_len_size() }>,
+        NoiseTranscoder<{ TransportProtocol::BrontideBolt.message_len_size() }>,
+    ) {
         let chaining_key_vec = Vec::<u8>::from_hex(
             "919219dbb2920afa8db80f9a51787a840bcf111ed8d588caf9ab4be716e42b01",
         )

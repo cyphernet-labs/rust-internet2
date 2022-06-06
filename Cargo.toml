@@ -1,8 +1,8 @@
 [package]
 name = "internet2"
-version = "0.7.0-rc.1"
+version = "0.8.0-alpha.1"
 license = "Apache-2.0"
-authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
+authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Rust implementation for the stack of Internet2 protocols"
 repository = "https://github.com/internet2-org/rust-internet2"
 homepage = "https://github.com/internet2-org"

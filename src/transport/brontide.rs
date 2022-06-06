@@ -86,7 +86,7 @@ impl RecvFrame for Stream {
     /// represents encoded message length.
     fn recv_frame(&mut self) -> Result<Vec<u8>, Error> {
         let mut buf: Vec<u8> =
-            vec![0u8; noise::TAGGED_MESSAGE_LENGTH_HEADER_SIZE];
+            vec![0u8; noise::TransportProtocol::BrontideBolt.header_size()];
         self.0.read_exact(&mut buf)?;
         Ok(buf)
     }

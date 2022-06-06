@@ -11,10 +11,13 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+use crate::session::noise::TransportProtocol;
 use crate::transport::Error;
 #[cfg(feature = "zmq")]
 use crate::zmqsocket;
-use crate::{session, LocalNode, LocalSocketAddr, NodeAddr, Session};
+use crate::{
+    session, LocalNode, LocalSocketAddr, NodeAddr, NoiseTranscoder, Session,
+};
 #[cfg(feature = "keygen")]
 use crate::{RemoteNodeAddr, RemoteSocketAddr};
 
@@ -69,10 +72,13 @@ impl Connect for RemoteNodeAddr {
     fn connect(&self, local: &LocalNode) -> Result<Box<dyn Session>, Error> {
         Ok(match self.remote_addr {
             RemoteSocketAddr::Ftcp(inet) => {
-                Box::new(session::Raw::connect_brontide(
-                    local.private_key(),
-                    self.node_id,
-                    inet,
+                Box::new(session::Raw::<
+                    NoiseTranscoder<
+                        { TransportProtocol::BrontideBolt.message_len_size() },
+                    >,
+                    _,
+                >::connect_brontide(
+                    local.private_key(), self.node_id, inet
                 )?) as Box<dyn Session>
             }
             #[cfg(feature = "zmq")]

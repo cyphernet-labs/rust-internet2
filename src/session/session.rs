@@ -190,9 +190,9 @@ impl Session for Raw<PlainTranscoder, ftcp::Connection> {
     fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
 }
 
-fn recv_brontide_message(
+fn recv_brontide_message<const LEN_SIZE: usize>(
     reader: &mut dyn RecvFrame,
-    decrypt: &mut NoiseDecryptor,
+    decrypt: &mut NoiseDecryptor<LEN_SIZE>,
 ) -> Result<Vec<u8>, Error> {
     // Reading & decrypting length
     let encrypted_len = reader.recv_frame()?;
@@ -210,7 +210,9 @@ fn recv_brontide_message(
     Ok(payload)
 }
 
-impl Session for Raw<NoiseTranscoder, brontide::Connection> {
+impl<const LEN_SIZE: usize> Session
+    for Raw<NoiseTranscoder<LEN_SIZE>, brontide::Connection>
+{
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
         let reader = self.connection.as_receiver();
         recv_brontide_message(reader, &mut self.transcoder.decryptor)
@@ -317,7 +319,9 @@ impl Raw<PlainTranscoder, ftcp::Connection> {
 }
 
 #[cfg(feature = "keygen")]
-impl Raw<NoiseTranscoder, brontide::Connection> {
+impl<const LEN_SIZE: usize>
+    Raw<NoiseTranscoder<LEN_SIZE>, brontide::Connection>
+{
     pub fn with_brontide(
         stream: std::net::TcpStream,
         local_key: secp256k1::SecretKey,
@@ -488,7 +492,9 @@ impl Input for RawInput<PlainTranscoder, ftcp::Stream> {
     }
 }
 
-impl Input for RawInput<NoiseDecryptor, brontide::Stream> {
+impl<const LEN_SIZE: usize> Input
+    for RawInput<NoiseDecryptor<LEN_SIZE>, brontide::Stream>
+{
     #[inline]
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
         recv_brontide_message(&mut self.input, &mut self.decryptor)

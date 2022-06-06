@@ -50,17 +50,17 @@ pub enum HandshakeError {
 }
 
 #[derive(Debug)]
-pub enum HandshakeState {
+pub enum HandshakeState<const LEN_SIZE: usize> {
     InitiatorStarting(InitiatorStartingState),
     ResponderAwaitingActOne(ResponderAwaitingActOneState),
     InitiatorAwaitingActTwo(InitiatorAwaitingActTwoState),
     ResponderAwaitingActThree(ResponderAwaitingActThreeState),
-    Complete(Option<(NoiseTranscoder, PublicKey)>),
+    Complete(Option<(NoiseTranscoder<LEN_SIZE>, PublicKey)>),
 }
 
 // Enum dispatch for state machine. Single public interface can statically
 // dispatch to all states
-impl HandshakeState {
+impl<const LEN_SIZE: usize> HandshakeState<LEN_SIZE> {
     pub fn new_initiator(
         initiator_static_private_key: &SecretKey,
         responder_static_public_key: &PublicKey,
@@ -87,13 +87,19 @@ impl HandshakeState {
     pub fn next(
         self,
         input: &[u8],
-    ) -> Result<(Option<Act>, HandshakeState), HandshakeError> {
+    ) -> Result<(Option<Act>, HandshakeState<LEN_SIZE>), HandshakeError> {
         match self {
-            HandshakeState::InitiatorStarting(state) => state.next(),
-            HandshakeState::ResponderAwaitingActOne(state) => state.next(input),
-            HandshakeState::InitiatorAwaitingActTwo(state) => state.next(input),
+            HandshakeState::InitiatorStarting(state) => {
+                state.next::<LEN_SIZE>()
+            }
+            HandshakeState::ResponderAwaitingActOne(state) => {
+                state.next::<LEN_SIZE>(input)
+            }
+            HandshakeState::InitiatorAwaitingActTwo(state) => {
+                state.next::<LEN_SIZE>(input)
+            }
             HandshakeState::ResponderAwaitingActThree(state) => {
-                state.next(input)
+                state.next::<LEN_SIZE>(input)
             }
             HandshakeState::Complete(_conduit) => {
                 Err(HandshakeError::General(String::from(
@@ -190,7 +196,9 @@ impl InitiatorStartingState {
     // PR Comment: This function took an empty byte to be compatible with
     // IHandshake trait in mother implementation which we are not using
     // anymore. So we can get rid of the the length check.
-    pub fn next(self) -> Result<(Option<Act>, HandshakeState), HandshakeError> {
+    pub fn next<const LEN_SIZE: usize>(
+        self,
+    ) -> Result<(Option<Act>, HandshakeState<LEN_SIZE>), HandshakeError> {
         let initiator_static_private_key = self.initiator_static_private_key;
         let initiator_static_public_key = self.initiator_static_public_key;
         let initiator_ephemeral_private_key =
@@ -253,10 +261,10 @@ impl ResponderAwaitingActOneState {
 
     // https://github.com/lightningnetwork/lightning-rfc/blob/master/08-transport.md#act-one (receiver)
     // https://github.com/lightningnetwork/lightning-rfc/blob/master/08-transport.md#act-two (sender)
-    pub fn next(
+    pub fn next<const LEN_SIZE: usize>(
         self,
         input: &[u8],
-    ) -> Result<(Option<Act>, HandshakeState), HandshakeError> {
+    ) -> Result<(Option<Act>, HandshakeState<LEN_SIZE>), HandshakeError> {
         let mut act_one_builder = self.act_one_builder;
         let bytes_read = act_one_builder.fill(input);
 
@@ -336,10 +344,10 @@ impl ResponderAwaitingActOneState {
 impl InitiatorAwaitingActTwoState {
     // https://github.com/lightningnetwork/lightning-rfc/blob/master/08-transport.md#act-two (receiver)
     // https://github.com/lightningnetwork/lightning-rfc/blob/master/08-transport.md#act-three (sender)
-    pub fn next(
+    pub fn next<const LEN_SIZE: usize>(
         self,
         input: &[u8],
-    ) -> Result<(Option<Act>, HandshakeState), HandshakeError> {
+    ) -> Result<(Option<Act>, HandshakeState<LEN_SIZE>), HandshakeError> {
         let mut act_two_builder = self.act_two_builder;
         let bytes_read = act_two_builder.fill(input);
 
@@ -446,10 +454,10 @@ impl InitiatorAwaitingActTwoState {
 
 impl ResponderAwaitingActThreeState {
     // https://github.com/lightningnetwork/lightning-rfc/blob/master/08-transport.md#act-three (receiver)
-    fn next(
+    fn next<const LEN_SIZE: usize>(
         self,
         input: &[u8],
-    ) -> Result<(Option<Act>, HandshakeState), HandshakeError> {
+    ) -> Result<(Option<Act>, HandshakeState<LEN_SIZE>), HandshakeError> {
         let mut act_three_builder = self.act_three_builder;
         let bytes_read = act_three_builder.fill(input);
 
@@ -691,9 +699,9 @@ mod test {
     use super::*;
 
     struct TestCtx {
-        initiator: HandshakeState,
+        initiator: HandshakeState<2>,
         initiator_public_key: PublicKey,
-        responder: HandshakeState,
+        responder: HandshakeState<2>,
         responder_static_public_key: PublicKey,
         valid_act1: Vec<u8>,
         valid_act2: Vec<u8>,
