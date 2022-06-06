@@ -163,13 +163,13 @@ impl FromStr for ZmqType {
     StrictDecode
 )]
 pub enum ZmqSocketAddr {
-    #[display("inproc://{0}", alt = "zmq:{0}")]
+    #[display("inproc://{0}", alt = "inproc2z:{0}")]
     Inproc(String),
 
-    #[display("ipc://{0}", alt = "lnpz:{0}")]
+    #[display("ipc://{0}", alt = "ipc2z:{0}")]
     Ipc(String),
 
-    #[display("tcp://{0}", alt = "lnpz://{0}")]
+    #[display("tcp://{0}", alt = "i2z://{0}")]
     Tcp(
         #[cfg_attr(feature = "serde", serde(with = "As::<DisplayFromStr>"))]
         SocketAddr,
