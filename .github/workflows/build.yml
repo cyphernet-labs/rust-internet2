@@ -25,6 +25,7 @@ jobs:
           # Networking
           - tor
           - zmq
+          - tor,zmq
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
@@ -74,33 +75,6 @@ jobs:
         with:
           command: check
           args: --all-features
-  tor:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        feature:
-          - tor
-          - tor,url
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
-      - name: Install rust stable
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Feature ${{ matrix.feature }}
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --no-default-features --features=${{ matrix.feature }}
-      - name: Defaults + ${{ matrix.feature }}
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --features=${{ matrix.feature }}
   toolchains:
     runs-on: ubuntu-latest
     strategy:

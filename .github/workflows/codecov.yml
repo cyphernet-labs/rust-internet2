@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev libssl-dev
+        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
       - name: Install latest nightly
         uses: actions-rs/toolchain@v1
         with:
@@ -28,8 +28,8 @@ jobs:
           args: --workspace --all-features --no-fail-fast
         env:
           CARGO_INCREMENTAL: '0'
-          RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off'
-          RUSTDOCFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off'
+          RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code'
+          RUSTDOCFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code'
       - id: coverage
         name: Generate coverage
         uses: actions-rs/grcov@v0.1.5
