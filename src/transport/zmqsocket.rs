@@ -55,14 +55,14 @@ pub enum ZmqType {
     /// Remote procedure call communications done with REQ/REP pair of ZMQ
     /// sockets. Two roles: client and server; client sends requests and awaits
     /// for client responses.
-    /// This part represents client-size socket ([`zmq::SocketType::REQ`])
+    /// This part represents client-side socket ([`zmq::SocketType::REQ`])
     #[display("REQ")]
     Req = 2,
 
     /// Remote procedure call communications done with REQ/REP pair of ZMQ
     /// sockets. Two roles: client and server; client sends requests and awaits
     /// for client responses.
-    /// This part represents client-size socket ([`zmq::SocketType::REP`])
+    /// This part represents server-side socket ([`zmq::SocketType::REP`])
     #[display("REP")]
     Rep = 3,
 
