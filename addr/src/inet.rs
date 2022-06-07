@@ -1109,7 +1109,7 @@ mod test {
         assert_eq!(InetSocketAddr::from_str("127.0.0.1:6865").unwrap(), ip4);
         assert_eq!(InetSocketAddr::from_str("[::1]:6865").unwrap(), ip6);
         assert_eq!(format!("{}", ip4), "127.0.0.1:6865");
-        assert_eq!(format!("{}", ip6), "::1:6865");
+        assert_eq!(format!("{}", ip6), "[::1]:6865");
 
         assert!(!ip4.is_tor());
         assert!(!ip6.is_tor());
@@ -1139,6 +1139,6 @@ mod test {
             ip6
         );
         assert_eq!(format!("{}", ip4), "tcp://127.0.0.1:6865");
-        assert_eq!(format!("{}", ip6), "udp://::1:6865");
+        assert_eq!(format!("{}", ip6), "udp://[::1]:6865");
     }
 }
