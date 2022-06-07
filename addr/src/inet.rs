@@ -4,13 +4,11 @@
 //     Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>
 //     Martin Habovstiak <martin.habovstiak@gmail.com>
 //
-// To the extent possible under law, the author(s) have dedicated all
-// copyright and related and neighboring rights to this software to
-// the public domain worldwide. This software is distributed without
-// any warranty.
+// To the extent possible under law, the author(s) have dedicated all copyright
+// and related and neighboring rights to this software to the public domain
+// worldwide. This software is distributed without any warranty.
 //
-// You should have received a copy of the MIT License
-// along with this software.
+// You should have received a copy of the MIT License along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use std::cmp::Ordering;
@@ -401,7 +399,7 @@ impl FromStr for Transport {
 /// and a port number (without protocol specification, i.e. TCP/UDP etc). If you
 /// need to include transport-level protocol information into the socket
 /// details, pls check [`InetSocketAddrExt`]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Display, From)]
 #[cfg_attr(
     all(feature = "serde", feature = "serde_str_helpers"),
     derive(Serialize, Deserialize),
@@ -416,12 +414,21 @@ impl FromStr for Transport {
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate")
 )]
-pub struct InetSocketAddr {
-    /// Address part of the socket
-    pub address: InetAddr,
+#[display(inner)]
+#[non_exhaustive] // Required since we use feature-gated enum variants
+pub enum InetSocketAddr {
+    /// IP socket address of V4 standard
+    #[from]
+    IPv4(SocketAddrV4),
 
-    /// Port of the socket
-    pub port: u16,
+    /// IP socket address of V6 standard
+    #[from]
+    IPv6(SocketAddrV6),
+
+    /// Tor address of V3 standard
+    #[cfg(feature = "tor")]
+    #[from]
+    Tor(TorPublicKeyV3),
 }
 
 #[cfg(feature = "stringly_conversions")]
@@ -429,21 +436,103 @@ impl_try_from_stringly_standard!(InetSocketAddr);
 #[cfg(feature = "stringly_conversions")]
 impl_into_stringly_standard!(InetSocketAddr);
 
+impl PartialOrd for InetSocketAddr {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (InetSocketAddr::IPv4(addr1), InetSocketAddr::IPv4(addr2)) => {
+                addr1.partial_cmp(addr2)
+            }
+            (InetSocketAddr::IPv6(addr1), InetSocketAddr::IPv6(addr2)) => {
+                addr1.partial_cmp(addr2)
+            }
+            #[cfg(feature = "tor")]
+            (InetSocketAddr::Tor(addr1), InetSocketAddr::Tor(addr2)) => {
+                addr1.partial_cmp(addr2)
+            }
+            (InetSocketAddr::IPv4(_), _) => Some(Ordering::Greater),
+            (_, InetSocketAddr::IPv4(_)) => Some(Ordering::Less),
+            #[cfg(feature = "tor")]
+            (InetSocketAddr::IPv6(_), _) => Some(Ordering::Greater),
+            #[cfg(feature = "tor")]
+            (_, InetSocketAddr::IPv6(_)) => Some(Ordering::Less),
+        }
+    }
+}
+
+impl Ord for InetSocketAddr {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+    }
+}
+
+// We need this since TorPublicKeyV3 does not implement Hash
+#[allow(clippy::derive_hash_xor_eq)]
+impl std::hash::Hash for InetSocketAddr {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            InetSocketAddr::IPv4(socketv4) => socketv4.hash(state),
+            InetSocketAddr::IPv6(socketv6) => socketv6.hash(state),
+            #[cfg(feature = "tor")]
+            InetSocketAddr::Tor(torv3) => torv3.as_bytes().hash(state),
+        }
+    }
+}
+
+impl Default for InetSocketAddr {
+    #[inline]
+    fn default() -> Self {
+        InetSocketAddr::IPv4(SocketAddrV4::new(Ipv4Addr::from(0), 0))
+    }
+}
+
 impl InetSocketAddr {
+    /// Constructs new socket address matching the provided Tor v3 address
+    #[inline]
+    pub fn tor3(tor: TorPublicKeyV3) -> Self { InetSocketAddr::Tor(tor) }
+
     /// Constructs new socket address from an internet address and a port
     /// information
     #[inline]
-    pub fn new(address: InetAddr, port: u16) -> Self { Self { address, port } }
+    pub fn socket(ip: IpAddr, port: u16) -> Self {
+        match ip {
+            IpAddr::V4(ipv4) => {
+                InetSocketAddr::IPv4(SocketAddrV4::new(ipv4, port))
+            }
+            IpAddr::V6(ipv6) => {
+                InetSocketAddr::IPv6(SocketAddrV6::new(ipv6, port, 0, 0))
+            }
+        }
+    }
 
     /// Determines whether provided address is a Tor address
     #[inline]
-    pub fn is_tor(&self) -> bool { self.address.is_tor() }
-}
+    pub fn is_tor(&self) -> bool {
+        match self {
+            InetSocketAddr::IPv4(_) | InetSocketAddr::IPv6(_) => false,
+            InetSocketAddr::Tor(_) => true,
+        }
+    }
 
-impl fmt::Display for InetSocketAddr {
+    /// Returns [`InetAddr`] address of the socket
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.address, self.port)
+    pub fn address(self) -> InetAddr {
+        match self {
+            InetSocketAddr::IPv4(socket) => InetAddr::IPv4(*socket.ip()),
+            InetSocketAddr::IPv6(socket) => InetAddr::IPv6(*socket.ip()),
+            InetSocketAddr::Tor(tor) => InetAddr::Tor(tor),
+        }
+    }
+
+    /// Returns port for the socket, if address allows different ports.
+    ///
+    /// Returns `None` for portless addresses (Tor etc).
+    #[inline]
+    pub fn port(self) -> Option<u16> {
+        match self {
+            InetSocketAddr::IPv4(socket) => Some(socket.port()),
+            InetSocketAddr::IPv6(socket) => Some(socket.port()),
+            InetSocketAddr::Tor(_) => None,
+        }
     }
 }
 
@@ -453,31 +542,20 @@ impl FromStr for InetSocketAddr {
     #[allow(unreachable_code)]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Ok(socket_addr) = SocketAddrV6::from_str(s) {
-            return Ok(Self::new(
-                (*socket_addr.ip()).into(),
-                socket_addr.port(),
-            ));
+            Ok(InetSocketAddr::IPv6(socket_addr))
         } else if let Ok(socket_addr) = SocketAddrV4::from_str(s) {
-            return Ok(Self::new(
-                (*socket_addr.ip()).into(),
-                socket_addr.port(),
-            ));
+            Ok(InetSocketAddr::IPv4(socket_addr))
         } else {
             #[cfg(not(feature = "tor"))]
-            return Err(AddrParseError::NeedsTorFeature);
-        }
-
-        let mut vals = s.split(':');
-        match (vals.next(), vals.next(), vals.next()) {
-            (Some(addr), Some(port), None) => Ok(Self {
-                address: addr.parse()?,
-                port: u16::from_str(port)?,
-            }),
-            (Some(addr), None, _) => Ok(Self {
-                address: addr.parse()?,
-                port: 0,
-            }),
-            _ => Err(AddrParseError::WrongSocketFormat(s.to_owned())),
+            {
+                Err(AddrParseError::NeedsTorFeature)
+            }
+            #[cfg(feature = "tor")]
+            if let Ok(addr) = OnionAddressV3::from_str(s) {
+                Ok(InetSocketAddr::Tor(addr.get_public_key()))
+            } else {
+                Err(AddrParseError::WrongAddrFormat(s.to_owned()))
+            }
         }
     }
 }
@@ -487,10 +565,11 @@ impl TryFrom<InetSocketAddr> for SocketAddr {
     type Error = NoOnionSupportError;
     #[inline]
     fn try_from(socket_addr: InetSocketAddr) -> Result<Self, Self::Error> {
-        Ok(Self::new(
-            IpAddr::try_from(socket_addr.address)?,
-            socket_addr.port,
-        ))
+        match socket_addr {
+            InetSocketAddr::IPv4(socket) => Ok(SocketAddr::V4(socket)),
+            InetSocketAddr::IPv6(socket) => Ok(SocketAddr::V6(socket)),
+            InetSocketAddr::Tor(_) => Err(NoOnionSupportError),
+        }
     }
 }
 
@@ -498,28 +577,21 @@ impl TryFrom<InetSocketAddr> for SocketAddr {
 impl From<InetSocketAddr> for SocketAddr {
     #[inline]
     fn from(socket_addr: InetSocketAddr) -> Self {
-        Self::new(IpAddr::from(socket_addr.address), socket_addr.port)
+        match socket_addr {
+            InetSocketAddr::IPv4(socket) => SocketAddr::V4(socket),
+            InetSocketAddr::IPv6(socket) => SocketAddr::V6(socket),
+            InetSocketAddr::Tor(_) => unreachable!(),
+        }
     }
 }
 
 impl From<SocketAddr> for InetSocketAddr {
     #[inline]
-    fn from(addr: SocketAddr) -> Self {
-        Self::new(addr.ip().into(), addr.port())
-    }
-}
-
-impl From<SocketAddrV4> for InetSocketAddr {
-    #[inline]
-    fn from(addr: SocketAddrV4) -> Self {
-        Self::new((*addr.ip()).into(), addr.port())
-    }
-}
-
-impl From<SocketAddrV6> for InetSocketAddr {
-    #[inline]
-    fn from(addr: SocketAddrV6) -> Self {
-        Self::new((*addr.ip()).into(), addr.port())
+    fn from(socket: SocketAddr) -> Self {
+        match socket {
+            SocketAddr::V4(socket) => InetSocketAddr::IPv4(socket),
+            SocketAddr::V6(socket) => InetSocketAddr::IPv6(socket),
+        }
     }
 }
 
@@ -554,18 +626,18 @@ impl_try_from_stringly_standard!(InetSocketAddrExt);
 impl_into_stringly_standard!(InetSocketAddrExt);
 
 impl InetSocketAddrExt {
-    /// Constructs [`InetSocketAddrExt`] for a given internet address and TCP
+    /// Constructs [`InetSocketAddrExt`] for a given socket address and TCP
     /// port
     #[inline]
-    pub fn tcp(address: InetAddr, port: u16) -> Self {
-        Self(Transport::Tcp, InetSocketAddr::new(address, port))
+    pub fn tcp(socket: SocketAddr) -> Self {
+        Self(Transport::Tcp, socket.into())
     }
 
     /// Constructs [`InetSocketAddrExt`] for a given internet address and UDP
     /// port
     #[inline]
-    pub fn udp(address: InetAddr, port: u16) -> Self {
-        Self(Transport::Udp, InetSocketAddr::new(address, port))
+    pub fn udp(address: IpAddr, port: u16) -> Self {
+        Self(Transport::Udp, SocketAddr::new(address, port).into())
     }
 }
 
@@ -657,8 +729,8 @@ mod test {
         let socket4a = "127.0.0.1:6865".parse().unwrap();
         let socket6a = "[::1]:6865".parse().unwrap();
 
-        let ip4 = InetSocketAddr::new(ip4a, 6865);
-        let ip6 = InetSocketAddr::new(ip6a, 6865);
+        let ip4 = InetSocketAddr::socket(ip4a, 6865);
+        let ip6 = InetSocketAddr::socket(ip6a, 6865);
         assert_eq!(InetSocketAddr::from(SocketAddr::V4(socket4a)), ip4);
         assert_eq!(InetSocketAddr::from(SocketAddr::V6(socket6a)), ip6);
         assert_eq!(InetSocketAddr::from(socket4a), ip4);
@@ -699,7 +771,7 @@ mod test {
         let ip4a = "127.0.0.1".parse().unwrap();
         let ip6a = "::1".parse().unwrap();
 
-        let ip4 = InetSocketAddrExt::tcp(ip4a, 6865);
+        let ip4 = InetSocketAddrExt::tcp(SocketAddr::new(ip4a, 6865));
         let ip6 = InetSocketAddrExt::udp(ip6a, 6865);
 
         assert_eq!(

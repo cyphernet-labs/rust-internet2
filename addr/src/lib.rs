@@ -4,13 +4,11 @@
 //     Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>
 //     Martin Habovstiak <martin.habovstiak@gmail.com>
 //
-// To the extent possible under law, the author(s) have dedicated all
-// copyright and related and neighboring rights to this software to
-// the public domain worldwide. This software is distributed without
-// any warranty.
+// To the extent possible under law, the author(s) have dedicated all copyright
+// and related and neighboring rights to this software to the public domain
+// worldwide. This software is distributed without any warranty.
 //
-// You should have received a copy of the MIT License
-// along with this software.
+// You should have received a copy of the MIT License along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
 //! Universal internet addresses that support IPv4, IPv6 and Tor

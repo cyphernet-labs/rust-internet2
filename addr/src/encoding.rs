@@ -4,16 +4,14 @@
 //     Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>
 //     Martin Habovstiak <martin.habovstiak@gmail.com>
 //
-// To the extent possible under law, the author(s) have dedicated all
-// copyright and related and neighboring rights to this software to
-// the public domain worldwide. This software is distributed without
-// any warranty.
+// To the extent possible under law, the author(s) have dedicated all copyright
+// and related and neighboring rights to this software to the public domain
+// worldwide. This software is distributed without any warranty.
 //
-// You should have received a copy of the MIT License
-// along with this software.
+// You should have received a copy of the MIT License along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use std::net::{Ipv4Addr, Ipv6Addr};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
 
 use strict_encoding::net::{
     AddrFormat, DecodeError, RawAddr, Transport, Uniform, UniformAddr, ADDR_LEN,
@@ -98,13 +96,19 @@ impl Uniform for InetAddr {
 
 impl Uniform for InetSocketAddr {
     #[inline]
-    fn addr_format(&self) -> AddrFormat { self.address.addr_format() }
+    fn addr_format(&self) -> AddrFormat { self.address().addr_format() }
 
     #[inline]
-    fn addr(&self) -> RawAddr { self.address.addr() }
+    fn addr(&self) -> RawAddr { self.address().addr() }
 
     #[inline]
-    fn port(&self) -> Option<u16> { Some(self.port) }
+    fn port(&self) -> Option<u16> {
+        match self {
+            InetSocketAddr::IPv4(socket) => Some(socket.port()),
+            InetSocketAddr::IPv6(socket) => Some(socket.port()),
+            InetSocketAddr::Tor(_) => None,
+        }
+    }
 
     #[inline]
     fn transport(&self) -> Option<Transport> { None }
@@ -125,12 +129,19 @@ impl Uniform for InetSocketAddr {
     where
         Self: Sized,
     {
-        if let Some(port) = addr.port {
-            let address = InetAddr::from_uniform_addr_lossy(addr)?;
-            Ok(InetSocketAddr { address, port })
-        } else {
-            Err(DecodeError::InsufficientData)
-        }
+        Ok(match addr.addr_format {
+            AddrFormat::IpV4 => InetSocketAddr::IPv4(
+                SocketAddrV4::from_uniform_addr_lossy(addr)?,
+            ),
+            AddrFormat::IpV6 => InetSocketAddr::IPv6(
+                SocketAddrV6::from_uniform_addr_lossy(addr)?,
+            ),
+            #[cfg(feature = "tor")]
+            AddrFormat::OnionV3 => {
+                InetSocketAddr::Tor(tor_from_raw_addr(addr.addr)?)
+            }
+            _ => return Err(DecodeError::UnsupportedAddrFormat),
+        })
     }
 }
 
@@ -142,7 +153,7 @@ impl Uniform for InetSocketAddrExt {
     fn addr(&self) -> RawAddr { self.1.addr() }
 
     #[inline]
-    fn port(&self) -> Option<u16> { Some(self.1.port) }
+    fn port(&self) -> Option<u16> { self.1.port() }
 
     #[inline]
     fn transport(&self) -> Option<Transport> {

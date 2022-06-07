@@ -600,6 +600,7 @@ dependencies = [
  "amplify",
  "ed25519-dalek",
  "parse_arg",
+ "secp256k1",
  "serde",
  "serde_json",
  "serde_yaml",
