@@ -22,15 +22,15 @@ use inet2_addr::InetSocketAddr;
 
 use super::{Duplex, Error, RecvFrame, SendFrame};
 use crate::session::noise;
-use crate::transport::generic::{self, TcpInetStream};
+use crate::transport::connect::{self, TcpInetStream};
 
 /// Wraps TCP stream for doing framed reads according to BOLT-8 requirements.
 #[derive(Debug, From)]
 pub struct Stream(TcpStream);
 
 /// Type alias for Brontide connection which is [`generic::Connection`] with
-/// Brontide [`Stream`].
-pub type Connection = generic::Connection<Stream>;
+/// TCP [`Stream`].
+pub type Connection = connect::Connection<Stream>;
 
 impl Stream {
     #[inline]
@@ -49,7 +49,7 @@ impl Connection {
     }
 }
 
-impl generic::Stream for Stream {}
+impl connect::Stream for Stream {}
 
 impl Bipolar for Stream {
     type Left = Stream;
@@ -86,7 +86,7 @@ impl RecvFrame for Stream {
     /// represents encoded message length.
     fn recv_frame(&mut self) -> Result<Vec<u8>, Error> {
         let mut buf: Vec<u8> =
-            vec![0u8; noise::TransportProtocol::BrontideBolt.header_size()];
+            vec![0u8; noise::TransportProtocol::Brontide.header_size()];
         self.0.read_exact(&mut buf)?;
         Ok(buf)
     }

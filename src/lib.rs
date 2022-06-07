@@ -14,11 +14,7 @@
 #![recursion_limit = "256"]
 // Coding conventions
 #![deny(
-    non_upper_case_globals,
-    non_camel_case_types,
-    non_snake_case,
-    unused_mut,
-    unused_imports,
+    warnings,
     //dead_code,
     //missing_docs
 )]
@@ -30,27 +26,21 @@
 extern crate amplify;
 #[macro_use]
 extern crate strict_encoding;
-#[macro_use]
-extern crate lazy_static;
 
 extern crate chacha20poly1305;
 #[cfg(feature = "url")]
 extern crate url_crate as url;
 
 #[cfg(feature = "serde")]
-#[macro_use]
-extern crate serde_with;
-#[cfg(feature = "serde")]
 extern crate serde_crate as serde;
 
 #[cfg(feature = "derive")]
-pub extern crate inet2_derive;
+pub extern crate inet2_derive as derive;
+
+pub extern crate inet2_addr as addr;
+
 #[cfg(feature = "derive")]
 pub use inet2_derive::Api;
-
-pub mod addr {
-    pub use inet2_addr::*;
-}
 
 pub mod presentation;
 pub mod session;
@@ -61,18 +51,14 @@ pub use presentation::{
     UnknownTypeError, Unmarshall, UnmarshallFn, Unmarshaller,
 };
 pub use session::{
-    Accept, Connect, Decrypt, Encrypt, LocalNode, NodeAddr, NoiseDecryptor,
-    NoiseEncryptor, NoiseTranscoder, PartialNodeAddr, PlainTranscoder,
-    RemoteNodeAddr, Session, Split, ToNodeAddr, ToRemoteNodeAddr, Transcode,
+    Decrypt, Encrypt, NoiseDecryptor, NoiseEncryptor, NoiseTranscoder,
+    PlainTranscoder, Session, Split, Transcode,
 };
 #[cfg(feature = "zmq")]
-pub use transport::zmqsocket;
-pub use transport::{
-    ftcp, Duplex, FramingProtocol, LocalSocketAddr, RemoteSocketAddr,
-    RoutedFrame,
-};
+pub use transport::zeromq;
 #[cfg(feature = "zmq")]
-pub use transport::{ZmqSocketAddr, ZmqType, ZMQ_CONTEXT};
+pub use transport::ZmqType;
+pub use transport::{unencrypted, Duplex, RoutedFrame};
 
 /// Maximum message (packet payload) length for Brontide protocol
 pub const BRONTIDE_MSG_MAX_LEN: usize = u16::MAX as usize;

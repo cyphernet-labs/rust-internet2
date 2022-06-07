@@ -25,15 +25,15 @@ pub type SymmetricKey = [u8; 32];
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum TransportProtocol {
-    BrontideBolt = 2,
-    BrontideBifrost = 3,
+    Brontide = 2,
+    Brontozaur = 3,
 }
 
 impl TransportProtocol {
     pub const fn message_len_size(self) -> usize {
         match self {
-            TransportProtocol::BrontideBolt => 2,
-            TransportProtocol::BrontideBifrost => 3,
+            TransportProtocol::Brontide => 2,
+            TransportProtocol::Brontozaur => 3,
         }
     }
 
@@ -416,8 +416,8 @@ mod tests {
     use crate::BRONTIDE_MSG_MAX_LEN;
 
     fn setup_peers() -> (
-        NoiseTranscoder<{ TransportProtocol::BrontideBolt.message_len_size() }>,
-        NoiseTranscoder<{ TransportProtocol::BrontideBolt.message_len_size() }>,
+        NoiseTranscoder<{ TransportProtocol::Brontide.message_len_size() }>,
+        NoiseTranscoder<{ TransportProtocol::Brontide.message_len_size() }>,
     ) {
         let chaining_key_vec = Vec::<u8>::from_hex(
             "919219dbb2920afa8db80f9a51787a840bcf111ed8d588caf9ab4be716e42b01",

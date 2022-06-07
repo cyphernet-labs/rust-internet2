@@ -11,27 +11,14 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use std::cmp::Ordering;
-#[cfg(feature = "url")]
-use std::convert::TryFrom;
 use std::fmt::{self, Debug, Display, Formatter};
-use std::net::SocketAddr;
 use std::str::FromStr;
 
 use amplify::{Bipolar, Wrapper};
-#[cfg(feature = "serde")]
-use serde_with::{As, DisplayFromStr};
-#[cfg(feature = "url")]
-use url::Url;
+use inet2_addr::ServiceAddr;
 
 use super::{Duplex, RecvFrame, RoutedFrame, SendFrame};
-#[cfg(feature = "url")]
-use crate::AddrError;
-use crate::{transport, UrlString};
-
-lazy_static! {
-    pub static ref ZMQ_CONTEXT: zmq::Context = zmq::Context::new();
-}
+use crate::transport;
 
 /// API type for node-to-node communications used by ZeroMQ
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display)]
@@ -146,70 +133,10 @@ impl FromStr for ZmqType {
     }
 }
 
-#[cfg_attr(
-    feature = "serde",
-    serde_as,
-    derive(Serialize, Deserialize),
-    serde(crate = "serde_crate", tag = "type")
-)]
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    Debug,
-    Display,
-    StrictEncode,
-    StrictDecode
-)]
-pub enum ZmqSocketAddr {
-    #[display("inproc://{0}", alt = "inproc2z:{0}")]
-    Inproc(String),
-
-    #[display("ipc://{0}", alt = "ipc2z:{0}")]
-    Ipc(String),
-
-    #[display("tcp://{0}", alt = "i2z://{0}")]
-    Tcp(
-        #[cfg_attr(feature = "serde", serde(with = "As::<DisplayFromStr>"))]
-        SocketAddr,
-    ),
-}
-
-// Fake implementation required to use socket addresses with StrictEncode
-// BTreeMaps
-impl PartialOrd for ZmqSocketAddr {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.to_string().partial_cmp(&other.to_string())
-    }
-}
-
-impl Ord for ZmqSocketAddr {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.to_string().cmp(&other.to_string())
-    }
-}
-
-impl UrlString for ZmqSocketAddr {
-    fn url_scheme(&self) -> &'static str {
-        match self {
-            ZmqSocketAddr::Inproc(_) => "inproc://",
-            ZmqSocketAddr::Ipc(_) => "ipc://",
-            ZmqSocketAddr::Tcp(_) => "tcp://",
-        }
-    }
-
-    fn to_url_string(&self) -> String { format!("{:}", self) }
-}
-
-impl ZmqSocketAddr {
-    pub fn zmq_socket_string(&self) -> String { format!("{:}", self) }
-}
-
 #[derive(Display)]
 pub enum Carrier {
     #[display(inner)]
-    Locator(ZmqSocketAddr),
+    Locator(ServiceAddr),
 
     #[display("zmq_socket(..)")]
     Socket(zmq::Socket),
@@ -261,76 +188,6 @@ impl Display for Error {
     }
 }
 
-#[cfg(feature = "url")]
-impl FromStr for ZmqSocketAddr {
-    type Err = AddrError;
-
-    #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let url: Url = s.parse()?;
-        Self::try_from(url)
-    }
-}
-
-#[cfg(not(feature = "url"))]
-impl FromStr for ZmqSocketAddr {
-    type Err = crate::AddrError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        panic!("Parsing ZmqSocketAddr from string requires url feature")
-    }
-}
-
-#[cfg(feature = "url")]
-impl From<ZmqSocketAddr> for Url {
-    fn from(addr: ZmqSocketAddr) -> Self { Url::from(&addr) }
-}
-
-#[cfg(feature = "url")]
-impl From<&ZmqSocketAddr> for Url {
-    fn from(addr: &ZmqSocketAddr) -> Self {
-        Url::parse(&addr.to_url_string())
-            .expect("Parsing URL string must not fail")
-    }
-}
-
-#[cfg(feature = "url")]
-impl TryFrom<Url> for ZmqSocketAddr {
-    type Error = AddrError;
-
-    fn try_from(url: Url) -> Result<Self, Self::Error> {
-        match url.scheme() {
-            "lnpz" => {
-                if url.has_authority() {
-                    Ok(ZmqSocketAddr::Tcp(SocketAddr::new(
-                        url.host()
-                            .ok_or(AddrError::HostRequired)?
-                            .to_string()
-                            .parse()?,
-                        url.port().ok_or(AddrError::PortRequired)?,
-                    )))
-                } else {
-                    Ok(ZmqSocketAddr::Ipc(url.path().to_owned()))
-                }
-            }
-            "tcp" => Ok(ZmqSocketAddr::Tcp(SocketAddr::new(
-                url.host()
-                    .ok_or(AddrError::HostRequired)?
-                    .to_string()
-                    .parse()?,
-                url.port().ok_or(AddrError::PortRequired)?,
-            ))),
-            "inproc" => Ok(ZmqSocketAddr::Inproc(
-                url.host_str().ok_or(AddrError::HostRequired)?.to_owned(),
-            )),
-            "ipc" => {
-                Ok(ZmqSocketAddr::Ipc(urldecode::decode(url.path().to_owned())))
-            }
-            unknown => Err(AddrError::UnknownUrlScheme(unknown.to_owned())),
-        }
-    }
-}
-
 pub struct WrappedSocket {
     api_type: ZmqType,
     socket: zmq::Socket,
@@ -338,7 +195,7 @@ pub struct WrappedSocket {
 
 pub struct Connection {
     api_type: ZmqType,
-    remote_addr: Option<ZmqSocketAddr>,
+    remote_addr: Option<ServiceAddr>,
     input: WrappedSocket,
     output: Option<WrappedSocket>,
 }
@@ -346,15 +203,16 @@ pub struct Connection {
 impl Connection {
     pub fn with(
         api_type: ZmqType,
-        remote: &ZmqSocketAddr,
-        local: Option<ZmqSocketAddr>,
+        remote: &ServiceAddr,
+        local: Option<ServiceAddr>,
         identity: Option<impl AsRef<[u8]>>,
+        context: &zmq::Context,
     ) -> Result<Self, transport::Error> {
-        let socket = ZMQ_CONTEXT.socket(api_type.socket_type())?;
+        let socket = context.socket(api_type.socket_type())?;
         if let Some(identity) = identity {
             socket.set_identity(identity.as_ref())?;
         }
-        let endpoint = remote.zmq_socket_string();
+        let endpoint = remote.zmq_connect_string();
         match api_type {
             ZmqType::Pull
             | ZmqType::Rep
@@ -367,13 +225,13 @@ impl Connection {
         }
         let output = match (api_type, local) {
             (ZmqType::Pull, Some(local)) => {
-                let socket = ZMQ_CONTEXT.socket(zmq::SocketType::PUSH)?;
-                socket.connect(&local.zmq_socket_string())?;
+                let socket = context.socket(zmq::SocketType::PUSH)?;
+                socket.connect(&local.zmq_connect_string())?;
                 Some(socket)
             }
             (ZmqType::Push, Some(local)) => {
-                let socket = ZMQ_CONTEXT.socket(zmq::SocketType::PULL)?;
-                socket.bind(&local.zmq_socket_string())?;
+                let socket = context.socket(zmq::SocketType::PULL)?;
+                socket.bind(&local.zmq_connect_string())?;
                 Some(socket)
             }
             (ZmqType::Pull, None) | (ZmqType::Push, None) => {
@@ -411,6 +269,7 @@ impl Connection {
     pub fn set_identity(
         &mut self,
         identity: &impl AsRef<[u8]>,
+        context: &zmq::Context,
     ) -> Result<(), Error> {
         let addr = if let Some(addr) = &self.remote_addr {
             addr
@@ -418,9 +277,9 @@ impl Connection {
             return Err(Error::from(zmq::Error::EINVAL));
         };
         let socket = self.input.as_socket_mut();
-        let endpoint = addr.zmq_socket_string();
+        let endpoint = addr.zmq_connect_string();
         socket.disconnect(&endpoint)?;
-        *socket = ZMQ_CONTEXT.socket(self.api_type.socket_type())?;
+        *socket = context.socket(self.api_type.socket_type())?;
         socket
             .set_identity(identity.as_ref())
             .map_err(Error::from)?;

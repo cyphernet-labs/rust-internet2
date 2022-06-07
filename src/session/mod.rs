@@ -14,21 +14,11 @@
 //! BOLT-8 related structures and functions covering Lightning network
 //! transport layer
 
-mod init;
-mod local_node;
-pub mod node_addr;
 pub mod noise;
 #[allow(clippy::module_inception)]
 mod session;
 mod transcoders;
 
-pub use init::{Accept, Connect};
-pub use local_node::LocalNode;
-#[cfg(not(feature = "zmq"))]
-pub use node_addr::ZmqType;
-pub use node_addr::{
-    NodeAddr, PartialNodeAddr, RemoteNodeAddr, ToNodeAddr, ToRemoteNodeAddr,
-};
 pub use noise::{
     HandshakeError, NoiseDecryptor, NoiseEncryptor, NoiseTranscoder,
 };

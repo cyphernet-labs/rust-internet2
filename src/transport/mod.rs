@@ -20,18 +20,16 @@
 //! integrates with ZMQ such that the upper level can abstract for a particular
 //! transport protocol used.
 
-pub mod brontide;
-pub mod ftcp;
-pub mod generic;
-pub mod socket_addr;
+pub mod connect;
+pub mod encrypted;
+pub mod unencrypted;
 #[cfg(feature = "zmq")]
-pub mod zmqsocket;
+pub mod zeromq;
 
 use std::io::ErrorKind;
 
-pub use socket_addr::{FramingProtocol, LocalSocketAddr, RemoteSocketAddr};
 #[cfg(feature = "zmq")]
-pub use zmqsocket::{ZmqSocketAddr, ZmqType, ZMQ_CONTEXT};
+pub use zeromq::ZmqType;
 
 use crate::session::HandshakeError;
 
@@ -60,7 +58,7 @@ pub enum Error {
 
     /// ZMQ socket error, type {0}
     #[cfg(feature = "zmq")]
-    Zmq(zmqsocket::Error),
+    Zmq(zeromq::Error),
 
     /// service is offline or not responding
     ServiceOffline,
