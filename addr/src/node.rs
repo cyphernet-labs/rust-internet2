@@ -11,6 +11,7 @@
 // You should have received a copy of the MIT License along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+use crate::inet::PartialSocketAddr;
 use crate::InetSocketAddr;
 
 /// Internet P2P node id, represented by a public key of the node.
@@ -53,5 +54,38 @@ impl NodeAddr {
     #[inline]
     pub fn new(id: NodeId, addr: InetSocketAddr) -> NodeAddr {
         NodeAddr { id, addr }
+    }
+}
+
+/// Internet P2P node address which may omit port number.
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display)]
+#[cfg_attr(feature = "strict_encoding", derive(StrictEncode, StrictDecode))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
+#[display("{id}@{addr}")]
+pub struct PartialNodeAddr {
+    /// P2P node id (node public key).
+    pub id: NodeId,
+    /// Internet address of the node, with optional port part.
+    pub addr: PartialSocketAddr,
+}
+
+impl PartialNodeAddr {
+    /// Constructs new node address.
+    #[inline]
+    pub fn new(id: NodeId, addr: PartialSocketAddr) -> PartialNodeAddr {
+        PartialNodeAddr { id, addr }
+    }
+
+    /// Converts to [`NodeAddr`] using default port information.
+    #[inline]
+    pub fn node_addr(self, default_port: u16) -> NodeAddr {
+        NodeAddr {
+            id: self.id,
+            addr: self.addr.inet_socket(default_port),
+        }
     }
 }
