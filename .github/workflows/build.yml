@@ -25,11 +25,10 @@ jobs:
           # Networking
           - tor
           - zmq
-          - tor,zmq
+          - zmq,tor
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
-        if: startsWith(matrix.feature, 'zmq')
         run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
       - name: Install rust stable
         uses: actions-rs/toolchain@v1
@@ -51,7 +50,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, ubuntu-latest, macos-11.0, macos-12.0, windows-10, windows-latest ]
+        os: [ ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, windows-latest ]
     steps:
       - uses: actions/checkout@v2
       - name: Install linux dependencies
@@ -204,7 +203,7 @@ jobs:
           export LDFLAGS="--sysroot=$NDK_HOME/platforms/android-21/arch-x86"
           cargo check --all-features --target=i686-linux-android
   ios:
-    runs-on: macos-latest
+    runs-on: macos-11
     steps:
       - uses: actions/checkout@v2
       - name: Install rust
