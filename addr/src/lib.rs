@@ -50,4 +50,4 @@ pub use inet::{
     AddrParseError, InetAddr, InetSocketAddr, InetSocketAddrExt,
     NoOnionSupportError, Transport,
 };
-pub use node::{NodeAddr, NodeId};
+pub use node::{NodeAddr, NodeId, PartialNodeAddr};

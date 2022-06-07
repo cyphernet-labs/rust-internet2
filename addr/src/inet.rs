@@ -74,9 +74,6 @@ pub enum AddrParseError {
 /// `OnionAddressV3` is designed for human-readable part that checks that the
 /// address was typed in correctly. In computer-stored digital data it may be
 /// deterministically regenerated and does not add any additional security.
-///
-/// Tor addresses are distinguished by the fact that last 16 bits
-/// must be set to 0
 #[derive(Clone, Copy, PartialEq, Eq, Debug, From, Display)]
 #[cfg_attr(
     all(feature = "serde", feature = "serde_str_helpers"),
@@ -307,6 +304,280 @@ impl From<[u8; 16]> for InetAddr {
 impl From<[u16; 8]> for InetAddr {
     #[inline]
     fn from(value: [u16; 8]) -> Self { InetAddr::from(Ipv6Addr::from(value)) }
+}
+
+/// A universal address covering IPv4, IPv6 and Tor in a single byte sequence
+/// of 32 bytes, which may contain optional port number part.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, From)]
+#[cfg_attr(
+    all(feature = "serde", feature = "serde_str_helpers"),
+    derive(Serialize, Deserialize),
+    serde(
+        try_from = "serde_str_helpers::DeserBorrowStr",
+        into = "String",
+        crate = "serde_crate"
+    )
+)]
+#[cfg_attr(
+    all(feature = "serde", not(feature = "serde_str_helpers")),
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
+#[non_exhaustive] // Required since we use feature-gated enum variants
+pub enum PartialSocketAddr {
+    /// IP address of V4 standard with optional port number
+    IPv4(Ipv4Addr, Option<u16>),
+
+    /// IP address of V6 standard with optional port number
+    IPv6(Ipv6Addr, Option<u16>),
+
+    /// Tor address of V3 standard
+    #[cfg(feature = "tor")]
+    #[from]
+    Tor(TorPublicKeyV3),
+}
+
+impl PartialOrd for PartialSocketAddr {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (
+                PartialSocketAddr::IPv4(addr1, Some(port1)),
+                PartialSocketAddr::IPv4(addr2, Some(port2)),
+            ) => SocketAddrV4::new(*addr1, *port1)
+                .partial_cmp(&SocketAddrV4::new(*addr2, *port2)),
+            (
+                PartialSocketAddr::IPv6(addr1, Some(port1)),
+                PartialSocketAddr::IPv6(addr2, Some(port2)),
+            ) => SocketAddrV6::new(*addr1, *port1, 0, 0)
+                .partial_cmp(&SocketAddrV6::new(*addr2, *port2, 0, 0)),
+            (
+                PartialSocketAddr::IPv4(addr1, Some(port1)),
+                PartialSocketAddr::IPv4(addr2, None),
+            ) => SocketAddrV4::new(*addr1, *port1)
+                .partial_cmp(&SocketAddrV4::new(*addr2, 0)),
+            (
+                PartialSocketAddr::IPv6(addr1, Some(port1)),
+                PartialSocketAddr::IPv6(addr2, None),
+            ) => SocketAddrV6::new(*addr1, *port1, 0, 0)
+                .partial_cmp(&SocketAddrV6::new(*addr2, 0, 0, 0)),
+            (
+                PartialSocketAddr::IPv4(addr1, None),
+                PartialSocketAddr::IPv4(addr2, Some(port2)),
+            ) => SocketAddrV4::new(*addr1, 0)
+                .partial_cmp(&SocketAddrV4::new(*addr2, *port2)),
+            (
+                PartialSocketAddr::IPv6(addr1, None),
+                PartialSocketAddr::IPv6(addr2, Some(port2)),
+            ) => SocketAddrV6::new(*addr1, 0, 0, 0)
+                .partial_cmp(&SocketAddrV6::new(*addr2, *port2, 0, 0)),
+            (
+                PartialSocketAddr::IPv4(addr1, None),
+                PartialSocketAddr::IPv4(addr2, None),
+            ) => addr1.partial_cmp(addr2),
+            (
+                PartialSocketAddr::IPv6(addr1, None),
+                PartialSocketAddr::IPv6(addr2, None),
+            ) => addr1.partial_cmp(addr2),
+            #[cfg(feature = "tor")]
+            (PartialSocketAddr::Tor(addr1), PartialSocketAddr::Tor(addr2)) => {
+                addr1.partial_cmp(addr2)
+            }
+            (PartialSocketAddr::IPv4(_, _), _) => Some(Ordering::Greater),
+            (_, PartialSocketAddr::IPv4(_, _)) => Some(Ordering::Less),
+            #[cfg(feature = "tor")]
+            (PartialSocketAddr::IPv6(_, _), _) => Some(Ordering::Greater),
+            #[cfg(feature = "tor")]
+            (_, PartialSocketAddr::IPv6(_, _)) => Some(Ordering::Less),
+        }
+    }
+}
+
+impl Ord for PartialSocketAddr {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+    }
+}
+
+// We need this since TorPublicKeyV3 does not implement Hash
+#[allow(clippy::derive_hash_xor_eq)]
+impl std::hash::Hash for PartialSocketAddr {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            PartialSocketAddr::IPv4(ipv4, port) => {
+                ipv4.hash(state);
+                port.hash(state)
+            }
+            PartialSocketAddr::IPv6(ipv6, port) => {
+                ipv6.hash(state);
+                port.hash(state)
+            }
+            #[cfg(feature = "tor")]
+            PartialSocketAddr::Tor(torv3) => torv3.as_bytes().hash(state),
+        }
+    }
+}
+
+impl PartialSocketAddr {
+    /// Determines whether provided address is a Tor address. Always returns
+    /// `false` (the library is built without `tor` feature; use it to
+    /// enable Tor addresses).
+    #[cfg(not(feature = "tor"))]
+    #[inline]
+    pub fn is_tor(&self) -> bool { false }
+
+    /// Always returns [`Option::None`] (the library is built without `tor`
+    /// feature; use it to enable Tor addresses).
+    #[cfg(not(feature = "tor"))]
+    #[inline]
+    pub fn to_onion(&self) -> Option<()> { None }
+
+    /// Determines whether provided address is a Tor address
+    #[cfg(feature = "tor")]
+    #[inline]
+    pub fn is_tor(&self) -> bool { matches!(self, PartialSocketAddr::Tor(_)) }
+
+    /// Returns Onion v3 address, if any, or [`Option::None`]
+    #[cfg(feature = "tor")]
+    #[inline]
+    pub fn to_onion(&self) -> Option<OnionAddressV3> {
+        match self {
+            PartialSocketAddr::IPv4(_, _) | PartialSocketAddr::IPv6(_, _) => {
+                None
+            }
+            PartialSocketAddr::Tor(key) => Some(OnionAddressV3::from(key)),
+        }
+    }
+}
+
+impl Default for PartialSocketAddr {
+    #[inline]
+    fn default() -> Self { PartialSocketAddr::IPv4(Ipv4Addr::from(0), None) }
+}
+
+#[cfg(feature = "tor")]
+impl TryFrom<PartialSocketAddr> for IpAddr {
+    type Error = NoOnionSupportError;
+    #[inline]
+    fn try_from(addr: PartialSocketAddr) -> Result<Self, Self::Error> {
+        Ok(match addr {
+            PartialSocketAddr::IPv4(addr, _) => IpAddr::V4(addr),
+            PartialSocketAddr::IPv6(addr, _) => IpAddr::V6(addr),
+            #[cfg(feature = "tor")]
+            PartialSocketAddr::Tor(_) => return Err(NoOnionSupportError),
+        })
+    }
+}
+
+#[cfg(not(feature = "tor"))]
+impl From<InetAddr> for PartialSocketAddr {
+    #[inline]
+    fn from(addr: PartialSocketAddr) -> Self {
+        match addr {
+            PartialSocketAddr::IPv4(addr, _) => IpAddr::V4(addr),
+            PartialSocketAddr::IPv6(addr, _) => IpAddr::V6(addr),
+        }
+    }
+}
+
+impl From<IpAddr> for PartialSocketAddr {
+    #[inline]
+    fn from(value: IpAddr) -> Self {
+        match value {
+            IpAddr::V4(v4) => PartialSocketAddr::from(v4),
+            IpAddr::V6(v6) => PartialSocketAddr::from(v6),
+        }
+    }
+}
+
+impl From<Ipv4Addr> for PartialSocketAddr {
+    #[inline]
+    fn from(value: Ipv4Addr) -> Self { PartialSocketAddr::IPv4(value, None) }
+}
+
+impl From<Ipv6Addr> for PartialSocketAddr {
+    #[inline]
+    fn from(value: Ipv6Addr) -> Self { PartialSocketAddr::IPv6(value, None) }
+}
+
+impl From<SocketAddr> for PartialSocketAddr {
+    #[inline]
+    fn from(value: SocketAddr) -> Self {
+        match value {
+            SocketAddr::V4(v4) => PartialSocketAddr::from(v4),
+            SocketAddr::V6(v6) => PartialSocketAddr::from(v6),
+        }
+    }
+}
+
+impl From<SocketAddrV4> for PartialSocketAddr {
+    #[inline]
+    fn from(value: SocketAddrV4) -> Self {
+        PartialSocketAddr::IPv4(*value.ip(), Some(value.port()))
+    }
+}
+
+impl From<SocketAddrV6> for PartialSocketAddr {
+    #[inline]
+    fn from(value: SocketAddrV6) -> Self {
+        PartialSocketAddr::IPv6(*value.ip(), Some(value.port()))
+    }
+}
+
+#[cfg(feature = "tor")]
+impl From<OnionAddressV3> for PartialSocketAddr {
+    #[inline]
+    fn from(addr: OnionAddressV3) -> Self {
+        PartialSocketAddr::Tor(addr.get_public_key())
+    }
+}
+
+#[cfg(feature = "stringly_conversions")]
+impl_try_from_stringly_standard!(PartialSocketAddr);
+#[cfg(feature = "stringly_conversions")]
+impl_into_stringly_standard!(PartialSocketAddr);
+
+impl FromStr for PartialSocketAddr {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        #[cfg(feature = "tor")]
+        match (
+            SocketAddr::from_str(s),
+            IpAddr::from_str(s),
+            OnionAddressV3::from_str(s),
+        ) {
+            (Ok(_), _, Ok(_)) | (_, Ok(_), Ok(_)) => {
+                Err(AddrParseError::WrongAddrFormat(s.to_owned()))
+            }
+            (Ok(socket_addr), ..) => Ok(Self::from(socket_addr)),
+            (_, Ok(ip_addr), _) => Ok(Self::from(ip_addr)),
+            (_, _, Ok(onionv3)) => Ok(Self::from(onionv3)),
+            _ => Err(AddrParseError::WrongAddrFormat(s.to_owned())),
+        }
+
+        #[cfg(not(feature = "tor"))]
+        match (SocketAddr::from_str(s), IpAddr::from_str(s)) {
+            (Ok(socket_addr), _) => Ok(InetAddr::from(socket_addr)),
+            (_, Ok(ip_addr)) => Ok(InetAddr::from(ip_addr)),
+            _ => Err(AddrParseError::NeedsTorFeature),
+        }
+    }
+}
+
+#[cfg(feature = "parse_arg")]
+impl parse_arg::ParseArgFromStr for PartialSocketAddr {
+    fn describe_type<W: std::fmt::Write>(mut writer: W) -> std::fmt::Result {
+        #[cfg(not(feature = "tor"))]
+        {
+            write!(writer, "IPv4 or IPv6 address with optional port")
+        }
+        #[cfg(feature = "tor")]
+        {
+            write!(
+                writer,
+                "IPv4, IPv6, or Tor (onion) address with optional port"
+            )
+        }
+    }
 }
 
 /// Transport protocols that may be part of [`InetSocketAddrExt`]
