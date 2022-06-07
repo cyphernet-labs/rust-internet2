@@ -40,8 +40,13 @@ extern crate serde_crate as serde;
 #[cfg(feature = "strict_encoding")]
 mod encoding;
 mod inet;
+mod node;
+mod remote;
+mod server;
+mod zmq;
 
 pub use inet::{
     AddrParseError, InetAddr, InetSocketAddr, InetSocketAddrExt,
     NoOnionSupportError, Transport,
 };
+pub use node::{NodeAddr, NodeId};
