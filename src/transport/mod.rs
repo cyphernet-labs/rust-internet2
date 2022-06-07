@@ -24,7 +24,6 @@ pub mod brontide;
 pub mod ftcp;
 pub mod generic;
 pub mod socket_addr;
-pub mod websocket;
 #[cfg(feature = "zmq")]
 pub mod zmqsocket;
 

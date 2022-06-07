@@ -77,7 +77,7 @@ all = ["derive",
        # Serde
        "serde", "keygen",
        # Networking
-       "tor", "url", "zmq", "websockets"]
+       "tor", "url", "zmq"]
 # Exposing core rust componens
 # ----------------------------
 #   These also include re-assembly of necessary features from dependencies
@@ -87,7 +87,6 @@ derive = ["inet2_derive"]
 keygen = ["secp256k1/rand-std"]
 # Networking
 # ----------
-websockets = []
 tor = ["inet2_addr/tor"]
 url = ["url_crate", "urldecode"]
 

@@ -65,8 +65,6 @@ pub use session::{
     NoiseEncryptor, NoiseTranscoder, PartialNodeAddr, PlainTranscoder,
     RemoteNodeAddr, Session, Split, ToNodeAddr, ToRemoteNodeAddr, Transcode,
 };
-#[cfg(feature = "websockets")]
-pub use transport::websocket;
 #[cfg(feature = "zmq")]
 pub use transport::zmqsocket;
 pub use transport::{
