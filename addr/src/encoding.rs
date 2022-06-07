@@ -1,7 +1,7 @@
 // Internet2 addresses with support for Tor v3
 //
-// Written in 2019-2021 by
-//     Dr. Maxim Orlovsky <orlovsky@pandoracore.com>
+// Written in 2019-2022 by
+//     Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>
 //     Martin Habovstiak <martin.habovstiak@gmail.com>
 //
 // To the extent possible under law, the author(s) have dedicated all
