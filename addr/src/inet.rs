@@ -152,10 +152,10 @@ impl InetAddr {
     /// Returns an IPv6 address, constructed from IPv4 data; or, if Onion
     /// address is used, [`Option::None`]
     #[inline]
-    pub fn to_ipv6(&self) -> Option<Ipv6Addr> {
+    pub fn ipv6_addr(self) -> Option<Ipv6Addr> {
         match self {
             InetAddr::IPv4(ipv4_addr) => Some(ipv4_addr.to_ipv6_mapped()),
-            InetAddr::IPv6(ipv6_addr) => Some(*ipv6_addr),
+            InetAddr::IPv6(ipv6_addr) => Some(ipv6_addr),
             #[cfg(feature = "tor")]
             _ => None,
         }
@@ -163,10 +163,10 @@ impl InetAddr {
 
     /// Returns an IPv4 address, if any, or [`Option::None`]
     #[inline]
-    pub fn to_ipv4(&self) -> Option<Ipv6Addr> {
+    pub fn ipv4_addr(self) -> Option<Ipv4Addr> {
         match self {
-            InetAddr::IPv4(ipv4_addr) => Some(ipv4_addr.to_ipv6_mapped()),
-            InetAddr::IPv6(ipv6_addr) => Some(*ipv6_addr),
+            InetAddr::IPv4(ipv4_addr) => Some(ipv4_addr),
+            InetAddr::IPv6(ipv6_addr) => ipv6_addr.to_ipv4(),
             #[cfg(feature = "tor")]
             _ => None,
         }
@@ -177,26 +177,26 @@ impl InetAddr {
     /// enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn is_tor(&self) -> bool { false }
+    pub fn is_tor(self) -> bool { false }
 
     /// Always returns [`Option::None`] (the library is built without `tor`
     /// feature; use it to enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn to_onion(&self) -> Option<()> { None }
+    pub fn onion_address(self) -> Option<()> { None }
 
     /// Determines whether provided address is a Tor address
     #[cfg(feature = "tor")]
     #[inline]
-    pub fn is_tor(&self) -> bool { matches!(self, InetAddr::Tor(_)) }
+    pub fn is_tor(self) -> bool { matches!(self, InetAddr::Tor(_)) }
 
     /// Returns Onion v3 address, if any, or [`Option::None`]
     #[cfg(feature = "tor")]
     #[inline]
-    pub fn to_onion(&self) -> Option<OnionAddressV3> {
+    pub fn onion_address(self) -> Option<OnionAddressV3> {
         match self {
             InetAddr::IPv4(_) | InetAddr::IPv6(_) => None,
-            InetAddr::Tor(key) => Some(OnionAddressV3::from(key)),
+            InetAddr::Tor(key) => Some(OnionAddressV3::from(&key)),
         }
     }
 }
@@ -437,28 +437,28 @@ impl PartialSocketAddr {
     /// enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn is_tor(&self) -> bool { false }
+    pub fn is_tor(self) -> bool { false }
 
     /// Always returns [`Option::None`] (the library is built without `tor`
     /// feature; use it to enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn to_onion(&self) -> Option<()> { None }
+    pub fn onion_address(self) -> Option<()> { None }
 
     /// Determines whether provided address is a Tor address
     #[cfg(feature = "tor")]
     #[inline]
-    pub fn is_tor(&self) -> bool { matches!(self, PartialSocketAddr::Tor(_)) }
+    pub fn is_tor(self) -> bool { matches!(self, PartialSocketAddr::Tor(_)) }
 
     /// Returns Onion v3 address, if any, or [`Option::None`]
     #[cfg(feature = "tor")]
     #[inline]
-    pub fn to_onion(&self) -> Option<OnionAddressV3> {
+    pub fn onion_address(self) -> Option<OnionAddressV3> {
         match self {
             PartialSocketAddr::IPv4(_, _) | PartialSocketAddr::IPv6(_, _) => {
                 None
             }
-            PartialSocketAddr::Tor(key) => Some(OnionAddressV3::from(key)),
+            PartialSocketAddr::Tor(key) => Some(OnionAddressV3::from(&key)),
         }
     }
 
@@ -1025,10 +1025,10 @@ mod test {
         let ip4 = InetAddr::IPv4(ip4a);
         let ip6 = InetAddr::IPv6(ip6a);
         assert_eq!(
-            ip4.to_ipv6().unwrap(),
+            ip4.ipv6_addr().unwrap(),
             Ipv6Addr::from_str("::ffff:127.0.0.1").unwrap()
         );
-        assert_eq!(ip6.to_ipv6().unwrap(), ip6a);
+        assert_eq!(ip6.ipv6_addr().unwrap(), ip6a);
         assert_eq!(InetAddr::from(IpAddr::V4(ip4a)), ip4);
         assert_eq!(InetAddr::from(IpAddr::V6(ip6a)), ip6);
         assert_eq!(InetAddr::from(ip4a), ip4);

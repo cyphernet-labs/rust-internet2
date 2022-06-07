@@ -11,6 +11,8 @@
 // You should have received a copy of the MIT License along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
+#![allow(clippy::init_numbered_fields)]
+
 use std::net::{self, SocketAddr};
 use std::str::FromStr;
 

@@ -173,7 +173,7 @@ impl LocalNode {
         let mut rng = thread_rng();
         let private_key = secp256k1::SecretKey::new(&mut rng);
         let public_key =
-            secp256k1::PublicKey::from_secret_key(&secp, &private_key);
+            secp256k1::PublicKey::from_secret_key(secp, &private_key);
         Self {
             private_key,
             id: NodeId::from(public_key),

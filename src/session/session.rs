@@ -328,7 +328,7 @@ impl<const LEN_SIZE: usize>
         remote_addr: InetSocketAddr,
     ) -> Result<Self, Error> {
         Self::init_brontide(
-            encrypted::Connection::with(stream, remote_addr.into()),
+            encrypted::Connection::with(stream, remote_addr),
             local_key,
         )
     }
