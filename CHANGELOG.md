@@ -13,7 +13,7 @@ v0.5.3
 
 v0.5.2
 ------
-- Noise_XK transcoder intrgration into TCP-based connections
+- Noise_XK transcoder intergration into TCP-based connections
 
 v0.5.0
 ------
