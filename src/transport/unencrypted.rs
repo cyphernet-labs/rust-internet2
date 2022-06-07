@@ -22,7 +22,7 @@ use inet2_addr::InetSocketAddr;
 use super::{Duplex, Error, RecvFrame, SendFrame};
 use crate::transport::connect::{self, TcpInetStream};
 
-/// Type alias for FTCP connection which is [`generic::Connection`] with FTCP
+/// Type alias for FTCP connection which is [`connect::Connection`] with FTCP
 /// [`Stream`].
 pub type Connection = connect::Connection<Stream>;
 

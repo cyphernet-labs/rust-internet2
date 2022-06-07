@@ -28,7 +28,7 @@ use crate::transport::connect::{self, TcpInetStream};
 #[derive(Debug, From)]
 pub struct Stream(TcpStream);
 
-/// Type alias for Brontide connection which is [`generic::Connection`] with
+/// Type alias for Brontide connection which is [`connect::Connection`] with
 /// TCP [`Stream`].
 pub type Connection = connect::Connection<Stream>;
 
