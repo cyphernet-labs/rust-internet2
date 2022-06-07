@@ -9,7 +9,8 @@ homepage = "https://github.com/internet2-org"
 keywords = ["internet2", "tor", "onion", "lnp-bp", "privacy"]
 categories = ["network-programming", "cryptography", "encoding"]
 readme = "README.md"
-edition = "2018"
+edition = "2021"
+rust-version = "1.59.0"
 
 [lib]
 name = "inet2_addr"

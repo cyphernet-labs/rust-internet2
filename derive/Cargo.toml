@@ -1,6 +1,6 @@
 [package]
 name = "inet2_derive"
-version = "0.7.0"
+version = "0.8.0"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Derivation macros for Internet2-based crates"
@@ -8,7 +8,8 @@ repository = "https://github.com/internet2-org/internet2"
 homepage = "https://github.com/internet2-org"
 keywords = ["internet2", "lnp-bp", "privacy", "cryptography", "proc-macro"]
 readme = "../README.md"
-edition = "2018"
+edition = "2021"
+rust-version = "1.59.0"
 
 [lib]
 proc-macro = true
@@ -22,6 +23,6 @@ amplify = "3.12.0"
 [dev-dependencies]
 amplify = "3.12.0"
 internet2 = { path = ".." }
-strict_encoding = { version = "1.8.0", default-features = false, features = ["derive"] }
+strict_encoding = { version = "1.8.1", default-features = false, features = ["derive"] }
 lightning_encoding = "0.7.1"
 secp256k1 = "0.22.1"
