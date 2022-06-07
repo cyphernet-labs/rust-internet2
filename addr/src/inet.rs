@@ -77,7 +77,7 @@ pub enum AddrParseError {
 ///
 /// Tor addresses are distinguished by the fact that last 16 bits
 /// must be set to 0
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, From, Display)]
 #[cfg_attr(
     all(feature = "serde", feature = "serde_str_helpers"),
     derive(Serialize, Deserialize),
@@ -92,16 +92,20 @@ pub enum AddrParseError {
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate")
 )]
+#[display(inner)]
 #[non_exhaustive] // Required since we use feature-gated enum variants
 pub enum InetAddr {
     /// IP address of V4 standard
+    #[from]
     IPv4(Ipv4Addr),
 
     /// IP address of V6 standard
+    #[from]
     IPv6(Ipv6Addr),
 
     /// Tor address of V3 standard
     #[cfg(feature = "tor")]
+    #[from]
     Tor(TorPublicKeyV3),
 }
 
@@ -172,17 +176,11 @@ impl InetAddr {
     }
 
     /// Determines whether provided address is a Tor address. Always returns
-    /// `fales` (the library is built without `tor` feature; use it to
+    /// `false` (the library is built without `tor` feature; use it to
     /// enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
     pub fn is_tor(&self) -> bool { false }
-
-    /// Always returns [`Option::None`] (the library is built without `tor`
-    /// feature; use it to enable Tor addresses).
-    #[cfg(not(feature = "tor"))]
-    #[inline]
-    pub fn to_onion_v2(&self) -> Option<()> { None }
 
     /// Always returns [`Option::None`] (the library is built without `tor`
     /// feature; use it to enable Tor addresses).
@@ -209,17 +207,6 @@ impl InetAddr {
 impl Default for InetAddr {
     #[inline]
     fn default() -> Self { InetAddr::IPv4(Ipv4Addr::from(0)) }
-}
-
-impl fmt::Display for InetAddr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            InetAddr::IPv4(addr) => write!(f, "{}", addr),
-            InetAddr::IPv6(addr) => write!(f, "{}", addr),
-            #[cfg(feature = "tor")]
-            InetAddr::Tor(addr) => write!(f, "{}", addr),
-        }
-    }
 }
 
 #[cfg(feature = "tor")]
@@ -255,22 +242,6 @@ impl From<IpAddr> for InetAddr {
             IpAddr::V6(v6) => InetAddr::from(v6),
         }
     }
-}
-
-impl From<Ipv4Addr> for InetAddr {
-    #[inline]
-    fn from(addr: Ipv4Addr) -> Self { InetAddr::IPv4(addr) }
-}
-
-impl From<Ipv6Addr> for InetAddr {
-    #[inline]
-    fn from(addr: Ipv6Addr) -> Self { InetAddr::IPv6(addr) }
-}
-
-#[cfg(feature = "tor")]
-impl From<TorPublicKeyV3> for InetAddr {
-    #[inline]
-    fn from(value: TorPublicKeyV3) -> Self { InetAddr::Tor(value) }
 }
 
 #[cfg(feature = "tor")]
