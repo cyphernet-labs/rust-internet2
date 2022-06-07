@@ -19,9 +19,14 @@ use strict_encoding::net::{
 #[cfg(feature = "tor")]
 use torut::onion::{TorPublicKeyV3, TORV3_PUBLIC_KEY_LENGTH};
 
+use crate::inet::PartialSocketAddr;
 use crate::{InetAddr, InetSocketAddr, InetSocketAddrExt};
 
 impl strict_encoding::Strategy for InetAddr {
+    type Strategy = strict_encoding::strategies::UsingUniformAddr;
+}
+
+impl strict_encoding::Strategy for PartialSocketAddr {
     type Strategy = strict_encoding::strategies::UsingUniformAddr;
 }
 
@@ -91,6 +96,38 @@ impl Uniform for InetAddr {
             AddrFormat::OnionV3 => InetAddr::Tor(tor_from_raw_addr(addr.addr)?),
             _ => return Err(DecodeError::UnsupportedAddrFormat),
         })
+    }
+}
+
+impl Uniform for PartialSocketAddr {
+    fn addr_format(&self) -> AddrFormat { self.address().addr_format() }
+
+    fn addr(&self) -> RawAddr { self.address().addr() }
+
+    fn port(&self) -> Option<u16> { PartialSocketAddr::port(*self) }
+
+    fn transport(&self) -> Option<Transport> { None }
+
+    fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
+    where
+        Self: Sized,
+    {
+        if addr.transport.is_some() {
+            return Err(DecodeError::ExcessiveData);
+        }
+        Self::from_uniform_addr_lossy(addr)
+    }
+
+    fn from_uniform_addr_lossy(addr: UniformAddr) -> Result<Self, DecodeError>
+    where
+        Self: Sized,
+    {
+        if addr.port.is_some() {
+            InetSocketAddr::from_uniform_addr_lossy(addr)
+                .map(PartialSocketAddr::from)
+        } else {
+            InetAddr::from_uniform_addr_lossy(addr).map(PartialSocketAddr::from)
+        }
     }
 }
 

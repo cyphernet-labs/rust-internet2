@@ -418,6 +418,20 @@ impl std::hash::Hash for PartialSocketAddr {
 }
 
 impl PartialSocketAddr {
+    /// Constructs new socket address matching the provided Tor v3 address
+    #[inline]
+    pub fn tor3(tor: TorPublicKeyV3) -> Self { PartialSocketAddr::Tor(tor) }
+
+    /// Constructs new socket address from an internet address and a port
+    /// information
+    #[inline]
+    pub fn socket(ip: IpAddr, port: Option<u16>) -> Self {
+        match ip {
+            IpAddr::V4(ipv4) => PartialSocketAddr::IPv4(ipv4, port),
+            IpAddr::V6(ipv6) => PartialSocketAddr::IPv6(ipv6, port),
+        }
+    }
+
     /// Determines whether provided address is a Tor address. Always returns
     /// `false` (the library is built without `tor` feature; use it to
     /// enable Tor addresses).
@@ -445,6 +459,45 @@ impl PartialSocketAddr {
                 None
             }
             PartialSocketAddr::Tor(key) => Some(OnionAddressV3::from(key)),
+        }
+    }
+
+    /// Returns [`InetAddr`] address of the socket
+    #[inline]
+    pub fn address(self) -> InetAddr {
+        match self {
+            PartialSocketAddr::IPv4(addr, _) => InetAddr::IPv4(addr),
+            PartialSocketAddr::IPv6(addr, _) => InetAddr::IPv6(addr),
+            PartialSocketAddr::Tor(tor) => InetAddr::Tor(tor),
+        }
+    }
+
+    /// Returns port for the socket, if address allows different ports.
+    #[inline]
+    pub fn port(self) -> Option<u16> {
+        match self {
+            PartialSocketAddr::IPv4(_, port)
+            | PartialSocketAddr::IPv6(_, port) => port,
+            PartialSocketAddr::Tor(_) => None,
+        }
+    }
+
+    /// Constructs [`InetSocketAddr`] using default port information.
+    pub fn inet_socket(self, default_port: u16) -> InetSocketAddr {
+        match self {
+            PartialSocketAddr::IPv4(addr, None) => {
+                InetSocketAddr::IPv4(SocketAddrV4::new(addr, default_port))
+            }
+            PartialSocketAddr::IPv6(addr, None) => InetSocketAddr::IPv6(
+                SocketAddrV6::new(addr, default_port, 0, 0),
+            ),
+            PartialSocketAddr::IPv4(addr, Some(port)) => {
+                InetSocketAddr::IPv4(SocketAddrV4::new(addr, port))
+            }
+            PartialSocketAddr::IPv6(addr, Some(port)) => {
+                InetSocketAddr::IPv6(SocketAddrV6::new(addr, port, 0, 0))
+            }
+            PartialSocketAddr::Tor(addr) => InetSocketAddr::Tor(addr),
         }
     }
 }
@@ -528,6 +581,46 @@ impl From<OnionAddressV3> for PartialSocketAddr {
     #[inline]
     fn from(addr: OnionAddressV3) -> Self {
         PartialSocketAddr::Tor(addr.get_public_key())
+    }
+}
+
+impl From<InetAddr> for PartialSocketAddr {
+    fn from(addr: InetAddr) -> Self {
+        match addr {
+            InetAddr::IPv4(addr) => PartialSocketAddr::IPv4(addr, None),
+            InetAddr::IPv6(addr) => PartialSocketAddr::IPv6(addr, None),
+            InetAddr::Tor(addr) => PartialSocketAddr::Tor(addr),
+        }
+    }
+}
+
+impl From<InetSocketAddr> for PartialSocketAddr {
+    fn from(addr: InetSocketAddr) -> Self {
+        match addr {
+            InetSocketAddr::IPv4(socket) => {
+                PartialSocketAddr::IPv4(*socket.ip(), Some(socket.port()))
+            }
+            InetSocketAddr::IPv6(socket) => {
+                PartialSocketAddr::IPv6(*socket.ip(), Some(socket.port()))
+            }
+            InetSocketAddr::Tor(addr) => PartialSocketAddr::Tor(addr),
+        }
+    }
+}
+
+impl fmt::Display for PartialSocketAddr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PartialSocketAddr::IPv4(addr, None) => fmt::Display::fmt(addr, f),
+            PartialSocketAddr::IPv6(addr, None) => fmt::Display::fmt(addr, f),
+            PartialSocketAddr::IPv4(addr, Some(port)) => {
+                fmt::Display::fmt(&SocketAddrV4::new(*addr, *port), f)
+            }
+            PartialSocketAddr::IPv6(addr, Some(port)) => {
+                fmt::Display::fmt(&SocketAddrV6::new(*addr, *port, 0, 0), f)
+            }
+            PartialSocketAddr::Tor(addr) => fmt::Display::fmt(addr, f),
+        }
     }
 }
 
@@ -673,11 +766,6 @@ pub enum InetSocketAddr {
     Tor(TorPublicKeyV3),
 }
 
-#[cfg(feature = "stringly_conversions")]
-impl_try_from_stringly_standard!(InetSocketAddr);
-#[cfg(feature = "stringly_conversions")]
-impl_into_stringly_standard!(InetSocketAddr);
-
 impl PartialOrd for InetSocketAddr {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
@@ -778,6 +866,11 @@ impl InetSocketAddr {
     }
 }
 
+#[cfg(feature = "stringly_conversions")]
+impl_try_from_stringly_standard!(InetSocketAddr);
+#[cfg(feature = "stringly_conversions")]
+impl_into_stringly_standard!(InetSocketAddr);
+
 impl FromStr for InetSocketAddr {
     type Err = AddrParseError;
 
@@ -798,6 +891,20 @@ impl FromStr for InetSocketAddr {
             } else {
                 Err(AddrParseError::WrongAddrFormat(s.to_owned()))
             }
+        }
+    }
+}
+
+#[cfg(feature = "parse_arg")]
+impl parse_arg::ParseArgFromStr for InetSocketAddr {
+    fn describe_type<W: std::fmt::Write>(mut writer: W) -> std::fmt::Result {
+        #[cfg(not(feature = "tor"))]
+        {
+            write!(writer, "IPv4 or IPv6 socket address")
+        }
+        #[cfg(feature = "tor")]
+        {
+            write!(writer, "IPv4, IPv6, or Tor (onion) socket address")
         }
     }
 }
