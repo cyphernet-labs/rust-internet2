@@ -15,7 +15,9 @@ use std::any::Any;
 use std::net::TcpListener;
 
 use amplify::Bipolar;
-use inet2_addr::{InetSocketAddr, ServiceAddr};
+use inet2_addr::InetSocketAddr;
+#[cfg(feature = "zmq")]
+use inet2_addr::ServiceAddr;
 
 use super::{Decrypt, Encrypt, Transcode};
 #[cfg(feature = "keygen")]

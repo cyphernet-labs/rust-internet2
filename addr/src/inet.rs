@@ -33,9 +33,7 @@ use torut::onion::{OnionAddressV3, TorPublicKeyV3};
 pub struct NoOnionSupportError;
 
 /// Errors during address string parse process
-#[derive(
-    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display, Error, From
-)]
+#[derive(Debug, Display, Error, From)]
 #[display(doc_comments)]
 pub enum AddrParseError {
     /// Wrong port number; must be a 16-bit unsigned integer number
@@ -55,6 +53,12 @@ pub enum AddrParseError {
 
     /// Unknown transport protocol "{_0}"
     UnknownProtocolError(String),
+
+    /// Error parsing onion address
+    #[cfg(feature = "tor")]
+    #[display(inner)]
+    #[from]
+    OnionAddressError(torut::onion::OnionAddressParseError),
 
     /// Tor addresses are not supported; consider compiling with `tor` feature
     NeedsTorFeature,
@@ -419,6 +423,7 @@ impl std::hash::Hash for PartialSocketAddr {
 
 impl PartialSocketAddr {
     /// Constructs new socket address matching the provided Tor v3 address
+    #[cfg(feature = "tor")]
     #[inline]
     pub fn tor3(tor: TorPublicKeyV3) -> Self { PartialSocketAddr::Tor(tor) }
 
@@ -468,6 +473,7 @@ impl PartialSocketAddr {
         match self {
             PartialSocketAddr::IPv4(addr, _) => InetAddr::IPv4(addr),
             PartialSocketAddr::IPv6(addr, _) => InetAddr::IPv6(addr),
+            #[cfg(feature = "tor")]
             PartialSocketAddr::Tor(tor) => InetAddr::Tor(tor),
         }
     }
@@ -478,6 +484,7 @@ impl PartialSocketAddr {
         match self {
             PartialSocketAddr::IPv4(_, port)
             | PartialSocketAddr::IPv6(_, port) => port,
+            #[cfg(feature = "tor")]
             PartialSocketAddr::Tor(_) => None,
         }
     }
@@ -497,6 +504,7 @@ impl PartialSocketAddr {
             PartialSocketAddr::IPv6(addr, Some(port)) => {
                 InetSocketAddr::IPv6(SocketAddrV6::new(addr, port, 0, 0))
             }
+            #[cfg(feature = "tor")]
             PartialSocketAddr::Tor(addr) => InetSocketAddr::Tor(addr),
         }
     }
@@ -518,17 +526,6 @@ impl TryFrom<PartialSocketAddr> for IpAddr {
             #[cfg(feature = "tor")]
             PartialSocketAddr::Tor(_) => return Err(NoOnionSupportError),
         })
-    }
-}
-
-#[cfg(not(feature = "tor"))]
-impl From<InetAddr> for PartialSocketAddr {
-    #[inline]
-    fn from(addr: PartialSocketAddr) -> Self {
-        match addr {
-            PartialSocketAddr::IPv4(addr, _) => IpAddr::V4(addr),
-            PartialSocketAddr::IPv6(addr, _) => IpAddr::V6(addr),
-        }
     }
 }
 
@@ -589,6 +586,7 @@ impl From<InetAddr> for PartialSocketAddr {
         match addr {
             InetAddr::IPv4(addr) => PartialSocketAddr::IPv4(addr, None),
             InetAddr::IPv6(addr) => PartialSocketAddr::IPv6(addr, None),
+            #[cfg(feature = "tor")]
             InetAddr::Tor(addr) => PartialSocketAddr::Tor(addr),
         }
     }
@@ -603,6 +601,7 @@ impl From<InetSocketAddr> for PartialSocketAddr {
             InetSocketAddr::IPv6(socket) => {
                 PartialSocketAddr::IPv6(*socket.ip(), Some(socket.port()))
             }
+            #[cfg(feature = "tor")]
             InetSocketAddr::Tor(addr) => PartialSocketAddr::Tor(addr),
         }
     }
@@ -619,6 +618,7 @@ impl fmt::Display for PartialSocketAddr {
             PartialSocketAddr::IPv6(addr, Some(port)) => {
                 fmt::Display::fmt(&SocketAddrV6::new(*addr, *port, 0, 0), f)
             }
+            #[cfg(feature = "tor")]
             PartialSocketAddr::Tor(addr) => fmt::Display::fmt(addr, f),
         }
     }
@@ -632,7 +632,15 @@ impl_into_stringly_standard!(PartialSocketAddr);
 impl FromStr for PartialSocketAddr {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        #[cfg(feature = "tor")]
+        #[cfg(not(feature = "tor"))]
+        struct OnionAddressV3;
+        #[cfg(not(feature = "tor"))]
+        impl OnionAddressV3 {
+            fn from_str(_: &str) -> Result<Self, AddrParseError> {
+                Err(AddrParseError::NeedsTorFeature)
+            }
+        }
+
         match (
             SocketAddr::from_str(s),
             IpAddr::from_str(s),
@@ -643,15 +651,11 @@ impl FromStr for PartialSocketAddr {
             }
             (Ok(socket_addr), ..) => Ok(Self::from(socket_addr)),
             (_, Ok(ip_addr), _) => Ok(Self::from(ip_addr)),
+            #[cfg(feature = "tor")]
             (_, _, Ok(onionv3)) => Ok(Self::from(onionv3)),
+            (_, _, Err(err)) => Err(err.into()),
+            #[cfg(not(feature = "tor"))]
             _ => Err(AddrParseError::WrongAddrFormat(s.to_owned())),
-        }
-
-        #[cfg(not(feature = "tor"))]
-        match (SocketAddr::from_str(s), IpAddr::from_str(s)) {
-            (Ok(socket_addr), _) => Ok(InetAddr::from(socket_addr)),
-            (_, Ok(ip_addr)) => Ok(InetAddr::from(ip_addr)),
-            _ => Err(AddrParseError::NeedsTorFeature),
         }
     }
 }
@@ -817,6 +821,7 @@ impl Default for InetSocketAddr {
 
 impl InetSocketAddr {
     /// Constructs new socket address matching the provided Tor v3 address
+    #[cfg(feature = "tor")]
     #[inline]
     pub fn tor3(tor: TorPublicKeyV3) -> Self { InetSocketAddr::Tor(tor) }
 
@@ -839,6 +844,7 @@ impl InetSocketAddr {
     pub fn is_tor(&self) -> bool {
         match self {
             InetSocketAddr::IPv4(_) | InetSocketAddr::IPv6(_) => false,
+            #[cfg(feature = "tor")]
             InetSocketAddr::Tor(_) => true,
         }
     }
@@ -849,6 +855,7 @@ impl InetSocketAddr {
         match self {
             InetSocketAddr::IPv4(socket) => InetAddr::IPv4(*socket.ip()),
             InetSocketAddr::IPv6(socket) => InetAddr::IPv6(*socket.ip()),
+            #[cfg(feature = "tor")]
             InetSocketAddr::Tor(tor) => InetAddr::Tor(tor),
         }
     }
@@ -861,6 +868,7 @@ impl InetSocketAddr {
         match self {
             InetSocketAddr::IPv4(socket) => Some(socket.port()),
             InetSocketAddr::IPv6(socket) => Some(socket.port()),
+            #[cfg(feature = "tor")]
             InetSocketAddr::Tor(_) => None,
         }
     }
@@ -929,6 +937,7 @@ impl From<InetSocketAddr> for SocketAddr {
         match socket_addr {
             InetSocketAddr::IPv4(socket) => SocketAddr::V4(socket),
             InetSocketAddr::IPv6(socket) => SocketAddr::V6(socket),
+            #[cfg(feature = "tor")]
             InetSocketAddr::Tor(_) => unreachable!(),
         }
     }

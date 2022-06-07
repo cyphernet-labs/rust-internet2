@@ -28,9 +28,7 @@ use crate::{AddrParseError, InetSocketAddr};
 pub struct NodeIdInvalidPubkey;
 
 /// Errors parsing [`NodeAddr`] string representation
-#[derive(
-    Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Error, From
-)]
+#[derive(Debug, Display, Error, From)]
 #[display(doc_comments)]
 pub enum NodeAddrParseError {
     /// invalid public key value representing node id

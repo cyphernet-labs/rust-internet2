@@ -14,7 +14,7 @@
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
 
 use strict_encoding::net::{
-    AddrFormat, DecodeError, RawAddr, Transport, Uniform, UniformAddr, ADDR_LEN,
+    AddrFormat, DecodeError, RawAddr, Transport, Uniform, UniformAddr,
 };
 #[cfg(feature = "tor")]
 use torut::onion::{TorPublicKeyV3, TORV3_PUBLIC_KEY_LENGTH};
@@ -51,12 +51,13 @@ impl Uniform for InetAddr {
 
     #[inline]
     fn addr(&self) -> RawAddr {
-        let mut buf = [0u8; ADDR_LEN];
         match self {
             InetAddr::IPv4(ip) => ip.addr(),
             InetAddr::IPv6(ip) => ip.addr(),
             #[cfg(feature = "tor")]
             InetAddr::Tor(tor) => {
+                use strict_encoding::net::ADDR_LEN;
+                let mut buf = [0u8; ADDR_LEN];
                 buf[1..].copy_from_slice(&tor.to_bytes());
                 buf
             }
@@ -143,6 +144,7 @@ impl Uniform for InetSocketAddr {
         match self {
             InetSocketAddr::IPv4(socket) => Some(socket.port()),
             InetSocketAddr::IPv6(socket) => Some(socket.port()),
+            #[cfg(feature = "tor")]
             InetSocketAddr::Tor(_) => None,
         }
     }

@@ -20,9 +20,7 @@ use crate::node::NodeAddrParseError;
 use crate::{AddrParseError, InetSocketAddr, NodeAddr};
 
 /// Errors parsing [`ServerAddr`] string representation
-#[derive(
-    Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Error, From
-)]
+#[derive(Debug, Display, Error, From)]
 #[display(doc_comments)]
 pub enum ServerAddrParseError {
     /// Invalid node address
