@@ -13,6 +13,8 @@
 
 use std::str::FromStr;
 
+use secp256k1::{ecdsa, Secp256k1, Signing};
+
 use crate::inet::PartialSocketAddr;
 use crate::{AddrParseError, InetSocketAddr};
 
@@ -150,5 +152,62 @@ impl FromStr for PartialNodeAddr {
             }),
             _ => Err(AddrParseError::WrongAddrFormat(s.to_owned()).into()),
         }
+    }
+}
+
+/// Local node, keeping its id and private key
+#[derive(Clone, PartialEq, Eq, Debug, Display)]
+#[display("{id}")]
+pub struct LocalNode {
+    id: NodeId,
+    private_key: secp256k1::SecretKey,
+}
+
+impl LocalNode {
+    /// Creates new local node id generating private key with random number
+    /// generator
+    #[cfg(feature = "keygen")]
+    pub fn new<C: Signing>(secp: &Secp256k1<C>) -> Self {
+        use secp256k1::rand::thread_rng;
+
+        let mut rng = thread_rng();
+        let private_key = secp256k1::SecretKey::new(&mut rng);
+        let public_key =
+            secp256k1::PublicKey::from_secret_key(&secp, &private_key);
+        Self {
+            private_key,
+            id: NodeId::from(public_key),
+        }
+    }
+
+    /// Constructs local node id from a given node private key.
+    #[inline]
+    pub fn with<C: Signing>(
+        secp: &Secp256k1<C>,
+        private_key: secp256k1::SecretKey,
+    ) -> Self {
+        Self {
+            private_key,
+            id: secp256k1::PublicKey::from_secret_key(secp, &private_key)
+                .into(),
+        }
+    }
+
+    /// Returns id of this node.
+    #[inline]
+    pub fn node_id(&self) -> NodeId { self.id }
+
+    /// Returns id of this node.
+    #[inline]
+    pub fn private_key(&self) -> secp256k1::SecretKey { self.private_key }
+
+    /// Signs the message with the node private key.
+    #[inline]
+    pub fn sign<C: Signing>(
+        &self,
+        secp: &Secp256k1<C>,
+        message: &secp256k1::Message,
+    ) -> ecdsa::Signature {
+        secp.sign_ecdsa(message, &self.private_key)
     }
 }

@@ -48,7 +48,9 @@ pub use inet::{
     AddrParseError, InetAddr, InetSocketAddr, InetSocketAddrExt,
     NoOnionSupportError, Transport,
 };
-pub use node::{NodeAddr, NodeId, NodeIdInvalidPubkey, PartialNodeAddr};
+pub use node::{
+    LocalNode, NodeAddr, NodeId, NodeIdInvalidPubkey, PartialNodeAddr,
+};
 pub use server::{
     ServerAddr, ServerAddrParseError, ServiceAddr, ServiceAddrParseError,
 };
