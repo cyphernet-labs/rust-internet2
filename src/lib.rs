@@ -71,13 +71,13 @@ pub use transport::{
     ftcp, Duplex, FramingProtocol, LocalSocketAddr, RemoteSocketAddr,
     RoutedFrame,
 };
-
-pub const LNP_MSG_MAX_LEN: usize = std::u16::MAX as usize;
-
-pub const LIGHTNING_P2P_DEFAULT_PORT: u16 = 9735;
-
 #[cfg(feature = "zmq")]
 pub use transport::{ZmqSocketAddr, ZmqType, ZMQ_CONTEXT};
+
+/// Maximum message (packet payload) length for Brontide protocol
+pub const BRONTIDE_MSG_MAX_LEN: usize = u16::MAX as usize;
+/// Maximum message (packet payload) length for Brontozaur protocol
+pub const BRONTOZAUR_MSG_MAX_LEN: usize = 0xFFFFFF as usize;
 
 /// Trait used by different address types (transport-, session- and
 /// presentation-based) for getting scheme part of the URL

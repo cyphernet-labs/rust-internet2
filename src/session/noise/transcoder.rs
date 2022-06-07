@@ -413,7 +413,7 @@ mod tests {
     use bitcoin_hashes::hex::FromHex;
 
     use super::*;
-    use crate::LNP_MSG_MAX_LEN;
+    use crate::BRONTIDE_MSG_MAX_LEN;
 
     fn setup_peers() -> (
         NoiseTranscoder<{ TransportProtocol::BrontideBolt.message_len_size() }>,
@@ -659,7 +659,7 @@ mod tests {
 
     #[test]
     fn max_msg_len_limit_value() {
-        assert_eq!(LNP_MSG_MAX_LEN, 65535);
-        assert_eq!(LNP_MSG_MAX_LEN, ::std::u16::MAX as usize);
+        assert_eq!(BRONTIDE_MSG_MAX_LEN, 65535);
+        assert_eq!(BRONTIDE_MSG_MAX_LEN, ::std::u16::MAX as usize);
     }
 }
