@@ -1,5 +1,5 @@
 use inet2_addr::ServiceAddr;
-use internet2::{session, Session, ZmqType};
+use internet2::{session, SendRecvMessage, ZmqType};
 
 #[test]
 fn main() {
@@ -7,7 +7,7 @@ fn main() {
     let node_addr2 = node_addr1.clone();
     let ctx = zmq::Context::new();
 
-    let mut session = session::Raw::with_zmq_unencrypted(
+    let mut session = session::Session::with_zmq_unencrypted(
         ZmqType::RouterBind,
         &node_addr1,
         None,
@@ -17,7 +17,7 @@ fn main() {
     .unwrap();
 
     let tx = std::thread::spawn(move || {
-        let mut session = session::Raw::with_zmq_unencrypted(
+        let mut session = session::Session::with_zmq_unencrypted(
             ZmqType::RouterConnect,
             &node_addr2,
             None,

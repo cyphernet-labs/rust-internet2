@@ -22,7 +22,9 @@ mod transcoders;
 pub use noise::{
     HandshakeError, NoiseDecryptor, NoiseEncryptor, NoiseTranscoder,
 };
-pub use session::{Input, Output, Raw, RawInput, RawOutput, Session, Split};
+pub use session::{
+    Receiver, RecvMessage, SendMessage, SendRecvMessage, Sender, Session, Split,
+};
 pub use transcoders::{
     Decrypt, DecryptionError, Encrypt, PlainTranscoder, Transcode,
 };

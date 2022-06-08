@@ -52,7 +52,7 @@ pub use presentation::{
 };
 pub use session::{
     Decrypt, Encrypt, NoiseDecryptor, NoiseEncryptor, NoiseTranscoder,
-    PlainTranscoder, Session, Split, Transcode,
+    PlainTranscoder, SendRecvMessage, Split, Transcode,
 };
 #[cfg(feature = "zmq")]
 pub use transport::zeromq;

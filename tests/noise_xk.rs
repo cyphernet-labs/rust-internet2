@@ -4,8 +4,8 @@ use std::str::FromStr;
 
 use inet2_addr::{LocalNode, NodeAddr};
 use internet2::session::noise::TransportProtocol;
-use internet2::session::Raw;
-use internet2::{NoiseTranscoder, Session};
+use internet2::session::Session;
+use internet2::{NoiseTranscoder, SendRecvMessage};
 use secp256k1::Secp256k1;
 
 #[test]
@@ -26,7 +26,7 @@ fn main() {
 
 fn receiver(local_node: &LocalNode, node: NodeAddr) {
     std::thread::sleep(core::time::Duration::from_secs(1));
-    let mut session = Raw::<
+    let mut session = Session::<
         NoiseTranscoder<{ TransportProtocol::Brontide.message_len_size() }>,
         _,
     >::connect_brontide(
@@ -44,7 +44,7 @@ fn sender(local_node: &LocalNode, node: NodeAddr) {
     let listener =
         TcpListener::bind(SocketAddr::try_from(node.addr).unwrap()).unwrap();
     let mut session =
-        Raw::<
+        Session::<
             NoiseTranscoder<{ TransportProtocol::Brontide.message_len_size() }>,
             _,
         >::accept_brontide(local_node.private_key(), &listener)

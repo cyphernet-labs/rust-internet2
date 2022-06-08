@@ -33,7 +33,7 @@ use crate::{NoiseDecryptor, NoiseTranscoder};
 // Generics prevents us from using session as `&dyn` reference, so we have
 // to avoid `where Self: Input + Output` and generic parameters, unlike with
 // `Transcode`
-pub trait Session {
+pub trait SendRecvMessage {
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error>;
     fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error>;
     fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error>;
@@ -48,10 +48,12 @@ pub trait Session {
 }
 
 pub trait Split {
-    fn split(self) -> (Box<dyn Input + Send>, Box<dyn Output + Send>);
+    fn split(
+        self,
+    ) -> (Box<dyn RecvMessage + Send>, Box<dyn SendMessage + Send>);
 }
 
-pub trait Input {
+pub trait RecvMessage {
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error>;
     fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
         // We panic here because this is a program architecture design
@@ -61,7 +63,7 @@ pub trait Input {
     }
 }
 
-pub trait Output {
+pub trait SendMessage {
     fn send_raw_message(&mut self, raw: &[u8]) -> Result<usize, Error>;
     fn send_routed_message(
         &mut self,
@@ -77,7 +79,7 @@ pub trait Output {
     }
 }
 
-pub struct Raw<T, C>
+pub struct Session<T, C>
 where
     T: Transcode,
     T::Left: Decrypt,
@@ -90,7 +92,7 @@ where
     pub(self) connection: C,
 }
 
-pub struct RawInput<D, R>
+pub struct Receiver<D, R>
 where
     D: Decrypt,
     R: RecvFrame,
@@ -99,7 +101,7 @@ where
     pub(self) input: R,
 }
 
-pub struct RawOutput<E, S>
+pub struct Sender<E, S>
 where
     E: Encrypt,
     S: SendFrame,
@@ -122,7 +124,7 @@ trait InternalSession {
     ) -> Result<usize, Error>;
 }
 
-impl<T, C> InternalSession for Raw<T, C>
+impl<T, C> InternalSession for Session<T, C>
 where
     T: Transcode + 'static,
     T::Left: Decrypt,
@@ -165,7 +167,7 @@ where
     }
 }
 
-impl Session for Raw<PlainTranscoder, unencrypted::Connection> {
+impl SendRecvMessage for Session<PlainTranscoder, unencrypted::Connection> {
     #[inline]
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
         InternalSession::recv_raw_message(self)
@@ -212,8 +214,8 @@ fn recv_brontide_message<const LEN_SIZE: usize>(
     Ok(payload)
 }
 
-impl<const LEN_SIZE: usize> Session
-    for Raw<NoiseTranscoder<LEN_SIZE>, encrypted::Connection>
+impl<const LEN_SIZE: usize> SendRecvMessage
+    for Session<NoiseTranscoder<LEN_SIZE>, encrypted::Connection>
 {
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
         let reader = self.connection.as_receiver();
@@ -245,7 +247,7 @@ impl<const LEN_SIZE: usize> Session
 }
 
 #[cfg(feature = "zmq")]
-impl Session for Raw<PlainTranscoder, zeromq::Connection> {
+impl SendRecvMessage for Session<PlainTranscoder, zeromq::Connection> {
     #[inline]
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
         InternalSession::recv_raw_message(self)
@@ -272,7 +274,7 @@ impl Session for Raw<PlainTranscoder, zeromq::Connection> {
     fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
 }
 
-impl<T, C> Split for Raw<T, C>
+impl<T, C> Split for Session<T, C>
 where
     T: Transcode,
     T::Left: Decrypt + Send + 'static,
@@ -280,21 +282,23 @@ where
     C: Duplex + Bipolar,
     C::Left: RecvFrame + Send + 'static,
     C::Right: SendFrame + Send + 'static,
-    RawInput<T::Left, C::Left>: Input,
+    Receiver<T::Left, C::Left>: RecvMessage,
     Error: From<T::Error> + From<<T::Left as Decrypt>::Error>,
 {
     #[inline]
-    fn split(self) -> (Box<dyn Input + Send>, Box<dyn Output + Send>) {
+    fn split(
+        self,
+    ) -> (Box<dyn RecvMessage + Send>, Box<dyn SendMessage + Send>) {
         let (decryptor, encryptor) = self.transcoder.split();
         let (input, output) = Bipolar::split(self.connection);
         (
-            Box::new(RawInput { decryptor, input }),
-            Box::new(RawOutput { encryptor, output }),
+            Box::new(Receiver { decryptor, input }),
+            Box::new(Sender { encryptor, output }),
         )
     }
 }
 
-impl Raw<PlainTranscoder, unencrypted::Connection> {
+impl Session<PlainTranscoder, unencrypted::Connection> {
     pub fn with_ftcp(
         stream: std::net::TcpStream,
         remote_addr: InetSocketAddr,
@@ -322,7 +326,7 @@ impl Raw<PlainTranscoder, unencrypted::Connection> {
 
 #[cfg(feature = "keygen")]
 impl<const LEN_SIZE: usize>
-    Raw<NoiseTranscoder<LEN_SIZE>, encrypted::Connection>
+    Session<NoiseTranscoder<LEN_SIZE>, encrypted::Connection>
 {
     pub fn with_brontide(
         stream: std::net::TcpStream,
@@ -416,7 +420,7 @@ impl<const LEN_SIZE: usize>
 }
 
 #[cfg(feature = "zmq")]
-impl Raw<PlainTranscoder, zeromq::Connection> {
+impl Session<PlainTranscoder, zeromq::Connection> {
     pub fn with_zmq_unencrypted(
         zmq_type: zeromq::ZmqType,
         remote: &ServiceAddr,
@@ -444,7 +448,7 @@ impl Raw<PlainTranscoder, zeromq::Connection> {
 }
 
 #[cfg(feature = "zmq")]
-impl<T> Raw<T, zeromq::Connection>
+impl<T> Session<T, zeromq::Connection>
 where
     T: Transcode,
     T::Left: Decrypt + Send + 'static,
@@ -469,7 +473,7 @@ trait InternalInput {
     fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error>;
 }
 
-impl<T, C> InternalInput for RawInput<T, C>
+impl<T, C> InternalInput for Receiver<T, C>
 where
     T: Decrypt,
     C: RecvFrame,
@@ -486,7 +490,7 @@ where
     }
 }
 
-impl Input for RawInput<PlainTranscoder, unencrypted::Stream> {
+impl RecvMessage for Receiver<PlainTranscoder, unencrypted::Stream> {
     #[inline]
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
         InternalInput::recv_raw_message(self)
@@ -496,8 +500,8 @@ impl Input for RawInput<PlainTranscoder, unencrypted::Stream> {
     }
 }
 
-impl<const LEN_SIZE: usize> Input
-    for RawInput<NoiseDecryptor<LEN_SIZE>, encrypted::Stream>
+impl<const LEN_SIZE: usize> RecvMessage
+    for Receiver<NoiseDecryptor<LEN_SIZE>, encrypted::Stream>
 {
     #[inline]
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
@@ -509,7 +513,7 @@ impl<const LEN_SIZE: usize> Input
 }
 
 #[cfg(feature = "zmq")]
-impl Input for RawInput<PlainTranscoder, zeromq::WrappedSocket> {
+impl RecvMessage for Receiver<PlainTranscoder, zeromq::WrappedSocket> {
     #[inline]
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
         InternalInput::recv_raw_message(self)
@@ -519,7 +523,7 @@ impl Input for RawInput<PlainTranscoder, zeromq::WrappedSocket> {
     }
 }
 
-impl<T, C> Output for RawOutput<T, C>
+impl<T, C> SendMessage for Sender<T, C>
 where
     T: Encrypt,
     C: SendFrame,
@@ -548,7 +552,7 @@ mod test {
     fn test_zmq_no_encryption() {
         let ctx = zmq::Context::new();
         let locator = ServiceAddr::Inproc(s!("test"));
-        let mut rx = Raw::with_zmq_unencrypted(
+        let mut rx = Session::with_zmq_unencrypted(
             zeromq::ZmqType::Rep,
             &locator,
             None,
@@ -556,7 +560,7 @@ mod test {
             &ctx,
         )
         .unwrap();
-        let mut tx = Raw::with_zmq_unencrypted(
+        let mut tx = Session::with_zmq_unencrypted(
             zeromq::ZmqType::Req,
             &locator,
             None,
@@ -566,11 +570,11 @@ mod test {
         .unwrap();
 
         let msg = b"Some message";
-        Session::send_raw_message(&mut tx, msg).unwrap();
-        assert_eq!(Session::recv_raw_message(&mut rx).unwrap(), msg);
+        SendRecvMessage::send_raw_message(&mut tx, msg).unwrap();
+        assert_eq!(SendRecvMessage::recv_raw_message(&mut rx).unwrap(), msg);
 
         let msg = b"";
-        Session::send_raw_message(&mut rx, msg).unwrap();
-        assert_eq!(Session::recv_raw_message(&mut tx).unwrap(), msg);
+        SendRecvMessage::send_raw_message(&mut rx, msg).unwrap();
+        assert_eq!(SendRecvMessage::recv_raw_message(&mut tx).unwrap(), msg);
     }
 }
