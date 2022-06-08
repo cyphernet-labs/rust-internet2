@@ -52,13 +52,13 @@ pub use presentation::{
 };
 pub use session::{
     Decrypt, Encrypt, NoiseDecryptor, NoiseEncryptor, NoiseTranscoder,
-    PlainTranscoder, SendRecvMessage, Split, Transcode,
+    PlainTranscoder, SendRecvMessage, Session, Split, Transcode,
 };
 #[cfg(feature = "zmq")]
 pub use transport::zeromq;
+pub use transport::{DuplexConnection, RoutedFrame};
 #[cfg(feature = "zmq")]
-pub use transport::ZmqSocketType;
-pub use transport::{unencrypted, DuplexConnection, RoutedFrame};
+pub use transport::{ZmqConnectionType, ZmqSocketType};
 
 /// Maximum message (packet payload) length for Brontide protocol
 pub const BRONTIDE_MSG_MAX_LEN: usize = u16::MAX as usize;

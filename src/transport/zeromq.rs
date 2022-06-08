@@ -117,13 +117,13 @@ pub enum ZmqSocketType {
     RouterConnect = 7,
 }
 
-/// Unknown [`ZmqType`] string
+/// Unknown [`ZmqSocketType`] string
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Display, Error)]
 #[display(Debug)]
 pub struct UnknownApiType;
 
 impl ZmqSocketType {
-    /// Returns [`zmq::SocketType`] corresponding to the given [`ZmqType`]
+    /// Returns [`zmq::SocketType`] corresponding to the given [`ZmqSocketType`]
     pub fn socket_type(&self) -> zmq::SocketType {
         match self {
             ZmqSocketType::Pull => zmq::PULL,
