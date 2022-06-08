@@ -138,7 +138,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
                 if let Some(f) = fields.first() {
                     let payload = &f.ty;
                     let payload_fisheye: TokenStream2 = syn::parse_str(
-                        &quote!(#payload).to_string().replacen("<", "::<", 1),
+                        &quote!(#payload).to_string().replacen('<', "::<", 1),
                     )
                     .expect("Internal error");
                     let serialize_fn =

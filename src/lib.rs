@@ -14,11 +14,7 @@
 #![recursion_limit = "256"]
 // Coding conventions
 #![deny(
-    non_upper_case_globals,
-    non_camel_case_types,
-    non_snake_case,
-    unused_mut,
-    unused_imports,
+    warnings,
     //dead_code,
     //missing_docs
 )]
@@ -30,27 +26,21 @@
 extern crate amplify;
 #[macro_use]
 extern crate strict_encoding;
-#[macro_use]
-extern crate lazy_static;
 
 extern crate chacha20poly1305;
 #[cfg(feature = "url")]
 extern crate url_crate as url;
 
 #[cfg(feature = "serde")]
-#[macro_use]
-extern crate serde_with;
-#[cfg(feature = "serde")]
 extern crate serde_crate as serde;
 
 #[cfg(feature = "derive")]
-pub extern crate inet2_derive;
+pub extern crate inet2_derive as derive;
+
+pub extern crate inet2_addr as addr;
+
 #[cfg(feature = "derive")]
 pub use inet2_derive::Api;
-
-pub mod addr {
-    pub use inet2_addr::*;
-}
 
 pub mod presentation;
 pub mod session;
@@ -61,25 +51,19 @@ pub use presentation::{
     UnknownTypeError, Unmarshall, UnmarshallFn, Unmarshaller,
 };
 pub use session::{
-    Accept, Connect, Decrypt, Encrypt, LocalNode, NodeAddr, NoiseDecryptor,
-    NoiseEncryptor, NoiseTranscoder, PartialNodeAddr, PlainTranscoder,
-    RemoteNodeAddr, Session, Split, ToNodeAddr, ToRemoteNodeAddr, Transcode,
+    Decrypt, Encrypt, NoiseDecryptor, NoiseEncryptor, NoiseTranscoder,
+    PlainTranscoder, SendRecvMessage, Session, Split, Transcode,
 };
-#[cfg(feature = "websockets")]
-pub use transport::websocket;
 #[cfg(feature = "zmq")]
-pub use transport::zmqsocket;
-pub use transport::{
-    ftcp, Duplex, FramingProtocol, LocalSocketAddr, RemoteSocketAddr,
-    RoutedFrame,
-};
-
-pub const LNP_MSG_MAX_LEN: usize = std::u16::MAX as usize;
-
-pub const LIGHTNING_P2P_DEFAULT_PORT: u16 = 9735;
-
+pub use transport::zeromq;
+pub use transport::{DuplexConnection, RoutedFrame};
 #[cfg(feature = "zmq")]
-pub use transport::{ZmqSocketAddr, ZmqType, ZMQ_CONTEXT};
+pub use transport::{ZmqConnectionType, ZmqSocketType};
+
+/// Maximum message (packet payload) length for Brontide protocol
+pub const BRONTIDE_MSG_MAX_LEN: usize = u16::MAX as usize;
+/// Maximum message (packet payload) length for Brontozaur protocol
+pub const BRONTOZAUR_MSG_MAX_LEN: usize = 0xFFFFFF;
 
 /// Trait used by different address types (transport-, session- and
 /// presentation-based) for getting scheme part of the URL
@@ -92,84 +76,4 @@ pub trait UrlString {
     /// you need full URL address, please use `Url::from()` instead (this
     /// will require `url` feature for LNP/BP Core Library).
     fn to_url_string(&self) -> String;
-}
-
-pub use inet2_addr::NoOnionSupportError;
-
-/// Error extracting transport-level address types ([`FramingProtocol`],
-/// [`LocalSocketAddr`], [`RemoteSocketAddr`]) and session-level node types
-/// ([`NodeAddr`], [`LocalNode`], [`RemoteNodeAddr`]) from string, URLs and
-/// other data types
-#[derive(Clone, PartialEq, Eq, Debug, Display, Error, From)]
-#[display(doc_comments)]
-pub enum AddrError {
-    /// Unknown protocol name in URL scheme ({0})
-    UnknownProtocol(String),
-
-    /// The provided URL scheme {0} was not recognized
-    UnknownUrlScheme(String),
-
-    /// Can't parse URL from the given string
-    #[cfg(feature = "url")]
-    #[from]
-    MalformedUrl(url::ParseError),
-
-    /// Malformed IP address.
-    /// NB: DNS addressing is not used since it is considered insecure in terms
-    ///     of censorship resistance, so you need to provide it in a form of
-    ///     either IPv4 or IPv6 address. If you need Tor support use other
-    ///     protocol type supporting Tor.
-    #[from]
-    MalformedIpAddr(std::net::AddrParseError),
-
-    /// Malformed IP or Onion address.
-    /// NB: DNS addressing is not used since it is considered insecure in terms
-    ///     of censorship resistance, so you need to provide it in a form of
-    ///     either IPv4, IPv6 address or Tor v2, v3 address (w/o `.onion`
-    ///     suffix)
-    #[from]
-    MalformedInetAddr(inet2_addr::AddrParseError),
-
-    /// Invalid public key data representing node id
-    #[from(secp256k1::Error)]
-    InvalidPubkey,
-
-    /// No host information found in URL, while it is required for the given
-    /// scheme
-    HostRequired,
-
-    /// No port information found in URL, while it is required for the given
-    /// scheme
-    PortRequired,
-
-    /// Unexpected URL authority data (part before '@' in URL) which must be
-    /// omitted
-    UnexpectedAuthority,
-
-    /// Used scheme must not contain information about host
-    UnexpectedHost,
-
-    /// Used scheme must not contain information about port
-    UnexpectedPort,
-
-    /// Unsupported ZMQ API type ({0}). List of supported APIs:
-    /// - `rpc`
-    /// - `p2p`
-    /// - `sub`
-    /// - `esb`
-    InvalidZmqType(String),
-
-    /// No ZMQ API type information for URL scheme that requires one.
-    ZmqTypeRequired,
-
-    /// `Inproc` ZMQ type requires ZMQ context which exsits only in runtime and
-    /// can't be persisted. This, it can't be provided through this type.
-    ZmqContextRequired,
-
-    /// The provided protocol can't be used for {0}
-    Unsupported(&'static str),
-
-    /// Onion addresses are not supported by this socket type
-    #[from(NoOnionSupportError)]
-    NoOnionSupport,
 }

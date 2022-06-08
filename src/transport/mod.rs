@@ -20,19 +20,16 @@
 //! integrates with ZMQ such that the upper level can abstract for a particular
 //! transport protocol used.
 
-pub mod brontide;
-pub mod ftcp;
-pub mod generic;
-pub mod socket_addr;
-pub mod websocket;
+pub mod connect;
+pub mod encrypted;
+pub mod unencrypted;
 #[cfg(feature = "zmq")]
-pub mod zmqsocket;
+pub mod zeromq;
 
 use std::io::ErrorKind;
 
-pub use socket_addr::{FramingProtocol, LocalSocketAddr, RemoteSocketAddr};
 #[cfg(feature = "zmq")]
-pub use zmqsocket::{ZmqSocketAddr, ZmqType, ZMQ_CONTEXT};
+pub use zeromq::{ZmqConnectionType, ZmqSocketType};
 
 use crate::session::HandshakeError;
 
@@ -61,7 +58,7 @@ pub enum Error {
 
     /// ZMQ socket error, type {0}
     #[cfg(feature = "zmq")]
-    Zmq(zmqsocket::Error),
+    Zmq(zeromq::Error),
 
     /// service is offline or not responding
     ServiceOffline,
@@ -126,7 +123,7 @@ pub struct RoutedFrame {
 /// frame parser implementing [`RecvFrame`] and frame composer implementing
 /// [`SendFrame`]. These types must also implement [`amplify::Bipolar`], i.e.
 /// they must be splittable into the receiving and sending half-types.
-pub trait Duplex {
+pub trait DuplexConnection {
     fn as_receiver(&mut self) -> &mut dyn RecvFrame;
     fn as_sender(&mut self) -> &mut dyn SendFrame;
     fn split(self) -> (Box<dyn RecvFrame + Send>, Box<dyn SendFrame + Send>);

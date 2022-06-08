@@ -19,7 +19,7 @@ use std::fmt::Debug;
 use std::io::{self, Cursor, Read, Write};
 
 use bitcoin_hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
-use chacha20::cipher::{NewCipher, StreamCipher};
+use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::ChaCha20;
 use lightning_encoding::{LightningDecode, LightningEncode};
 use secp256k1::ecdh::SharedSecret;

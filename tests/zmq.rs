@@ -1,24 +1,29 @@
-use internet2::{session, Session, ZmqSocketAddr, ZmqType};
+use inet2_addr::ServiceAddr;
+use internet2::session::LocalSession;
+use internet2::{SendRecvMessage, ZmqSocketType};
 
 #[test]
 fn main() {
-    let node_addr1: ZmqSocketAddr = "inproc://zmq-test-1".parse().unwrap();
+    let node_addr1: ServiceAddr = "inproc://zmq-test-1".parse().unwrap();
     let node_addr2 = node_addr1.clone();
+    let ctx = zmq::Context::new();
 
-    let mut session = session::Raw::with_zmq_unencrypted(
-        ZmqType::RouterBind,
+    let mut session = LocalSession::with(
+        ZmqSocketType::RouterBind,
         &node_addr1,
         None,
         Some(b"rx"),
+        &ctx,
     )
     .unwrap();
 
     let tx = std::thread::spawn(move || {
-        let mut session = session::Raw::with_zmq_unencrypted(
-            ZmqType::RouterConnect,
+        let mut session = LocalSession::with(
+            ZmqSocketType::RouterConnect,
             &node_addr2,
             None,
             Some(b"tx"),
+            &ctx,
         )
         .unwrap();
         session
@@ -26,7 +31,7 @@ fn main() {
             .unwrap();
         let frame = session.recv_routed_message().unwrap();
         assert_eq!(frame.msg, b"hello");
-        session.set_identity(&"tx_new").unwrap();
+        session.set_identity(&"tx_new", &ctx).unwrap();
         session
             .send_routed_message(b"tx_new", b"rx", b"rx", b"ignored")
             .unwrap();

@@ -1,16 +1,17 @@
 [package]
 name = "internet2"
-version = "0.7.0-rc.1"
+version = "0.8.0-beta.1"
 license = "Apache-2.0"
-authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
+authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Rust implementation for the stack of Internet2 protocols"
 repository = "https://github.com/internet2-org/rust-internet2"
 homepage = "https://github.com/internet2-org"
 keywords = ["internet2", "tor", "noise-xk", "privacy", "cryptography"]
 categories = ["network-programming", "cryptography", "encoding"]
 readme = "README.md"
-edition = "2018"
-exclude = [".github", "derive", "contrib", "microservices", "addr"]
+edition = "2021"
+rust-version = "1.59.0"
+exclude = [".github", "derive", "contrib", "addr"]
 
 [lib]
 name = "internet2"
@@ -30,14 +31,14 @@ required-features = ["keygen"]
 amplify = "3.12.0"
 strict_encoding = { version = "1.8.1", default-features = false, features = ["derive"] }
 lightning_encoding = "0.7.1"
-inet2_addr = { version = "0.7.0", features = ["strict_encoding", "stringly_conversions"], path = "./addr" }
-inet2_derive = { version = "0.7.0", default-features = false, optional = true, path = "./derive" }
+inet2_addr = { version = "0.8.0", features = ["strict_encoding", "stringly_conversions"], path = "./addr" }
+inet2_derive = { version = "0.8.0", default-features = false, optional = true, path = "./derive" }
 # Dependencies on core rust-bitcoin & cryptography
 # ------------------------------------------------
 secp256k1 = "0.22.1"
 bitcoin_hashes = "0.10.0"
-chacha20 = "0.8.1"
-chacha20poly1305 = "0.7"
+chacha20 = "0.9"
+chacha20poly1305 = "0.9"
 # Core rust projects
 # ------------------
 # This strange naming is a workaround for cargo inability to define required
@@ -46,19 +47,19 @@ chacha20poly1305 = "0.7"
 # and references.
 serde_crate = { package = "serde", version = "1.0", features = ["derive"], optional = true }
 serde_with = { version = "1.8", features = ["hex"], optional = true }
-lazy_static = "1.4"
 # Networking deps
 # ---------------
 # These dependencies are used to provide support for networking URLs in
 zmq = { version = "0.9.2", optional = true }
-url_crate = { version = "2", optional = true, package = "url" }
-urldecode = { version = "0.1.1", optional = true }
 
 [dev-dependencies]
 torut = "0.2.0"
 strict_encoding_test = "1.8.0"
 strict_encoding_derive = "1.7.6"
 compiletest_rs = "0.7.0"
+
+[target.'cfg(target_os="windows")'.build-dependencies]
+cmake = "0.1"
 
 [target.'cfg(target_os="android")'.dependencies]
 zmq = { version = "0.9", features = ["vendored"], optional = true }
@@ -72,24 +73,22 @@ zeromq-src = { version = "0.1", git = "https://github.com/LNP-BP/zeromq-src-rs",
 # Listings
 # --------
 #   By default we use LNP with Tor support and URL support
-default = ["tor", "url", "zmq", "derive"]
+default = ["tor", "zmq", "derive"]
 all = ["derive",
        # Serde
        "serde", "keygen",
        # Networking
-       "tor", "url", "zmq", "websockets"]
+       "tor", "zmq"]
 # Exposing core rust componens
 # ----------------------------
 #   These also include re-assembly of necessary features from dependencies
 serde = ["serde_crate", "serde_with", "amplify/serde",
          "inet2_addr/serde", "secp256k1/serde", "bitcoin_hashes/serde-std"]
 derive = ["inet2_derive"]
-keygen = ["secp256k1/rand-std"]
+keygen = ["secp256k1/rand-std", "inet2_addr/keygen"]
 # Networking
 # ----------
-websockets = []
 tor = ["inet2_addr/tor"]
-url = ["url_crate", "urldecode"]
 
 [workspace]
 members = [".", "derive", "addr"]

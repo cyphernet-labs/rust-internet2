@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
       - name: Install rustc nightly
         uses: actions-rs/toolchain@v1
         with:
@@ -29,6 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
       - name: Install rustc stable
         uses: actions-rs/toolchain@v1
         with:
@@ -44,6 +48,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
       - name: Install rustc nightly
         uses: actions-rs/toolchain@v1
         with:
@@ -51,7 +57,7 @@ jobs:
           override: true
           components: rust-docs
       - uses: actions-rs/cargo@v1
-        name: Clippy
+        name: Docs
         with:
           command: doc
           args: --workspace --all-features
