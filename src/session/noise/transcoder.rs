@@ -19,21 +19,25 @@ use chacha20poly1305::aead::Error;
 
 use super::handshake::HandshakeError;
 use super::{chacha, hkdf};
+#[cfg(feature = "keygen")]
+use crate::session::noise::HandshakeState;
 use crate::session::transcoders::{Decrypt, Encrypt, Transcode};
+#[cfg(feature = "keygen")]
+use crate::{transport, DuplexConnection};
 
 pub type SymmetricKey = [u8; 32];
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
-pub enum TransportProtocol {
+pub enum FramingProtocol {
     Brontide = 2,
     Brontozaur = 3,
 }
 
-impl TransportProtocol {
+impl FramingProtocol {
     pub const fn message_len_size(self) -> usize {
         match self {
-            TransportProtocol::Brontide => 2,
-            TransportProtocol::Brontozaur => 3,
+            FramingProtocol::Brontide => 2,
+            FramingProtocol::Brontozaur => 3,
         }
     }
 
@@ -303,8 +307,70 @@ pub struct NoiseTranscoder<const LEN_SIZE: usize> {
 }
 
 impl<const LEN_SIZE: usize> NoiseTranscoder<LEN_SIZE> {
+    #[cfg(feature = "keygen")]
+    pub fn new_initiator(
+        local_key: secp256k1::SecretKey,
+        remote_key: secp256k1::PublicKey,
+        connection: &mut impl DuplexConnection,
+    ) -> Result<Self, transport::Error> {
+        use secp256k1::rand::thread_rng;
+
+        let mut rng = thread_rng();
+        let ephemeral_key = secp256k1::SecretKey::new(&mut rng);
+        let mut handshake = HandshakeState::new_initiator(
+            &local_key,
+            &remote_key,
+            &ephemeral_key,
+        );
+
+        let mut data = vec![];
+        loop {
+            let (act, h) = handshake.next(&data)?;
+            handshake = h;
+            if let Some(ref act) = act {
+                connection.as_sender().send_raw(&*act)?;
+                if let HandshakeState::Complete(Some((transcoder, pk))) =
+                    handshake
+                {
+                    break Ok(transcoder);
+                }
+                data =
+                    connection.as_receiver().recv_raw(handshake.data_len())?;
+            }
+        }
+    }
+
+    #[cfg(feature = "keygen")]
+    pub fn new_responder(
+        local_key: secp256k1::SecretKey,
+        connection: &mut impl DuplexConnection,
+    ) -> Result<Self, transport::Error> {
+        use secp256k1::rand::thread_rng;
+
+        let mut rng = thread_rng();
+        let ephemeral_key = secp256k1::SecretKey::new(&mut rng);
+        let mut handshake =
+            HandshakeState::new_responder(&local_key, &ephemeral_key);
+
+        let mut data =
+            connection.as_receiver().recv_raw(handshake.data_len())?;
+        loop {
+            let (act, h) = handshake.next(&data)?;
+            handshake = h;
+            if let HandshakeState::Complete(Some((transcoder, pk))) = handshake
+            {
+                break Ok(transcoder);
+            }
+            if let Some(act) = act {
+                connection.as_sender().send_raw(&*act)?;
+                data =
+                    connection.as_receiver().recv_raw(handshake.data_len())?;
+            }
+        }
+    }
+
     /// Instantiate a new Conduit with specified sending and receiving keys
-    pub fn new(
+    pub fn with(
         sending_key: SymmetricKey,
         receiving_key: SymmetricKey,
         chaining_key: SymmetricKey,
@@ -416,8 +482,8 @@ mod tests {
     use crate::BRONTIDE_MSG_MAX_LEN;
 
     fn setup_peers() -> (
-        NoiseTranscoder<{ TransportProtocol::Brontide.message_len_size() }>,
-        NoiseTranscoder<{ TransportProtocol::Brontide.message_len_size() }>,
+        NoiseTranscoder<{ FramingProtocol::Brontide.message_len_size() }>,
+        NoiseTranscoder<{ FramingProtocol::Brontide.message_len_size() }>,
     ) {
         let chaining_key_vec = Vec::<u8>::from_hex(
             "919219dbb2920afa8db80f9a51787a840bcf111ed8d588caf9ab4be716e42b01",
@@ -441,9 +507,9 @@ mod tests {
         receiving_key.copy_from_slice(&receiving_key_vec);
 
         let connected_peer =
-            NoiseTranscoder::new(sending_key, receiving_key, chaining_key);
+            NoiseTranscoder::with(sending_key, receiving_key, chaining_key);
         let remote_peer =
-            NoiseTranscoder::new(receiving_key, sending_key, chaining_key);
+            NoiseTranscoder::with(receiving_key, sending_key, chaining_key);
 
         (connected_peer, remote_peer)
     }

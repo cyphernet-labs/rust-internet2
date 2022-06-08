@@ -20,7 +20,7 @@ use std::net::{TcpListener, TcpStream};
 use amplify::Bipolar;
 use inet2_addr::InetSocketAddr;
 
-use super::{Duplex, Error, RecvFrame, SendFrame};
+use super::{DuplexConnection, Error, RecvFrame, SendFrame};
 use crate::session::noise;
 use crate::transport::connect::{self, TcpInetStream};
 
@@ -67,7 +67,7 @@ impl Bipolar for Stream {
     }
 }
 
-impl Duplex for Stream {
+impl DuplexConnection for Stream {
     #[inline]
     fn as_receiver(&mut self) -> &mut dyn RecvFrame { self }
 
@@ -86,7 +86,7 @@ impl RecvFrame for Stream {
     /// represents encoded message length.
     fn recv_frame(&mut self) -> Result<Vec<u8>, Error> {
         let mut buf: Vec<u8> =
-            vec![0u8; noise::TransportProtocol::Brontide.header_size()];
+            vec![0u8; noise::FramingProtocol::Brontide.header_size()];
         self.0.read_exact(&mut buf)?;
         Ok(buf)
     }

@@ -57,8 +57,8 @@ pub use session::{
 #[cfg(feature = "zmq")]
 pub use transport::zeromq;
 #[cfg(feature = "zmq")]
-pub use transport::ZmqType;
-pub use transport::{unencrypted, Duplex, RoutedFrame};
+pub use transport::ZmqSocketType;
+pub use transport::{unencrypted, DuplexConnection, RoutedFrame};
 
 /// Maximum message (packet payload) length for Brontide protocol
 pub const BRONTIDE_MSG_MAX_LEN: usize = u16::MAX as usize;

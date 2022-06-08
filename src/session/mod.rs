@@ -23,8 +23,11 @@ pub use noise::{
     HandshakeError, NoiseDecryptor, NoiseEncryptor, NoiseTranscoder,
 };
 pub use session::{
-    Receiver, RecvMessage, SendMessage, SendRecvMessage, Sender, Session, Split,
+    BrontideSession, BrontozaurSession, Receiver, RecvMessage, SendMessage,
+    SendRecvMessage, Sender, Session, Split,
 };
+#[cfg(feature = "zmq")]
+pub use session::{LocalSession, RpcSession};
 pub use transcoders::{
     Decrypt, DecryptionError, Encrypt, PlainTranscoder, Transcode,
 };

@@ -12,19 +12,23 @@
 // If not, see <https://opensource.org/licenses/MIT>.
 
 use std::any::Any;
+#[cfg(feature = "keygen")]
 use std::net::TcpListener;
 
+#[cfg(feature = "keygen")]
+use addr::NodeAddr;
 use amplify::Bipolar;
+#[cfg(feature = "keygen")]
 use inet2_addr::InetSocketAddr;
 #[cfg(feature = "zmq")]
 use inet2_addr::ServiceAddr;
 
 use super::{Decrypt, Encrypt, Transcode};
-#[cfg(feature = "keygen")]
-use crate::session::noise::HandshakeState;
+use crate::session::noise::FramingProtocol;
 use crate::session::{noise, PlainTranscoder};
 use crate::transport::{
-    encrypted, unencrypted, Duplex, Error, RecvFrame, RoutedFrame, SendFrame,
+    encrypted, unencrypted, DuplexConnection, Error, RecvFrame, RoutedFrame,
+    SendFrame,
 };
 #[cfg(feature = "zmq")]
 use crate::zeromq;
@@ -84,7 +88,7 @@ where
     T: Transcode,
     T::Left: Decrypt,
     T::Right: Encrypt,
-    C: Duplex + Bipolar,
+    C: DuplexConnection + Bipolar,
     C::Left: RecvFrame,
     C::Right: SendFrame,
 {
@@ -129,7 +133,7 @@ where
     T: Transcode + 'static,
     T::Left: Decrypt,
     T::Right: Encrypt,
-    C: Duplex + Bipolar + 'static,
+    C: DuplexConnection + Bipolar + 'static,
     C::Left: RecvFrame,
     C::Right: SendFrame,
     Error: From<T::Error> + From<<T::Left as Decrypt>::Error>,
@@ -279,7 +283,7 @@ where
     T: Transcode,
     T::Left: Decrypt + Send + 'static,
     T::Right: Encrypt + Send + 'static,
-    C: Duplex + Bipolar,
+    C: DuplexConnection + Bipolar,
     C::Left: RecvFrame + Send + 'static,
     C::Right: SendFrame + Send + 'static,
     Receiver<T::Left, C::Left>: RecvMessage,
@@ -298,120 +302,158 @@ where
     }
 }
 
-impl Session<PlainTranscoder, unencrypted::Connection> {
-    pub fn with_ftcp(
+pub type BrontideSession = Session<
+    NoiseTranscoder<{ FramingProtocol::Brontide.message_len_size() }>,
+    encrypted::Connection,
+>;
+pub type BrontozaurSession = Session<
+    NoiseTranscoder<{ FramingProtocol::Brontozaur.message_len_size() }>,
+    encrypted::Connection,
+>;
+#[cfg(feature = "zmq")]
+pub type LocalSession = Session<PlainTranscoder, zeromq::Connection>;
+#[cfg(feature = "zmq")]
+pub type RpcSession = Session<
+    NoiseTranscoder<{ FramingProtocol::Brontozaur.message_len_size() }>,
+    zeromq::Connection,
+>;
+
+#[cfg(feature = "keygen")]
+impl BrontideSession {
+    pub fn with(
         stream: std::net::TcpStream,
+        local_key: secp256k1::SecretKey,
         remote_addr: InetSocketAddr,
     ) -> Result<Self, Error> {
-        Ok(Self {
-            transcoder: PlainTranscoder,
-            connection: unencrypted::Connection::with(stream, remote_addr),
-        })
+        BrontideSession::with_tcp_encrypted(stream, local_key, remote_addr)
     }
 
-    pub fn connect_ftcp(socket_addr: InetSocketAddr) -> Result<Self, Error> {
-        Ok(Self {
-            transcoder: PlainTranscoder,
-            connection: unencrypted::Connection::connect(socket_addr)?,
-        })
+    pub fn connect(
+        local_key: secp256k1::SecretKey,
+        remote_node: NodeAddr,
+    ) -> Result<Self, Error> {
+        BrontideSession::connect_tcp_encrypted(local_key, remote_node)
     }
 
-    pub fn accept_ftcp(listener: &TcpListener) -> Result<Self, Error> {
-        Ok(Self {
-            transcoder: PlainTranscoder,
-            connection: unencrypted::Connection::accept(listener)?,
-        })
+    pub fn accept(
+        local_key: secp256k1::SecretKey,
+        listener: &TcpListener,
+    ) -> Result<Self, Error> {
+        BrontideSession::accept_tcp_encrypted(local_key, listener)
     }
 }
+
+#[cfg(feature = "keygen")]
+impl BrontozaurSession {
+    pub fn with(
+        stream: std::net::TcpStream,
+        local_key: secp256k1::SecretKey,
+        remote_addr: InetSocketAddr,
+    ) -> Result<Self, Error> {
+        BrontozaurSession::with_tcp_encrypted(stream, local_key, remote_addr)
+    }
+
+    pub fn connect(
+        local_key: secp256k1::SecretKey,
+        remote_node: NodeAddr,
+    ) -> Result<Self, Error> {
+        BrontozaurSession::connect_tcp_encrypted(local_key, remote_node)
+    }
+
+    pub fn accept(
+        local_key: secp256k1::SecretKey,
+        listener: &TcpListener,
+    ) -> Result<Self, Error> {
+        BrontozaurSession::accept_tcp_encrypted(local_key, listener)
+    }
+}
+
+#[cfg(feature = "zmq")]
+impl LocalSession {
+    pub fn with(
+        zmq_type: zeromq::ZmqSocketType,
+        remote: &ServiceAddr,
+        local: Option<ServiceAddr>,
+        identity: Option<&[u8]>,
+        context: &zmq::Context,
+    ) -> Result<Self, Error> {
+        LocalSession::with_zmq_unencrypted(
+            zmq_type, remote, local, identity, context,
+        )
+    }
+}
+
+/* TODO: Needs more work due to ZMQ PUSH/PULL sockets using two connections
+#[cfg(all(feature = "zmq", feature = "keygen"))]
+impl RpcSession {
+    pub fn with(
+        zmq_type: zeromq::ZmqSocketType,
+        remote: &ServiceAddr,
+        local: Option<ServiceAddr>,
+        identity: Option<&[u8]>,
+        context: &zmq::Context,
+    ) -> Result<Self, Error> {
+        RpcSession::with_zmq_encrypted(
+            zmq_type, remote, local, identity, context,
+        )
+    }
+
+    pub fn from_zmq_socket(
+        zmq_type: zeromq::ZmqSocketType,
+        socket: zmq::Socket,
+    ) -> Self {
+        RpcSession::from_zmq_socket_encrypted(zmq_type, socket)
+    }
+}
+ */
 
 #[cfg(feature = "keygen")]
 impl<const LEN_SIZE: usize>
     Session<NoiseTranscoder<LEN_SIZE>, encrypted::Connection>
 {
-    pub fn with_brontide(
+    fn with_tcp_encrypted(
         stream: std::net::TcpStream,
         local_key: secp256k1::SecretKey,
         remote_addr: InetSocketAddr,
     ) -> Result<Self, Error> {
-        Self::init_brontide(
-            encrypted::Connection::with(stream, remote_addr),
+        Self::init_tcp_encrypted(
             local_key,
+            encrypted::Connection::with(stream, remote_addr),
         )
     }
 
-    pub fn connect_brontide(
+    fn connect_tcp_encrypted(
         local_key: secp256k1::SecretKey,
-        remote_key: secp256k1::PublicKey,
-        remote_addr: InetSocketAddr,
+        remote_node: NodeAddr,
     ) -> Result<Self, Error> {
-        use secp256k1::rand::thread_rng;
-
-        let mut rng = thread_rng();
-        let ephemeral_key = secp256k1::SecretKey::new(&mut rng);
-        let mut handshake = HandshakeState::new_initiator(
-            &local_key,
-            &remote_key,
-            &ephemeral_key,
-        );
-
-        let mut connection = encrypted::Connection::connect(remote_addr)?;
-
-        let mut data = vec![];
-        let transcoder = loop {
-            let (act, h) = handshake.next(&data)?;
-            handshake = h;
-            if let Some(ref act) = act {
-                connection.as_sender().send_raw(&*act)?;
-                if let HandshakeState::Complete(Some((transcoder, pk))) =
-                    handshake
-                {
-                    break transcoder;
-                }
-                data =
-                    connection.as_receiver().recv_raw(handshake.data_len())?;
-            }
-        };
-
+        let mut connection = encrypted::Connection::connect(remote_node.addr)?;
+        let transcoder = NoiseTranscoder::new_initiator(
+            local_key,
+            remote_node.public_key(),
+            &mut connection,
+        )?;
         Ok(Self {
             transcoder,
             connection,
         })
     }
 
-    pub fn accept_brontide(
+    fn accept_tcp_encrypted(
         local_key: secp256k1::SecretKey,
         listener: &TcpListener,
     ) -> Result<Self, Error> {
-        Self::init_brontide(encrypted::Connection::accept(listener)?, local_key)
+        Self::init_tcp_encrypted(
+            local_key,
+            encrypted::Connection::accept(listener)?,
+        )
     }
 
-    fn init_brontide(
-        mut connection: encrypted::Connection,
+    fn init_tcp_encrypted(
         local_key: secp256k1::SecretKey,
+        mut connection: encrypted::Connection,
     ) -> Result<Self, Error> {
-        use secp256k1::rand::thread_rng;
-
-        let mut rng = thread_rng();
-        let ephemeral_key = secp256k1::SecretKey::new(&mut rng);
-        let mut handshake =
-            HandshakeState::new_responder(&local_key, &ephemeral_key);
-
-        let mut data =
-            connection.as_receiver().recv_raw(handshake.data_len())?;
-        let transcoder = loop {
-            let (act, h) = handshake.next(&data)?;
-            handshake = h;
-            if let HandshakeState::Complete(Some((transcoder, pk))) = handshake
-            {
-                break transcoder;
-            }
-            if let Some(act) = act {
-                connection.as_sender().send_raw(&*act)?;
-                data =
-                    connection.as_receiver().recv_raw(handshake.data_len())?;
-            }
-        };
-
+        let transcoder =
+            NoiseTranscoder::new_responder(local_key, &mut connection)?;
         Ok(Self {
             transcoder,
             connection,
@@ -419,10 +461,57 @@ impl<const LEN_SIZE: usize>
     }
 }
 
+/* TODO: Needs more work due to ZMQ PUSH/PULL sockets using two connections
+#[cfg(all(feature = "zmq", feature = "keygen"))]
+impl
+    Session<
+        NoiseTranscoder<{ FramingProtocol::Brontozaur.message_len_size() }>,
+        zeromq::Connection,
+    >
+{
+    fn connect_zmq_encrypted(
+        zmq_type: ZmqConnectionType,
+        remote_node: &NodeAddr,
+        local_key: secp256k1::SecretKey,
+        local: Option<ServiceAddr>,
+        identity: Option<&[u8]>,
+        context: &zmq::Context,
+    ) -> Result<Self, Error> {
+        let mut socket = SocketAddr::try_from(remote_node.addr).map_err(|_| Error::TorNotSupportedYet)?;
+        let mut connection = zeromq::Connection::with(
+            zmq_type.socket_out_type(), &ServiceAddr::Tcp(socket), local, identity, context,
+        )?;
+        let transcoder = NoiseTranscoder::new_initiator(local_key, remote_node.public_key(), &mut connection)?;
+        Ok(Self {
+            transcoder,
+            connection
+        })
+    }
+
+    fn bind_zmq_encrypted(
+        zmq_type: ZmqConnectionType,
+        bind_addr: &InetSocketAddr,
+        local_key: secp256k1::SecretKey,
+        identity: Option<&[u8]>,
+        context: &zmq::Context,
+    ) -> Result<Self, Error> {
+        let mut socket = SocketAddr::try_from(remote_node).map_err(|_| Error::TorNotSupportedYet)?;
+        let mut connection = zeromq::Connection::with(
+            zmq_type.socket_in_type(), &ServiceAddr::Tcp(socket), local, identity, context,
+        )?;
+        let transcoder = NoiseTranscoder::new_responder(local_key, &mut connection)?;
+        Ok(Self {
+            transcoder,
+            connection
+        })
+    }
+}
+ */
+
 #[cfg(feature = "zmq")]
 impl Session<PlainTranscoder, zeromq::Connection> {
-    pub fn with_zmq_unencrypted(
-        zmq_type: zeromq::ZmqType,
+    fn with_zmq_unencrypted(
+        zmq_type: zeromq::ZmqSocketType,
         remote: &ServiceAddr,
         local: Option<ServiceAddr>,
         identity: Option<&[u8]>,
@@ -436,8 +525,8 @@ impl Session<PlainTranscoder, zeromq::Connection> {
         })
     }
 
-    pub fn from_zmq_socket_unencrypted(
-        zmq_type: zeromq::ZmqType,
+    fn from_zmq_socket_unencrypted(
+        zmq_type: zeromq::ZmqSocketType,
         socket: zmq::Socket,
     ) -> Self {
         Self {
@@ -553,7 +642,7 @@ mod test {
         let ctx = zmq::Context::new();
         let locator = ServiceAddr::Inproc(s!("test"));
         let mut rx = Session::with_zmq_unencrypted(
-            zeromq::ZmqType::Rep,
+            zeromq::ZmqSocketType::Rep,
             &locator,
             None,
             None,
@@ -561,7 +650,7 @@ mod test {
         )
         .unwrap();
         let mut tx = Session::with_zmq_unencrypted(
-            zeromq::ZmqType::Req,
+            zeromq::ZmqSocketType::Req,
             &locator,
             None,
             None,

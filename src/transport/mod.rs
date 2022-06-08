@@ -29,7 +29,7 @@ pub mod zeromq;
 use std::io::ErrorKind;
 
 #[cfg(feature = "zmq")]
-pub use zeromq::ZmqType;
+pub use zeromq::{ZmqConnectionType, ZmqSocketType};
 
 use crate::session::HandshakeError;
 
@@ -123,7 +123,7 @@ pub struct RoutedFrame {
 /// frame parser implementing [`RecvFrame`] and frame composer implementing
 /// [`SendFrame`]. These types must also implement [`amplify::Bipolar`], i.e.
 /// they must be splittable into the receiving and sending half-types.
-pub trait Duplex {
+pub trait DuplexConnection {
     fn as_receiver(&mut self) -> &mut dyn RecvFrame;
     fn as_sender(&mut self) -> &mut dyn SendFrame;
     fn split(self) -> (Box<dyn RecvFrame + Send>, Box<dyn SendFrame + Send>);

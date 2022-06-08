@@ -22,7 +22,7 @@ use amplify::Bipolar;
 use inet2_addr::InetSocketAddr;
 
 use crate::transport::{Error, RecvFrame, SendFrame};
-use crate::Duplex;
+use crate::DuplexConnection;
 
 /// A market trait for concrete stream implementations which can be used as a
 /// generic parameter in a [`Connection`] object.
@@ -47,7 +47,7 @@ impl<S: Stream> Connection<S> {
     }
 }
 
-impl<S: Stream + Duplex> Duplex for Connection<S> {
+impl<S: Stream + DuplexConnection> DuplexConnection for Connection<S> {
     #[inline]
     fn as_receiver(&mut self) -> &mut dyn RecvFrame {
         self.stream.as_receiver()

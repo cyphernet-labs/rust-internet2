@@ -88,6 +88,10 @@ impl NodeAddr {
     pub fn new(id: NodeId, addr: InetSocketAddr) -> NodeAddr {
         NodeAddr { id, addr }
     }
+
+    /// Returns node public key
+    #[inline]
+    pub fn public_key(self) -> secp256k1::PublicKey { self.id.public_key() }
 }
 
 impl FromStr for NodeAddr {

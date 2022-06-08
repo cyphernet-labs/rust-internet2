@@ -438,7 +438,7 @@ impl InitiatorAwaitingActTwoState {
         // 7. rn = 0, sn = 0
         // - done by Conduit
         let conduit =
-            NoiseTranscoder::new(sending_key, receiving_key, chaining_key);
+            NoiseTranscoder::with(sending_key, receiving_key, chaining_key);
 
         // 8. Send m = 0 || c || t
         act_three[0] = 0;
@@ -538,7 +538,7 @@ impl ResponderAwaitingActThreeState {
         // 10. rn = 0, sn = 0
         // - done by Conduit
         let mut conduit =
-            NoiseTranscoder::new(sending_key, receiving_key, chaining_key);
+            NoiseTranscoder::with(sending_key, receiving_key, chaining_key);
 
         // Any remaining data in the read buffer would be encrypted, so transfer
         // ownership to the Conduit for future use.

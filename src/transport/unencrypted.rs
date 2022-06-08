@@ -19,7 +19,7 @@ use std::net::{TcpListener, TcpStream};
 use amplify::Bipolar;
 use inet2_addr::InetSocketAddr;
 
-use super::{Duplex, Error, RecvFrame, SendFrame};
+use super::{DuplexConnection, Error, RecvFrame, SendFrame};
 use crate::transport::connect::{self, TcpInetStream};
 
 /// Type alias for FTCP connection which is [`connect::Connection`] with FTCP
@@ -60,7 +60,7 @@ impl Bipolar for Stream {
     }
 }
 
-impl Duplex for Stream {
+impl DuplexConnection for Stream {
     #[inline]
     fn as_receiver(&mut self) -> &mut dyn RecvFrame { self }
 
