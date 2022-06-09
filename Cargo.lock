@@ -670,7 +670,7 @@ dependencies = [
 
 [[package]]
 name = "inet2_addr"
-version = "0.8.0"
+version = "0.8.0-rc.1"
 dependencies = [
  "amplify",
  "ed25519-dalek",
@@ -687,7 +687,7 @@ dependencies = [
 
 [[package]]
 name = "inet2_derive"
-version = "0.8.0"
+version = "0.8.0-alpha.1"
 dependencies = [
  "amplify",
  "internet2",

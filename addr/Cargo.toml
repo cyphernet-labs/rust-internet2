@@ -1,6 +1,6 @@
 [package]
 name = "inet2_addr"
-version = "0.8.0"
+version = "0.8.0-rc.1"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Internet2 addresses with support for Tor v3"
@@ -36,6 +36,7 @@ all = ["serde", "tor", "parse_arg", "stringly_conversions", "strict_encoding", "
 default = ["stringly_conversions"]
 serde = ["serde_crate", "torut/serialize",
     "serde_yaml", "serde_json", "toml",
+    "secp256k1/serde",
     "stringly_conversions",
     "stringly_conversions_crate/alloc",
     "stringly_conversions_crate/serde_str_helpers"]
