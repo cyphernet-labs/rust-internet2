@@ -373,7 +373,7 @@ impl LocalSession {
     pub fn with(
         zmq_type: zeromq::ZmqSocketType,
         remote: &ServiceAddr,
-        local: Option<ServiceAddr>,
+        local: Option<&ServiceAddr>,
         identity: Option<&[u8]>,
         context: &zmq::Context,
     ) -> Result<Self, Error> {
@@ -513,7 +513,7 @@ impl Session<PlainTranscoder, zeromq::Connection> {
     fn with_zmq_unencrypted(
         zmq_type: zeromq::ZmqSocketType,
         remote: &ServiceAddr,
-        local: Option<ServiceAddr>,
+        local: Option<&ServiceAddr>,
         identity: Option<&[u8]>,
         context: &zmq::Context,
     ) -> Result<Self, Error> {

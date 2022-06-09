@@ -243,7 +243,7 @@ impl Connection {
     pub fn with(
         api_type: ZmqSocketType,
         remote: &ServiceAddr,
-        local: Option<ServiceAddr>,
+        local: Option<&ServiceAddr>,
         identity: Option<impl AsRef<[u8]>>,
         context: &zmq::Context,
     ) -> Result<Self, transport::Error> {
