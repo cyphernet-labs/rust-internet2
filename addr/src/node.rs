@@ -158,7 +158,7 @@ impl FromStr for PartialNodeAddr {
 }
 
 /// Local node, keeping its id and private key
-#[derive(Clone, PartialEq, Eq, Debug, Display)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Display)]
 #[display("{id}")]
 pub struct LocalNode {
     id: NodeId,
