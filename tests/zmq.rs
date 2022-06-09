@@ -8,7 +8,7 @@ fn main() {
     let node_addr2 = node_addr1.clone();
     let ctx = zmq::Context::new();
 
-    let mut session = LocalSession::with(
+    let mut session = LocalSession::connect(
         ZmqSocketType::RouterBind,
         &node_addr1,
         None,
@@ -18,7 +18,7 @@ fn main() {
     .unwrap();
 
     let tx = std::thread::spawn(move || {
-        let mut session = LocalSession::with(
+        let mut session = LocalSession::connect(
             ZmqSocketType::RouterConnect,
             &node_addr2,
             None,

@@ -370,23 +370,30 @@ impl BrontozaurSession {
 
 #[cfg(feature = "zmq")]
 impl LocalSession {
-    pub fn with(
+    pub fn connect(
         zmq_type: zeromq::ZmqSocketType,
         remote: &ServiceAddr,
         local: Option<&ServiceAddr>,
         identity: Option<&[u8]>,
         context: &zmq::Context,
     ) -> Result<Self, Error> {
-        LocalSession::with_zmq_unencrypted(
+        LocalSession::connect_zmq_unencrypted(
             zmq_type, remote, local, identity, context,
         )
+    }
+
+    pub fn with_zmq_socket(
+        zmq_type: zeromq::ZmqSocketType,
+        socket: zmq::Socket,
+    ) -> Self {
+        LocalSession::with_zmq_socket_unencrypted(zmq_type, socket)
     }
 }
 
 /* TODO: Needs more work due to ZMQ PUSH/PULL sockets using two connections
 #[cfg(all(feature = "zmq", feature = "keygen"))]
 impl RpcSession {
-    pub fn with(
+    pub fn connect(
         zmq_type: zeromq::ZmqSocketType,
         remote: &ServiceAddr,
         local: Option<ServiceAddr>,
@@ -398,7 +405,7 @@ impl RpcSession {
         )
     }
 
-    pub fn from_zmq_socket(
+    pub fn with_zmq_socket(
         zmq_type: zeromq::ZmqSocketType,
         socket: zmq::Socket,
     ) -> Self {
@@ -510,7 +517,7 @@ impl
 
 #[cfg(feature = "zmq")]
 impl Session<PlainTranscoder, zeromq::Connection> {
-    fn with_zmq_unencrypted(
+    fn connect_zmq_unencrypted(
         zmq_type: zeromq::ZmqSocketType,
         remote: &ServiceAddr,
         local: Option<&ServiceAddr>,
@@ -519,19 +526,19 @@ impl Session<PlainTranscoder, zeromq::Connection> {
     ) -> Result<Self, Error> {
         Ok(Self {
             transcoder: PlainTranscoder,
-            connection: zeromq::Connection::with(
+            connection: zeromq::Connection::connect(
                 zmq_type, remote, local, identity, context,
             )?,
         })
     }
 
-    fn from_zmq_socket_unencrypted(
+    fn with_zmq_socket_unencrypted(
         zmq_type: zeromq::ZmqSocketType,
         socket: zmq::Socket,
     ) -> Self {
         Self {
             transcoder: PlainTranscoder,
-            connection: zeromq::Connection::from_zmq_socket(zmq_type, socket),
+            connection: zeromq::Connection::with_socket(zmq_type, socket),
         }
     }
 }
@@ -641,7 +648,7 @@ mod test {
     fn test_zmq_no_encryption() {
         let ctx = zmq::Context::new();
         let locator = ServiceAddr::Inproc(s!("test"));
-        let mut rx = Session::with_zmq_unencrypted(
+        let mut rx = Session::connect_zmq_unencrypted(
             zeromq::ZmqSocketType::Rep,
             &locator,
             None,
@@ -649,7 +656,7 @@ mod test {
             &ctx,
         )
         .unwrap();
-        let mut tx = Session::with_zmq_unencrypted(
+        let mut tx = Session::connect_zmq_unencrypted(
             zeromq::ZmqSocketType::Req,
             &locator,
             None,

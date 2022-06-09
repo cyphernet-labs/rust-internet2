@@ -240,7 +240,7 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub fn with(
+    pub fn connect(
         api_type: ZmqSocketType,
         remote: &ServiceAddr,
         local: Option<&ServiceAddr>,
@@ -278,23 +278,20 @@ impl Connection {
             }
             (_, _) => None,
         }
-        .map(|s| WrappedSocket::from_zmq_socket(api_type, s));
+        .map(|s| WrappedSocket::with_socket(api_type, s));
         Ok(Self {
             api_type,
             remote_addr: Some(remote.clone()),
-            input: WrappedSocket::from_zmq_socket(api_type, socket),
+            input: WrappedSocket::with_socket(api_type, socket),
             output,
         })
     }
 
-    pub fn from_zmq_socket(
-        api_type: ZmqSocketType,
-        socket: zmq::Socket,
-    ) -> Self {
+    pub fn with_socket(api_type: ZmqSocketType, socket: zmq::Socket) -> Self {
         Self {
             api_type,
             remote_addr: None,
-            input: WrappedSocket::from_zmq_socket(api_type, socket),
+            input: WrappedSocket::with_socket(api_type, socket),
             output: None,
         }
     }
@@ -341,7 +338,7 @@ impl Connection {
 
 impl WrappedSocket {
     #[inline]
-    fn from_zmq_socket(api_type: ZmqSocketType, socket: zmq::Socket) -> Self {
+    fn with_socket(api_type: ZmqSocketType, socket: zmq::Socket) -> Self {
         Self { api_type, socket }
     }
 
