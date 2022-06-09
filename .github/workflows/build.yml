@@ -28,8 +28,6 @@ jobs:
           - zmq,tor
     steps:
       - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
       - name: Install rust stable
         uses: actions-rs/toolchain@v1
         with:
@@ -50,15 +48,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, windows-2019 ]
+        os: [ ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, windows-2019, windows-2022 ]
     steps:
       - uses: actions/checkout@v2
-      - name: Install linux dependencies
-        if: startsWith(matrix.os, 'ubuntu')
-        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
-      - name: Install macos dependencies
-        if: startsWith(matrix.os, 'macos')
-        run: brew install pkg-config zmq
       - name: Install rust stable
         uses: actions-rs/toolchain@v1
         with:
@@ -82,24 +74,11 @@ jobs:
         toolchain: [ nightly, beta, stable, 1.59.0 ]
     steps:
       - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
       - name: Install rust ${{ matrix.toolchain }}
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           override: true
-      - name: Regenerate Cargo.lock
-        if: startsWith(matrix.toolchain, '1.')
-        uses: actions-rs/cargo@v1
-        with:
-          command: generate-lockfile
-      - name: Pin versions
-        if: startsWith(matrix.toolchain, '1.')
-        uses: actions-rs/cargo@v1
-        with:
-          command: update
-          args: -p zeroize --precise "1.2.0"
       - name: All features
         uses: actions-rs/cargo@v1
         with:
@@ -109,8 +88,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libzmq3-dev
       - name: Install latest stable
         uses: actions-rs/toolchain@v1
         with:
@@ -143,10 +120,6 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libpcre3-dev
       - name: set environment variables
         run: |
           ANDROID_SDK_ROOT="$GITHUB_WORKSPACE/sdk"
@@ -203,7 +176,7 @@ jobs:
           export LDFLAGS="--sysroot=$NDK_HOME/platforms/android-21/arch-x86"
           cargo check --all-features --target=i686-linux-android
   ios:
-    runs-on: macos-11
+    runs-on: macos-12
     steps:
       - uses: actions/checkout@v2
       - name: Install rust
@@ -213,7 +186,6 @@ jobs:
           override: true
       - name: Dependencies and targets
         run: |
-          brew install zmq
           rustup target add aarch64-apple-ios x86_64-apple-ios
           cargo install cargo-lipo
       - name: build
