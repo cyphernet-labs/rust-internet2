@@ -625,7 +625,7 @@ dependencies = [
 
 [[package]]
 name = "internet2"
-version = "0.7.0-rc.1"
+version = "0.7.0"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
@@ -1218,9 +1218,9 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "1.8.1"
+version = "1.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92e4ef7c6fc77d2e1163fcaf02cd394c08c543923706e5972ca1d79a227c14ca"
+checksum = "d1bbb5109701ede3df3e20b82a134d601036f02b8b2f259965266a6a784cc749"
 dependencies = [
  "amplify",
  "bitcoin",
