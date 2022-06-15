@@ -89,8 +89,11 @@ pub struct NodeAddr {
 impl NodeAddr {
     /// Constructs new node address.
     #[inline]
-    pub fn new(id: NodeId, addr: InetSocketAddr) -> NodeAddr {
-        NodeAddr { id, addr }
+    pub fn new(id: NodeId, addr: impl Into<InetSocketAddr>) -> NodeAddr {
+        NodeAddr {
+            id,
+            addr: addr.into(),
+        }
     }
 
     /// Returns node public key
