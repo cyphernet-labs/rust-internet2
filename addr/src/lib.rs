@@ -26,6 +26,9 @@ extern crate stringly_conversions_crate as stringly_conversions;
 #[cfg(feature = "strict_encoding")]
 #[macro_use]
 extern crate strict_encoding;
+#[cfg(feature = "lightning_encoding")]
+#[macro_use]
+extern crate lightning_encoding;
 #[cfg(feature = "serde")]
 #[macro_use]
 extern crate serde_crate as serde;

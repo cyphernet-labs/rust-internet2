@@ -670,10 +670,11 @@ dependencies = [
 
 [[package]]
 name = "inet2_addr"
-version = "0.8.0-rc.1"
+version = "0.8.0-rc.2"
 dependencies = [
  "amplify",
  "ed25519-dalek",
+ "lightning_encoding",
  "parse_arg",
  "secp256k1",
  "serde",
@@ -710,7 +711,7 @@ dependencies = [
 
 [[package]]
 name = "internet2"
-version = "0.8.0-beta.1"
+version = "0.8.0-rc.1"
 dependencies = [
  "amplify",
  "bitcoin_hashes",

@@ -47,6 +47,10 @@ pub enum NodeAddrParseError {
 )]
 #[cfg_attr(feature = "strict_encoding", derive(StrictEncode, StrictDecode))]
 #[cfg_attr(
+    feature = "lightning_encoding",
+    derive(LightningEncode, LightningDecode)
+)]
+#[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate", transparent)
