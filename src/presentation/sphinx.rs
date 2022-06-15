@@ -18,6 +18,7 @@
 use std::fmt::Debug;
 use std::io::{self, Cursor, Read, Write};
 
+use addr::NodeId;
 use bitcoin_hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::ChaCha20;
@@ -96,7 +97,7 @@ pub trait SphinxPayload:
 #[derive(LightningEncode, LightningDecode)]
 pub struct Hop<Payload: SphinxPayload> {
     /// Public key of the hop node
-    pub node_id: PublicKey,
+    pub node_id: NodeId,
     /// Payload data specific for that node
     pub payload: Payload,
 }
@@ -107,7 +108,7 @@ where
 {
     /// Constructs sphinx hop from a remote node public key and a payload data
     #[inline]
-    pub fn with(node_id: PublicKey, payload: Payload) -> Hop<Payload> {
+    pub fn with(node_id: NodeId, payload: Payload) -> Hop<Payload> {
         Hop { node_id, payload }
     }
 
@@ -543,7 +544,8 @@ where
 
     for hop in hops {
         // Perform ECDH
-        let shared_secret = SharedSecret::new(&hop.node_id, &ephemeral_key);
+        let shared_secret =
+            SharedSecret::new(&hop.node_id.public_key(), &ephemeral_key);
         let shared_secret = sha256::Hash::from_slice(shared_secret.as_ref())
             .expect("ECDH result is not a 32-byte hash");
         shared_secrets.push(shared_secret);

@@ -711,7 +711,7 @@ dependencies = [
 
 [[package]]
 name = "internet2"
-version = "0.8.0-rc.1"
+version = "0.8.0-rc.2"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
