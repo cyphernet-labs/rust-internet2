@@ -15,9 +15,7 @@ use std::borrow::Borrow;
 
 use amplify::Bipolar;
 
-use crate::transport::{
-    Error, FRAME_PREFIX_SIZE, FRAME_SUFFIX_SIZE, MAX_FRAME_SIZE,
-};
+use crate::transport::{Error, FRAME_PREFIX_SIZE, FRAME_SUFFIX_SIZE};
 
 pub trait Encrypt {
     fn encrypt(&mut self, buffer: impl Borrow<[u8]>) -> Vec<u8>;
@@ -71,9 +69,6 @@ impl Decrypt for PlainTranscoder {
         let frame_len = buffer.len();
         if frame_len < FRAME_PREFIX_SIZE + FRAME_SUFFIX_SIZE {
             return Err(Error::FrameTooSmall(frame_len));
-        }
-        if frame_len > MAX_FRAME_SIZE {
-            return Err(Error::OversizedFrame(frame_len));
         }
         let mut len_buf = [0u8; 2];
         len_buf.copy_from_slice(&buffer[0..2]);

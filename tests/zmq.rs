@@ -37,6 +37,11 @@ fn main() {
             .unwrap();
         let frame = session.recv_routed_message().unwrap();
         assert_eq!(frame.msg, b"world");
+        session
+            .send_routed_message(b"tx_new", b"rx", b"rx", &[0; 1024 * 1024])
+            .unwrap();
+        let frame = session.recv_routed_message().unwrap();
+        assert_eq!(frame.msg, [0; 1024 * 1024]);
     });
 
     session.recv_routed_message().unwrap();
@@ -46,6 +51,10 @@ fn main() {
     session.recv_routed_message().unwrap();
     session
         .send_routed_message(b"rx", b"tx_new", b"tx_new", b"world")
+        .unwrap();
+    session.recv_routed_message().unwrap();
+    session
+        .send_routed_message(b"rx", b"tx_new", b"tx_new", &[0; 1024 * 1024])
         .unwrap();
 
     tx.join().unwrap();
