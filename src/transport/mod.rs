@@ -182,7 +182,7 @@ pub trait SendFrame {
     /// Sends a single frame of data structured as a byte string. The frame must
     /// already contain LNP framing prefix with size data. The function must
     /// check that the provided data frame length is below the limit defined
-    /// with [`MAX_FRAME_SIZE`] constant.
+    /// with [`MAX_FRAME_SIZE`] constant if a tcp connection is used.
     ///
     /// # Returns
     /// In case of success, number of bytes send (NB: this is larger than the
@@ -193,7 +193,7 @@ pub trait SendFrame {
     /// * [`Error::SocketIo`] if the overlaid protocol errors with I/O error
     ///   type
     /// * [`Error::OversizedFrame`] if the provided data length exceeds
-    ///   [`MAX_FRAME_SIZE`]
+    ///   [`MAX_FRAME_SIZE`] and a tcp connection is used
     // We can't use `impl AsRev<[u8]>` here since with it the trait can't be
     // made into an object
     fn send_frame(&mut self, frame: &[u8]) -> Result<usize, Error>;
@@ -219,8 +219,7 @@ pub trait SendFrame {
     /// receiver with `remote_id`. Function works like [`RecvFrame::recv_frame`]
     /// and is used for the underlying protocols supporting multipeer
     /// connectivity. The frame must already contain LNP framing prefix with
-    /// size data. The function must check that the provided data frame
-    /// length is below the limit defined with [`MAX_FRAME_SIZE`] constant.
+    /// size data.
     ///
     /// # Returns
     /// In case of success, number of bytes send (NB: this is larger than the
@@ -230,8 +229,6 @@ pub trait SendFrame {
     /// # Errors
     /// * [`Error::SocketIo`] if the overlaid protocol errors with I/O error
     ///   type
-    /// * [`Error::OversizedFrame`] if the provided data length exceeds
-    ///   [`MAX_FRAME_SIZE`]
     ///
     /// # Panics
     /// Default implementation panics, since the most of framing protocols do
