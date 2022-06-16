@@ -426,12 +426,7 @@ impl Bipolar for Connection {
 impl RecvFrame for WrappedSocket {
     #[inline]
     fn recv_frame(&mut self) -> Result<Vec<u8>, transport::Error> {
-        let data = self.socket.recv_bytes(0)?;
-        let len = data.len();
-        if len > super::MAX_FRAME_SIZE as usize {
-            return Err(transport::Error::OversizedFrame(len));
-        }
-        Ok(data)
+        Ok(self.socket.recv_bytes(0)?)
     }
 
     fn recv_raw(&mut self, _len: usize) -> Result<Vec<u8>, transport::Error> {
@@ -459,10 +454,6 @@ impl RecvFrame for WrappedSocket {
                 "excessive parts in ZMQ multipart routed frame",
             ));
         }
-        let len = msg.len();
-        if len > super::MAX_FRAME_SIZE as usize {
-            return Err(transport::Error::OversizedFrame(len));
-        }
         Ok(RoutedFrame { hop, src, dst, msg })
     }
 }
@@ -470,12 +461,8 @@ impl RecvFrame for WrappedSocket {
 impl SendFrame for WrappedSocket {
     #[inline]
     fn send_frame(&mut self, data: &[u8]) -> Result<usize, transport::Error> {
-        let len = data.len();
-        if len > super::MAX_FRAME_SIZE as usize {
-            return Err(transport::Error::OversizedFrame(len));
-        }
         self.socket.send(data, 0)?;
-        Ok(len)
+        Ok(data.len())
     }
 
     fn send_raw(&mut self, data: &[u8]) -> Result<usize, transport::Error> {
@@ -490,10 +477,6 @@ impl SendFrame for WrappedSocket {
         dest: &[u8],
         data: &[u8],
     ) -> Result<usize, transport::Error> {
-        let len = data.len();
-        if len > super::MAX_FRAME_SIZE as usize {
-            return Err(transport::Error::OversizedFrame(len));
-        }
         self.socket
             .send_multipart(&[route, source, dest, data], 0)?;
         Ok(data.len())
