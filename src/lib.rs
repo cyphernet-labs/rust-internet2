@@ -51,7 +51,7 @@ pub use presentation::{
     UnknownTypeError, Unmarshall, UnmarshallFn, Unmarshaller,
 };
 pub use session::{
-    Decrypt, Encrypt, NoiseDecryptor, NoiseEncryptor, NoiseTranscoder,
+    noise, Decrypt, Encrypt, NoiseDecryptor, NoiseEncryptor, NoiseTranscoder,
     PlainTranscoder, SendRecvMessage, Session, Split, Transcode,
 };
 #[cfg(feature = "zmq")]

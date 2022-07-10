@@ -21,6 +21,7 @@ use super::ceremony::{
 };
 use super::transcoder::{NoiseTranscoder, SymmetricKey};
 use super::{chacha, hkdf};
+use crate::noise::EncryptionError;
 
 // Alias type to help differentiate between temporary key and chaining key when
 // passing bytes around
@@ -40,13 +41,14 @@ macro_rules! concat_then_sha256 {
 #[derive(
     Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Display, Error, From
 )]
-#[display(Debug)]
+#[display(inner)]
 pub enum HandshakeError {
     #[from]
-    General(String),
+    Other(String),
 
     #[from]
-    ChaCha20(chacha20poly1305::aead::Error),
+    #[from(chacha20poly1305::aead::Error)]
+    Encryption(EncryptionError),
 }
 
 #[derive(Debug)]
@@ -102,7 +104,7 @@ impl<const LEN_SIZE: usize> HandshakeState<LEN_SIZE> {
                 state.next::<LEN_SIZE>(input)
             }
             HandshakeState::Complete(_conduit) => {
-                Err(HandshakeError::General(String::from(
+                Err(HandshakeError::Other(String::from(
                     "Handshake State is Complete, nothing to process ",
                 )))
             }
@@ -272,9 +274,7 @@ impl ResponderAwaitingActOneState {
         // If a act3 response is received which is 66 bytes, or any other
         // garbage data that would indicate a bad peer connection.
         if bytes_read < input.len() {
-            return Err(HandshakeError::General(
-                "Act One too large".to_string(),
-            ));
+            return Err(HandshakeError::Other("Act One too large".to_string()));
         }
 
         // In the event of a partial fill, stay in the same state and wait for
@@ -355,9 +355,7 @@ impl InitiatorAwaitingActTwoState {
         // peer since responder data is required to generate
         // post-authentication messages (so it can't come before we transition)
         if bytes_read < input.len() {
-            return Err(HandshakeError::General(
-                "Act Two too large".to_string(),
-            ));
+            return Err(HandshakeError::Other("Act Two too large".to_string()));
         }
 
         // In the event of a partial fill, stay in the same state and wait for
@@ -497,7 +495,7 @@ impl ResponderAwaitingActThreeState {
         // abort the connection attempt.
         if version != 0 {
             // this should not crash the process, hence no panic
-            return Err(HandshakeError::General(
+            return Err(HandshakeError::Other(
                 "unexpected version".to_string(),
             ));
         }
@@ -515,7 +513,7 @@ impl ResponderAwaitingActThreeState {
             if let Ok(public_key) = PublicKey::from_slice(&remote_pubkey) {
                 public_key
             } else {
-                return Err(HandshakeError::General(
+                return Err(HandshakeError::Other(
                     "invalid remote public key".to_string(),
                 ));
             };
@@ -638,7 +636,7 @@ fn process_act_message(
     {
         public_key
     } else {
-        return Err(HandshakeError::General(
+        return Err(HandshakeError::Other(
             "invalid remote ephemeral public key".to_string(),
         ));
     };
@@ -647,7 +645,7 @@ fn process_act_message(
     // abort the connection attempt
     if version != 0 {
         // this should not crash the process, hence no panic
-        return Err(HandshakeError::General("unexpected version".to_string()));
+        return Err(HandshakeError::Other("unexpected version".to_string()));
     }
 
     // 4. h = SHA-256(h || re.serializeCompressed())
@@ -808,7 +806,7 @@ mod test {
 
         assert_eq!(
             test_ctx.responder.next(&act1).err().unwrap(),
-            HandshakeError::General(String::from("Act One too large"))
+            HandshakeError::Other(String::from("Act One too large"))
         );
     }
 
@@ -839,7 +837,7 @@ mod test {
 
         assert_eq!(
             test_ctx.responder.next(&act1).err().unwrap(),
-            HandshakeError::General(String::from("unexpected version"))
+            HandshakeError::Other(String::from("unexpected version"))
         );
     }
 
@@ -852,7 +850,7 @@ mod test {
 
         assert_eq!(
             test_ctx.responder.next(&act1).err().unwrap(),
-            HandshakeError::General(String::from(
+            HandshakeError::Other(String::from(
                 "invalid remote ephemeral public key"
             ))
         );
@@ -867,7 +865,7 @@ mod test {
 
         assert_eq!(
             test_ctx.responder.next(&act1).err().unwrap(),
-            HandshakeError::ChaCha20(chacha20poly1305::aead::Error)
+            HandshakeError::Encryption(chacha20poly1305::aead::Error.into())
         );
     }
 
@@ -884,7 +882,7 @@ mod test {
 
         assert_eq!(
             awaiting_act_two_state.next(&act2).err().unwrap(),
-            HandshakeError::General(String::from("Act Two too large"))
+            HandshakeError::Other(String::from("Act Two too large"))
         );
     }
 
@@ -942,7 +940,7 @@ mod test {
 
         assert_eq!(
             awaiting_act_two_state.next(&act2).err().unwrap(),
-            HandshakeError::General(String::from("unexpected version"))
+            HandshakeError::Other(String::from("unexpected version"))
         );
     }
 
@@ -957,7 +955,7 @@ mod test {
 
         assert_eq!(
             awaiting_act_two_state.next(&act2).err().unwrap(),
-            HandshakeError::General(String::from(
+            HandshakeError::Other(String::from(
                 "invalid remote ephemeral public key"
             ))
         );
@@ -974,7 +972,7 @@ mod test {
 
         assert_eq!(
             awaiting_act_two_state.next(&act2).err().unwrap(),
-            HandshakeError::ChaCha20(chacha20poly1305::aead::Error)
+            HandshakeError::Encryption(chacha20poly1305::aead::Error.into())
         );
     }
 
@@ -1034,7 +1032,7 @@ mod test {
 
         assert_eq!(
             awaiting_act_three_state.next(&act3).err().unwrap(),
-            HandshakeError::General(String::from("unexpected version"))
+            HandshakeError::Other(String::from("unexpected version"))
         );
     }
 
@@ -1070,7 +1068,7 @@ mod test {
 
         assert_eq!(
             awaiting_act_three_state.next(&act3).err().unwrap(),
-            HandshakeError::ChaCha20(chacha20poly1305::aead::Error)
+            HandshakeError::Encryption(chacha20poly1305::aead::Error.into())
         );
     }
 
@@ -1085,7 +1083,7 @@ mod test {
 
         assert_eq!(
             awaiting_act_three_state.next(&act3).err().unwrap(),
-            HandshakeError::General(String::from("invalid remote public key"))
+            HandshakeError::Other(String::from("invalid remote public key"))
         );
     }
 
@@ -1100,7 +1098,7 @@ mod test {
 
         assert_eq!(
             awaiting_act_three_state.next(&act3).err().unwrap(),
-            HandshakeError::ChaCha20(chacha20poly1305::aead::Error)
+            HandshakeError::Encryption(chacha20poly1305::aead::Error.into())
         );
     }
 

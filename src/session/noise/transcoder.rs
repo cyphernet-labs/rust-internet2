@@ -15,7 +15,6 @@ use std::borrow::Borrow;
 
 use amplify::num::u24;
 use amplify::Bipolar;
-use chacha20poly1305::aead::Error;
 
 use super::handshake::HandshakeError;
 use super::{chacha, hkdf};
@@ -48,7 +47,27 @@ impl FramingProtocol {
 
 pub const KEY_ROTATION_PERIOD: u32 = 1000;
 
+#[derive(
+    Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Display, Error,
+    From
+)]
+#[display(doc_comments)]
+pub enum EncryptionError {
+    /// invalid protocol length spec {0}; allowed values are 2 (Brontide) and 3
+    /// (Brontozaur).
+    InvalidProtocolLen(usize),
+
+    /// message length {0} exceeds maximum size allowed for the encryption
+    /// protocol frame.
+    ExceedingMaxLength(usize),
+
+    /// chacha20poly1305 AEAD encrypter error.
+    #[from(chacha20poly1305::aead::Error)]
+    ChaCha,
+}
+
 #[derive(Debug)]
+// TODO: Switch on enum type for generic (after MSRV bump)
 pub struct NoiseEncryptor<const LEN_SIZE: usize> {
     sending_key: SymmetricKey,
     sending_chaining_key: SymmetricKey,
@@ -60,9 +79,27 @@ impl<const LEN_SIZE: usize> NoiseEncryptor<LEN_SIZE> {
         LEN_SIZE + chacha::TAG_SIZE;
     const MESSAGE_LEN_SIZE: usize = LEN_SIZE;
 
-    pub fn encrypt_buf(&mut self, buffer: &[u8]) -> Result<Vec<u8>, Error> {
-        let length = buffer.len() as u16;
-        let length_bytes = length.to_be_bytes();
+    pub fn encrypt_buf(
+        &mut self,
+        buffer: &[u8],
+    ) -> Result<Vec<u8>, EncryptionError> {
+        let length = buffer.len();
+        let length_bytes = match LEN_SIZE {
+            2 if length > u16::MAX as usize => {
+                return Err(EncryptionError::ExceedingMaxLength(length))
+            }
+            3 if length > u24::MAX.into_usize() => {
+                return Err(EncryptionError::ExceedingMaxLength(length))
+            }
+            2 => (length as u16).to_be_bytes().to_vec(),
+            3 => u24::try_from(length as u32)
+                .expect("we just checked length correspondence")
+                .to_le_bytes()
+                .to_vec(),
+            invalid => {
+                return Err(EncryptionError::InvalidProtocolLen(invalid))
+            }
+        };
 
         let mut ciphertext = vec![
             0u8;
@@ -140,7 +177,7 @@ impl<const LEN_SIZE: usize> NoiseDecryptor<LEN_SIZE> {
     pub fn decrypt_single_message(
         &mut self,
         new_data: Option<&[u8]>,
-    ) -> Result<Option<Vec<u8>>, Error> {
+    ) -> Result<Option<Vec<u8>>, EncryptionError> {
         let mut read_buffer = if let Some(buffer) = self.read_buffer.take() {
             buffer
         } else {
@@ -160,7 +197,7 @@ impl<const LEN_SIZE: usize> NoiseDecryptor<LEN_SIZE> {
     fn decrypt_buf(
         &mut self,
         buffer: &[u8],
-    ) -> Result<(Option<Vec<u8>>, usize), Error> {
+    ) -> Result<(Option<Vec<u8>>, usize), EncryptionError> {
         let message_length = if let Some(length) = self.pending_message_length {
             // we have already decrypted the header
             length
@@ -174,17 +211,18 @@ impl<const LEN_SIZE: usize> NoiseDecryptor<LEN_SIZE> {
             let encrypted_length =
                 &buffer[0..Self::TAGGED_MESSAGE_LENGTH_HEADER_SIZE];
 
-            let mut decrypt = |length_bytes: &mut [u8]| -> Result<(), _> {
-                chacha::decrypt(
-                    &self.receiving_key,
-                    self.receiving_nonce as u64,
-                    &[0; 0],
-                    encrypted_length,
-                    length_bytes,
-                )?;
-                self.increment_nonce();
-                Ok(())
-            };
+            let mut decrypt =
+                |length_bytes: &mut [u8]| -> Result<(), EncryptionError> {
+                    chacha::decrypt(
+                        &self.receiving_key,
+                        self.receiving_nonce as u64,
+                        &[0; 0],
+                        encrypted_length,
+                        length_bytes,
+                    )?;
+                    self.increment_nonce();
+                    Ok(())
+                };
 
             // the message length
             match LEN_SIZE {
@@ -263,7 +301,7 @@ impl<const LEN_SIZE: usize> NoiseDecryptor<LEN_SIZE> {
 }
 
 impl<const LEN_SIZE: usize> Iterator for NoiseDecryptor<LEN_SIZE> {
-    type Item = Result<Option<Vec<u8>>, Error>;
+    type Item = Result<Option<Vec<u8>>, EncryptionError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.poisoned {
@@ -290,7 +328,7 @@ impl<const LEN_SIZE: usize> Decrypt for NoiseDecryptor<LEN_SIZE> {
         match self.decrypt_single_message(Some(buffer.borrow())) {
             Ok(Some(data)) => Ok(data),
             Ok(None) => Ok(Vec::new()),
-            Err(e) => Err(HandshakeError::ChaCha20(e)),
+            Err(e) => Err(HandshakeError::Encryption(e)),
         }
     }
 }
@@ -393,7 +431,10 @@ impl<const LEN_SIZE: usize> NoiseTranscoder<LEN_SIZE> {
     }
 
     /// Encrypt data to be sent to peer
-    pub fn encrypt_buf(&mut self, buffer: &[u8]) -> Result<Vec<u8>, Error> {
+    pub fn encrypt_buf(
+        &mut self,
+        buffer: &[u8],
+    ) -> Result<Vec<u8>, EncryptionError> {
         self.encryptor.encrypt_buf(buffer)
     }
 
@@ -407,7 +448,7 @@ impl<const LEN_SIZE: usize> NoiseTranscoder<LEN_SIZE> {
     pub fn decrypt_single_message(
         &mut self,
         new_data: Option<&[u8]>,
-    ) -> Result<Option<Vec<u8>>, Error> {
+    ) -> Result<Option<Vec<u8>>, EncryptionError> {
         self.decryptor.decrypt_single_message(new_data)
     }
 
@@ -448,7 +489,7 @@ impl<const LEN_SIZE: usize> Decrypt for NoiseTranscoder<LEN_SIZE> {
         match self.decrypt_single_message(Some(buffer.borrow())) {
             Ok(Some(data)) => Ok(data),
             Ok(None) => Ok(Vec::new()),
-            Err(e) => Err(HandshakeError::ChaCha20(e)),
+            Err(e) => Err(HandshakeError::Encryption(e)),
         }
     }
 }
@@ -609,7 +650,7 @@ mod tests {
                 .decrypt_single_message(Some(&encrypted))
                 .err()
                 .unwrap(),
-            chacha20poly1305::aead::Error
+            chacha20poly1305::aead::Error.into()
         );
     }
 
@@ -642,7 +683,7 @@ mod tests {
         connected_peer.decryptor.receiving_key = [0; 32];
         assert_eq!(
             connected_peer.decryptor.next().unwrap().err().unwrap(),
-            chacha20poly1305::aead::Error
+            chacha20poly1305::aead::Error.into()
         );
         assert_eq!(connected_peer.decryptor.next(), None);
     }
@@ -660,7 +701,7 @@ mod tests {
         connected_peer.decryptor.receiving_key = [0; 32];
         assert_eq!(
             connected_peer.decryptor.next().unwrap().err().unwrap(),
-            chacha20poly1305::aead::Error
+            chacha20poly1305::aead::Error.into()
         );
         assert_eq!(connected_peer.decryptor.next(), None);
     }
@@ -685,7 +726,7 @@ mod tests {
         connected_peer.decryptor.receiving_key = [0; 32];
         assert_eq!(
             connected_peer.decryptor.next().unwrap().err().unwrap(),
-            chacha20poly1305::aead::Error
+            chacha20poly1305::aead::Error.into()
         );
 
         // Restore the receiving key, do a read and ensure None is returned
@@ -712,7 +753,7 @@ mod tests {
         connected_peer.decryptor.receiving_key = [0; 32];
         assert_eq!(
             connected_peer.decryptor.next().unwrap().err().unwrap(),
-            chacha20poly1305::aead::Error
+            chacha20poly1305::aead::Error.into()
         );
 
         // Restore the receiving key, do a read and ensure None is returned

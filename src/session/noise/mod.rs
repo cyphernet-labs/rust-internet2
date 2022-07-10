@@ -19,6 +19,6 @@ mod transcoder;
 
 pub use handshake::{HandshakeError, HandshakeState};
 pub use transcoder::{
-    FramingProtocol, NoiseDecryptor, NoiseEncryptor, NoiseTranscoder,
-    KEY_ROTATION_PERIOD,
+    EncryptionError, FramingProtocol, NoiseDecryptor, NoiseEncryptor,
+    NoiseTranscoder, KEY_ROTATION_PERIOD,
 };
