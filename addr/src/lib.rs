@@ -41,7 +41,7 @@ mod server;
 
 pub use inet::{
     AddrParseError, InetAddr, InetSocketAddr, InetSocketAddrExt,
-    NoOnionSupportError, Transport,
+    NoOnionSupportError, PartialSocketAddr, Transport,
 };
 pub use node::{
     LocalNode, NodeAddr, NodeAddrParseError, NodeId, NodeIdInvalidPubkey,
