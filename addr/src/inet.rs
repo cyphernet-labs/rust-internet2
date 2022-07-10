@@ -61,6 +61,7 @@ pub enum AddrParseError {
     OnionAddressError(torut::onion::OnionAddressParseError),
 
     /// Tor addresses are not supported; consider compiling with `tor` feature
+    #[from(NoOnionSupportError)]
     NeedsTorFeature,
 }
 
