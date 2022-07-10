@@ -154,6 +154,7 @@ fn inner_enum(input: &DeriveInput, data: &DataEnum) -> Result<TokenStream2> {
 
                     from_type.push(quote_spanned! { v.span() =>
                         Self::#type_const => {
+                            #[allow(clippy::clone_on_copy)]
                             Self::#type_name(data.downcast_ref::<#payload>().expect(ERR).clone())
                         }
                     });

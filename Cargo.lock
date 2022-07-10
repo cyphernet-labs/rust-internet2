@@ -688,7 +688,7 @@ dependencies = [
 
 [[package]]
 name = "inet2_derive"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "amplify",
  "internet2",
