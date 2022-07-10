@@ -32,6 +32,16 @@ pub enum FramingProtocol {
     Brontozaur = 3,
 }
 
+impl From<usize> for FramingProtocol {
+    fn from(len: usize) -> Self {
+        match len {
+            2 => FramingProtocol::Brontide,
+            3 => FramingProtocol::Brontozaur,
+            _ => unreachable!("invalid Noise_XK protocol ids"),
+        }
+    }
+}
+
 impl FramingProtocol {
     pub const fn message_len_size(self) -> usize {
         match self {
@@ -53,10 +63,6 @@ pub const KEY_ROTATION_PERIOD: u32 = 1000;
 )]
 #[display(doc_comments)]
 pub enum EncryptionError {
-    /// invalid protocol length spec {0}; allowed values are 2 (Brontide) and 3
-    /// (Brontozaur).
-    InvalidProtocolLen(usize),
-
     /// message length {0} exceeds maximum size allowed for the encryption
     /// protocol frame.
     ExceedingMaxLength(usize),
@@ -87,21 +93,18 @@ impl<const LEN_SIZE: usize> NoiseEncryptor<LEN_SIZE> {
         buffer: &[u8],
     ) -> Result<Vec<u8>, EncryptionError> {
         let length = buffer.len();
-        let length_bytes = match LEN_SIZE {
-            2 if length > u16::MAX as usize => {
+        let length_bytes = match FramingProtocol::from(LEN_SIZE) {
+            FramingProtocol::Brontide if length > u16::MAX as usize => {
                 return Err(EncryptionError::ExceedingMaxLength(length))
             }
-            3 if length > u24::MAX.into_usize() => {
+            FramingProtocol::Brontozaur if length > u24::MAX.into_usize() => {
                 return Err(EncryptionError::ExceedingMaxLength(length))
             }
-            2 => (length as u16).to_be_bytes().to_vec(),
-            3 => u24::try_from(length as u32)
+            FramingProtocol::Brontide => (length as u16).to_be_bytes().to_vec(),
+            FramingProtocol::Brontozaur => u24::try_from(length as u32)
                 .expect("we just checked length correspondence")
                 .to_le_bytes()
                 .to_vec(),
-            invalid => {
-                return Err(EncryptionError::InvalidProtocolLen(invalid))
-            }
         };
 
         let mut ciphertext = vec![
@@ -206,8 +209,8 @@ impl<const LEN_SIZE: usize> NoiseDecryptor<LEN_SIZE> {
             length
         } else {
             if buffer.len() < Self::TAGGED_MESSAGE_LENGTH_HEADER_SIZE {
-                // A message must be at least 18 bytes (2 for encrypted length,
-                // 16 for the tag)
+                // A message must be at least 18 or 18 bytes (2 or 3 for
+                // encrypted length, 16 for the tag)
                 return Ok((None, 0));
             }
 
@@ -228,18 +231,17 @@ impl<const LEN_SIZE: usize> NoiseDecryptor<LEN_SIZE> {
                 };
 
             // the message length
-            match LEN_SIZE {
-                2 => {
+            match FramingProtocol::from(LEN_SIZE) {
+                FramingProtocol::Brontide => {
                     let mut length_bytes = [0u8; 2];
                     decrypt(&mut length_bytes)?;
                     u16::from_be_bytes(length_bytes) as usize
                 }
-                3 => {
+                FramingProtocol::Brontozaur => {
                     let mut length_bytes = [0u8; 3];
                     decrypt(&mut length_bytes)?;
-                    u24::from_be_bytes(length_bytes).as_u32() as usize
+                    u24::from_le_bytes(length_bytes).as_u32() as usize
                 }
-                _ => panic!("unsupported brontide message size"),
             }
         };
 

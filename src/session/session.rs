@@ -214,7 +214,7 @@ fn recv_noise_message<const LEN_SIZE: usize>(
 }
 
 impl<const LEN_SIZE: usize> SendRecvMessage
-    for Session<NoiseTranscoder<LEN_SIZE>, encrypted::Connection>
+    for Session<NoiseTranscoder<LEN_SIZE>, encrypted::Connection<LEN_SIZE>>
 {
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
         let reader = self.connection.as_receiver();
@@ -299,11 +299,11 @@ where
 
 pub type BrontideSession = Session<
     NoiseTranscoder<{ FramingProtocol::Brontide.message_len_size() }>,
-    encrypted::Connection,
+    encrypted::Connection<2>,
 >;
 pub type BrontozaurSession = Session<
     NoiseTranscoder<{ FramingProtocol::Brontozaur.message_len_size() }>,
-    encrypted::Connection,
+    encrypted::Connection<3>,
 >;
 #[cfg(feature = "zmq")]
 pub type LocalSession = Session<PlainTranscoder, zeromq::Connection>;
@@ -411,7 +411,7 @@ impl RpcSession {
 
 #[cfg(feature = "keygen")]
 impl<const LEN_SIZE: usize>
-    Session<NoiseTranscoder<LEN_SIZE>, encrypted::Connection>
+    Session<NoiseTranscoder<LEN_SIZE>, encrypted::Connection<LEN_SIZE>>
 {
     fn with_tcp_encrypted(
         stream: std::net::TcpStream,
@@ -452,7 +452,7 @@ impl<const LEN_SIZE: usize>
 
     fn init_tcp_encrypted(
         local_key: secp256k1::SecretKey,
-        mut connection: encrypted::Connection,
+        mut connection: encrypted::Connection<LEN_SIZE>,
     ) -> Result<Self, Error> {
         let transcoder =
             NoiseTranscoder::new_responder(local_key, &mut connection)?;
@@ -592,7 +592,7 @@ impl RecvMessage for Receiver<PlainTranscoder, unencrypted::Stream> {
 }
 
 impl<const LEN_SIZE: usize> RecvMessage
-    for Receiver<NoiseDecryptor<LEN_SIZE>, encrypted::Stream>
+    for Receiver<NoiseDecryptor<LEN_SIZE>, encrypted::Stream<LEN_SIZE>>
 {
     #[inline]
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {

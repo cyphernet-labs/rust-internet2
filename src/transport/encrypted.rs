@@ -11,8 +11,9 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-//! Brontide protocol: reads & writes frames (corresponding to LNP messages)
-//! from TCP stream according to BOLT-8 requirements.
+//! Noise_XK protocols: reads & writes frames (corresponding to LNP messages)
+//! from TCP stream according to Brontide BOLT-8 requirements or LNP/BP
+//! Brontozaur protocol.
 
 use std::io::Read;
 use std::net::{TcpListener, TcpStream};
@@ -24,20 +25,21 @@ use super::{DuplexConnection, Error, RecvFrame, SendFrame};
 use crate::session::noise;
 use crate::transport::connect::{self, TcpInetStream};
 
-/// Wraps TCP stream for doing framed reads according to BOLT-8 requirements.
+/// Wraps TCP stream for Noise_XK-encrypted data.
 #[derive(Debug, From)]
-pub struct Stream(TcpStream);
+pub struct Stream<const LEN_SIZE: usize>(TcpStream);
 
-/// Type alias for Brontide connection which is [`connect::Connection`] with
-/// TCP [`Stream`].
-pub type Connection = connect::Connection<Stream>;
+/// Type alias for Noise_XK-encrypted connection which is
+/// [`connect::Connection`] with TCP [`Stream`].
+pub type Connection<const LEN_SIZE: usize> =
+    connect::Connection<Stream<LEN_SIZE>>;
 
-impl Stream {
+impl<const LEN_SIZE: usize> Stream<LEN_SIZE> {
     #[inline]
-    pub fn with(stream: TcpStream) -> Stream { Stream::from(stream) }
+    pub fn with(stream: TcpStream) -> Stream<LEN_SIZE> { Stream::from(stream) }
 }
 
-impl Connection {
+impl<const LEN_SIZE: usize> Connection<LEN_SIZE> {
     pub fn connect(inet_addr: InetSocketAddr) -> Result<Self, Error> {
         let stream = TcpStream::connect_inet_socket(inet_addr)?;
         Ok(Connection::with(stream, inet_addr))
@@ -49,11 +51,11 @@ impl Connection {
     }
 }
 
-impl connect::Stream for Stream {}
+impl<const LEN_SIZE: usize> connect::Stream for Stream<LEN_SIZE> {}
 
-impl Bipolar for Stream {
-    type Left = Stream;
-    type Right = Stream;
+impl<const LEN_SIZE: usize> Bipolar for Stream<LEN_SIZE> {
+    type Left = Stream<LEN_SIZE>;
+    type Right = Stream<LEN_SIZE>;
 
     #[inline]
     fn join(left: Self::Left, right: Self::Right) -> Self {
@@ -67,7 +69,7 @@ impl Bipolar for Stream {
     }
 }
 
-impl DuplexConnection for Stream {
+impl<const LEN_SIZE: usize> DuplexConnection for Stream<LEN_SIZE> {
     #[inline]
     fn as_receiver(&mut self) -> &mut dyn RecvFrame { self }
 
@@ -81,12 +83,13 @@ impl DuplexConnection for Stream {
     }
 }
 
-impl RecvFrame for Stream {
-    /// Receive Brontide header. It has a fixed size of 18 bytes and
+impl<const LEN_SIZE: usize> RecvFrame for Stream<LEN_SIZE> {
+    /// Receive encrypted header. It has a fixed size of 18 or 19 bytes and
     /// represents encoded message length.
     fn recv_frame(&mut self) -> Result<Vec<u8>, Error> {
-        let mut buf: Vec<u8> =
-            vec![0u8; noise::FramingProtocol::Brontide.header_size()];
+        let protocol = noise::FramingProtocol::from(LEN_SIZE);
+
+        let mut buf: Vec<u8> = vec![0u8; protocol.header_size()];
         self.0.read_exact(&mut buf)?;
         Ok(buf)
     }
@@ -99,7 +102,7 @@ impl RecvFrame for Stream {
     }
 }
 
-impl SendFrame for Stream {
+impl<const LEN_SIZE: usize> SendFrame for Stream<LEN_SIZE> {
     #[inline]
     fn send_frame(&mut self, data: &[u8]) -> Result<usize, Error> {
         self.0.send_frame(data)
