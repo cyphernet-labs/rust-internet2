@@ -64,6 +64,9 @@ pub enum EncryptionError {
     /// chacha20poly1305 AEAD encrypter error.
     #[from(chacha20poly1305::aead::Error)]
     ChaCha,
+
+    /// message provided for a Noise protocol has incorrect length
+    ExpectedMessageLenMismatch,
 }
 
 #[derive(Debug)]

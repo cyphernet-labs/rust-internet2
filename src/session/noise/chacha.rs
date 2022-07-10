@@ -11,8 +11,10 @@
 // along with this software.
 // If not, see <https://opensource.org/licenses/MIT>.
 
-use chacha20poly1305::aead::{Aead, Error, NewAead, Payload};
-use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce}; /* Or `XChaCha20Poly1305` */
+use chacha20poly1305::aead::{Aead, NewAead, Payload};
+use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
+
+use crate::noise::EncryptionError; /* Or `XChaCha20Poly1305` */
 
 pub const TAG_SIZE: usize = 16;
 
@@ -24,7 +26,7 @@ pub fn encrypt(
     associated_data: &[u8],
     plaintext: &[u8],
     cipher_text: &mut [u8],
-) -> Result<(), Error> {
+) -> Result<(), EncryptionError> {
     let mut chacha_nonce = [0u8; 12];
     chacha_nonce[4..].copy_from_slice(&nonce.to_le_bytes());
 
@@ -41,6 +43,9 @@ pub fn encrypt(
 
     let encrypted = cipher.encrypt(nonce, payload)?;
 
+    if cipher_text.len() != encrypted.len() {
+        return Err(EncryptionError::ExpectedMessageLenMismatch);
+    }
     cipher_text.copy_from_slice(&encrypted[..]);
 
     Ok(())
@@ -54,7 +59,7 @@ pub fn decrypt(
     associated_data: &[u8],
     ciphertext: &[u8],
     plain_text: &mut [u8],
-) -> Result<(), Error> {
+) -> Result<(), EncryptionError> {
     let mut chacha_nonce = [0u8; 12];
     chacha_nonce[4..].copy_from_slice(&nonce.to_le_bytes());
 
@@ -71,6 +76,9 @@ pub fn decrypt(
 
     let decrypted = cipher.decrypt(nonce, payload)?;
 
+    if plain_text.len() != decrypted.len() {
+        return Err(EncryptionError::ExpectedMessageLenMismatch);
+    }
     plain_text.copy_from_slice(&decrypted[..]);
 
     Ok(())
