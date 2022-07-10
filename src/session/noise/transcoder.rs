@@ -291,8 +291,8 @@ impl<const LEN_SIZE: usize> NoiseDecryptor<LEN_SIZE> {
     }
 
     #[inline]
-    pub(crate) fn pending_message_len(&self) -> Option<u16> {
-        self.pending_message_length.map(|len| len as u16)
+    pub(crate) fn pending_message_len(&self) -> Option<usize> {
+        self.pending_message_length
     }
 
     #[inline]

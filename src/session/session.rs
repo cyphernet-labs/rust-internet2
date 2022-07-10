@@ -198,19 +198,14 @@ impl SendRecvMessage for Session<PlainTranscoder, unencrypted::Connection> {
     fn into_any(self: Box<Self>) -> Box<dyn Any> { self }
 }
 
-fn recv_brontide_message<const LEN_SIZE: usize>(
+fn recv_noise_message<const LEN_SIZE: usize>(
     reader: &mut dyn RecvFrame,
     decrypt: &mut NoiseDecryptor<LEN_SIZE>,
 ) -> Result<Vec<u8>, Error> {
     // Reading & decrypting length
     let encrypted_len = reader.recv_frame()?;
     decrypt.decrypt(encrypted_len)?;
-    let len = decrypt.pending_message_len();
-    if len == None {
-        return Err(Error::NoBrontideHeader);
-    }
-
-    let len = len.unwrap_or_default();
+    let len = decrypt.pending_message_len().ok_or(Error::NoNoiseHeader)?;
     // Reading & decrypting payload
     let encrypted_payload =
         reader.recv_raw(len as usize + noise::chacha::TAG_SIZE)?;
@@ -223,7 +218,7 @@ impl<const LEN_SIZE: usize> SendRecvMessage
 {
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
         let reader = self.connection.as_receiver();
-        recv_brontide_message(reader, &mut self.transcoder.decryptor)
+        recv_noise_message(reader, &mut self.transcoder.decryptor)
     }
 
     #[inline]
@@ -601,7 +596,7 @@ impl<const LEN_SIZE: usize> RecvMessage
 {
     #[inline]
     fn recv_raw_message(&mut self) -> Result<Vec<u8>, Error> {
-        recv_brontide_message(&mut self.input, &mut self.decryptor)
+        recv_noise_message(&mut self.input, &mut self.decryptor)
     }
     fn recv_routed_message(&mut self) -> Result<RoutedFrame, Error> {
         InternalInput::recv_routed_message(self)

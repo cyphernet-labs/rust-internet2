@@ -81,8 +81,8 @@ pub enum Error {
     /// read length {actual} is not equal to the expected length {expected}
     InvalidLength { expected: u16, actual: u16 },
 
-    /// message does not contain Brontide length header
-    NoBrontideHeader,
+    /// message does not contain Noise_XK length header
+    NoNoiseHeader,
 
     /// connections over Tor protocol are not yet supported
     TorNotSupportedYet,
