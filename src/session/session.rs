@@ -17,6 +17,7 @@ use std::net::TcpListener;
 
 #[cfg(feature = "keygen")]
 use addr::NodeAddr;
+use addr::NodeId;
 use amplify::Bipolar;
 #[cfg(feature = "keygen")]
 use inet2_addr::InetSocketAddr;
@@ -317,9 +318,7 @@ impl<const LEN_SIZE: usize>
     Session<NoiseTranscoder<LEN_SIZE>, encrypted::Connection<LEN_SIZE>>
 {
     #[inline]
-    pub fn remote_pubkey(&self) -> secp256k1::PublicKey {
-        self.transcoder.remote_pubkey()
-    }
+    pub fn remote_id(&self) -> NodeId { self.transcoder.remote_pubkey().into() }
 }
 
 #[cfg(feature = "keygen")]
