@@ -313,6 +313,15 @@ pub type RpcSession = Session<
     zeromq::Connection,
 >;
 
+impl<const LEN_SIZE: usize>
+    Session<NoiseTranscoder<LEN_SIZE>, encrypted::Connection<LEN_SIZE>>
+{
+    #[inline]
+    pub fn remote_pubkey(&self) -> secp256k1::PublicKey {
+        self.transcoder.remote_pubkey()
+    }
+}
+
 #[cfg(feature = "keygen")]
 impl BrontideSession {
     pub fn with(
