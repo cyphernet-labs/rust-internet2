@@ -57,7 +57,7 @@ pub enum HandshakeState<const LEN_SIZE: usize> {
     ResponderAwaitingActOne(ResponderAwaitingActOneState),
     InitiatorAwaitingActTwo(InitiatorAwaitingActTwoState),
     ResponderAwaitingActThree(ResponderAwaitingActThreeState),
-    Complete(Option<(NoiseTranscoder<LEN_SIZE>, PublicKey)>),
+    Complete(Option<NoiseTranscoder<LEN_SIZE>>),
 }
 
 // Enum dispatch for state machine. Single public interface can statically
@@ -435,17 +435,18 @@ impl InitiatorAwaitingActTwoState {
 
         // 7. rn = 0, sn = 0
         // - done by Conduit
-        let conduit =
-            NoiseTranscoder::with(sending_key, receiving_key, chaining_key);
+        let conduit = NoiseTranscoder::with(
+            sending_key,
+            receiving_key,
+            chaining_key,
+            responder_static_public_key,
+        );
 
         // 8. Send m = 0 || c || t
         act_three[0] = 0;
         Ok((
             Some(Act::Three(act_three)),
-            HandshakeState::Complete(Some((
-                conduit,
-                responder_static_public_key,
-            ))),
+            HandshakeState::Complete(Some(conduit)),
         ))
     }
 }
@@ -535,17 +536,18 @@ impl ResponderAwaitingActThreeState {
 
         // 10. rn = 0, sn = 0
         // - done by Conduit
-        let mut conduit =
-            NoiseTranscoder::with(sending_key, receiving_key, chaining_key);
+        let mut conduit = NoiseTranscoder::with(
+            sending_key,
+            receiving_key,
+            chaining_key,
+            initiator_pubkey,
+        );
 
         // Any remaining data in the read buffer would be encrypted, so transfer
         // ownership to the Conduit for future use.
         conduit.read_buf(&input[bytes_read..]);
 
-        Ok((
-            None,
-            HandshakeState::Complete(Some((conduit, initiator_pubkey))),
-        ))
+        Ok((None, HandshakeState::Complete(Some(conduit))))
     }
 }
 
@@ -896,16 +898,18 @@ mod test {
         let (act3, complete_state) =
             do_next_or_panic!(awaiting_act_two_state, &test_ctx.valid_act2);
 
-        let (conduit, remote_pubkey) =
-            if let Complete(Some((conduit, remote_pubkey))) = complete_state {
-                (conduit, remote_pubkey)
-            } else {
-                panic!();
-            };
+        let transcoder = if let Complete(Some(transcoder)) = complete_state {
+            transcoder
+        } else {
+            panic!();
+        };
 
         assert_eq!(act3.as_ref(), test_ctx.valid_act3.as_slice());
-        assert_eq!(remote_pubkey, test_ctx.responder_static_public_key);
-        assert_eq!(0, conduit.decryptor.read_buffer_length());
+        assert_eq!(
+            transcoder.remote_pubkey(),
+            test_ctx.responder_static_public_key
+        );
+        assert_eq!(0, transcoder.decryptor.read_buffer_length());
     }
 
     // Initiator::AwaitingActTwo -> Complete (segmented calls)
@@ -984,17 +988,16 @@ mod test {
         let (_act2, awaiting_act_three_state) =
             do_next_or_panic!(test_ctx.responder, &test_ctx.valid_act1);
 
-        let (conduit, remote_pubkey) =
-            if let (None, Complete(Some((conduit, remote_pubkey)))) =
-                awaiting_act_three_state.next(&test_ctx.valid_act3).unwrap()
-            {
-                (conduit, remote_pubkey)
-            } else {
-                panic!();
-            };
+        let transcoder = if let (None, Complete(Some(transcoder))) =
+            awaiting_act_three_state.next(&test_ctx.valid_act3).unwrap()
+        {
+            transcoder
+        } else {
+            panic!();
+        };
 
-        assert_eq!(remote_pubkey, test_ctx.initiator_public_key);
-        assert_eq!(0, conduit.decryptor.read_buffer_length());
+        assert_eq!(transcoder.remote_pubkey(), test_ctx.initiator_public_key);
+        assert_eq!(0, transcoder.decryptor.read_buffer_length());
     }
 
     // Responder::AwaitingActThree -> None (with extra bytes)
@@ -1008,16 +1011,15 @@ mod test {
         let mut act3 = test_ctx.valid_act3;
         act3.extend_from_slice(&[2; 100]);
 
-        let (conduit, remote_pubkey) =
-            if let (None, Complete(Some((conduit, remote_pubkey)))) =
-                awaiting_act_three_state.next(&act3).unwrap()
-            {
-                (conduit, remote_pubkey)
-            } else {
-                panic!();
-            };
+        let conduit = if let (None, Complete(Some(conduit))) =
+            awaiting_act_three_state.next(&act3).unwrap()
+        {
+            conduit
+        } else {
+            panic!();
+        };
 
-        assert_eq!(remote_pubkey, test_ctx.initiator_public_key);
+        assert_eq!(conduit.remote_pubkey(), test_ctx.initiator_public_key);
         assert_eq!(100, conduit.decryptor.read_buffer_length());
     }
 

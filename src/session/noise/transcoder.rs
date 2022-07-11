@@ -81,6 +81,7 @@ pub struct NoiseEncryptor<const LEN_SIZE: usize> {
     sending_key: SymmetricKey,
     sending_chaining_key: SymmetricKey,
     sending_nonce: u32,
+    remote_pubkey: secp256k1::PublicKey,
 }
 
 impl<const LEN_SIZE: usize> NoiseEncryptor<LEN_SIZE> {
@@ -163,6 +164,7 @@ pub struct NoiseDecryptor<const LEN_SIZE: usize> {
     read_buffer: Option<Vec<u8>>,
     poisoned: bool, /* signal an error has occurred so None is returned on
                      * iteration after failure */
+    remote_pubkey: secp256k1::PublicKey,
 }
 
 impl<const LEN_SIZE: usize> NoiseDecryptor<LEN_SIZE> {
@@ -372,9 +374,7 @@ impl<const LEN_SIZE: usize> NoiseTranscoder<LEN_SIZE> {
             handshake = h;
             if let Some(ref act) = act {
                 connection.as_sender().send_raw(&*act)?;
-                if let HandshakeState::Complete(Some((transcoder, pk))) =
-                    handshake
-                {
+                if let HandshakeState::Complete(Some(transcoder)) = handshake {
                     break Ok(transcoder);
                 }
                 data =
@@ -400,8 +400,7 @@ impl<const LEN_SIZE: usize> NoiseTranscoder<LEN_SIZE> {
         loop {
             let (act, h) = handshake.next(&data)?;
             handshake = h;
-            if let HandshakeState::Complete(Some((transcoder, pk))) = handshake
-            {
+            if let HandshakeState::Complete(Some(transcoder)) = handshake {
                 break Ok(transcoder);
             }
             if let Some(act) = act {
@@ -417,12 +416,14 @@ impl<const LEN_SIZE: usize> NoiseTranscoder<LEN_SIZE> {
         sending_key: SymmetricKey,
         receiving_key: SymmetricKey,
         chaining_key: SymmetricKey,
+        remote_pubkey: secp256k1::PublicKey,
     ) -> Self {
         NoiseTranscoder {
             encryptor: NoiseEncryptor {
                 sending_key,
                 sending_chaining_key: chaining_key,
                 sending_nonce: 0,
+                remote_pubkey,
             },
             decryptor: NoiseDecryptor {
                 receiving_key,
@@ -431,8 +432,13 @@ impl<const LEN_SIZE: usize> NoiseTranscoder<LEN_SIZE> {
                 read_buffer: None,
                 pending_message_length: None,
                 poisoned: false,
+                remote_pubkey,
             },
         }
+    }
+
+    pub fn remote_pubkey(&self) -> secp256k1::PublicKey {
+        self.encryptor.remote_pubkey
     }
 
     /// Encrypt data to be sent to peer
@@ -523,6 +529,7 @@ impl<const LEN_SIZE: usize> Bipolar for NoiseTranscoder<LEN_SIZE> {
 #[cfg(test)]
 mod tests {
     use bitcoin_hashes::hex::FromHex;
+    use secp256k1::SECP256K1;
 
     use super::*;
     use crate::BRONTIDE_MSG_MAX_LEN;
@@ -552,10 +559,23 @@ mod tests {
         let mut receiving_key = [0u8; 32];
         receiving_key.copy_from_slice(&receiving_key_vec);
 
-        let connected_peer =
-            NoiseTranscoder::with(sending_key, receiving_key, chaining_key);
-        let remote_peer =
-            NoiseTranscoder::with(receiving_key, sending_key, chaining_key);
+        let dummy_pubkey = secp256k1::PublicKey::from_secret_key(
+            SECP256K1,
+            &secp256k1::ONE_KEY,
+        );
+
+        let connected_peer = NoiseTranscoder::with(
+            sending_key,
+            receiving_key,
+            chaining_key,
+            dummy_pubkey,
+        );
+        let remote_peer = NoiseTranscoder::with(
+            receiving_key,
+            sending_key,
+            chaining_key,
+            dummy_pubkey,
+        );
 
         (connected_peer, remote_peer)
     }
