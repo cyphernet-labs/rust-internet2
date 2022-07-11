@@ -374,7 +374,7 @@ impl<const LEN_SIZE: usize> NoiseTranscoder<LEN_SIZE> {
             handshake = h;
             if let Some(ref act) = act {
                 connection.as_sender().send_raw(&*act)?;
-                if let HandshakeState::Complete(Some(transcoder)) = handshake {
+                if let HandshakeState::Complete(transcoder) = handshake {
                     break Ok(transcoder);
                 }
                 data =
@@ -400,7 +400,7 @@ impl<const LEN_SIZE: usize> NoiseTranscoder<LEN_SIZE> {
         loop {
             let (act, h) = handshake.next(&data)?;
             handshake = h;
-            if let HandshakeState::Complete(Some(transcoder)) = handshake {
+            if let HandshakeState::Complete(transcoder) = handshake {
                 break Ok(transcoder);
             }
             if let Some(act) = act {

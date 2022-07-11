@@ -57,7 +57,7 @@ pub enum HandshakeState<const LEN_SIZE: usize> {
     ResponderAwaitingActOne(ResponderAwaitingActOneState),
     InitiatorAwaitingActTwo(InitiatorAwaitingActTwoState),
     ResponderAwaitingActThree(ResponderAwaitingActThreeState),
-    Complete(Option<NoiseTranscoder<LEN_SIZE>>),
+    Complete(NoiseTranscoder<LEN_SIZE>),
 }
 
 // Enum dispatch for state machine. Single public interface can statically
@@ -446,7 +446,7 @@ impl InitiatorAwaitingActTwoState {
         act_three[0] = 0;
         Ok((
             Some(Act::Three(act_three)),
-            HandshakeState::Complete(Some(conduit)),
+            HandshakeState::Complete(conduit),
         ))
     }
 }
@@ -547,7 +547,7 @@ impl ResponderAwaitingActThreeState {
         // ownership to the Conduit for future use.
         conduit.read_buf(&input[bytes_read..]);
 
-        Ok((None, HandshakeState::Complete(Some(conduit))))
+        Ok((None, HandshakeState::Complete(conduit)))
     }
 }
 
@@ -898,7 +898,7 @@ mod test {
         let (act3, complete_state) =
             do_next_or_panic!(awaiting_act_two_state, &test_ctx.valid_act2);
 
-        let transcoder = if let Complete(Some(transcoder)) = complete_state {
+        let transcoder = if let Complete(transcoder) = complete_state {
             transcoder
         } else {
             panic!();
@@ -988,7 +988,7 @@ mod test {
         let (_act2, awaiting_act_three_state) =
             do_next_or_panic!(test_ctx.responder, &test_ctx.valid_act1);
 
-        let transcoder = if let (None, Complete(Some(transcoder))) =
+        let transcoder = if let (None, Complete(transcoder)) =
             awaiting_act_three_state.next(&test_ctx.valid_act3).unwrap()
         {
             transcoder
@@ -1011,7 +1011,7 @@ mod test {
         let mut act3 = test_ctx.valid_act3;
         act3.extend_from_slice(&[2; 100]);
 
-        let conduit = if let (None, Complete(Some(conduit))) =
+        let conduit = if let (None, Complete(conduit)) =
             awaiting_act_three_state.next(&act3).unwrap()
         {
             conduit
