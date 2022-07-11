@@ -1,6 +1,6 @@
 // LNP/BP Core Library implementing LNPBP specifications & standards
-// Written in 2020 by
-//     Rajarshi Maitra
+// Written in 2020 by Rajarshi Maitra
+// Refactored in 2022 by Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
 //
 // To the extent possible under law, the author(s) have dedicated all
 // copyright and related and neighboring rights to this software to
