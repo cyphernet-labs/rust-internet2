@@ -85,7 +85,7 @@ pub trait Extract: AsAny {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Display, AsAny)]
-#[display("0x{type_id:#04X} {:?}")]
+#[display("0x{type_id:#04X} {payload:?}")]
 pub struct Payload {
     pub type_id: TypeId,
     pub payload: Vec<u8>,
