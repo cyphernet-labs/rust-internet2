@@ -356,6 +356,18 @@ impl BrontozaurSession {
         BrontozaurSession::with_tcp_encrypted(stream, local_key, remote_addr)
     }
 
+    pub fn connect_with(
+        stream: std::net::TcpStream,
+        local_key: secp256k1::SecretKey,
+        remote_node: NodeAddr,
+    ) -> Result<Self, Error> {
+        BrontozaurSession::with_connect_tcp_encrypted(
+            stream,
+            local_key,
+            remote_node,
+        )
+    }
+
     pub fn connect(
         local_key: secp256k1::SecretKey,
         remote_node: NodeAddr,
@@ -430,6 +442,24 @@ impl<const LEN_SIZE: usize>
             local_key,
             encrypted::Connection::with(stream, remote_addr),
         )
+    }
+
+    fn with_connect_tcp_encrypted(
+        stream: std::net::TcpStream,
+        local_key: secp256k1::SecretKey,
+        remote_node: NodeAddr,
+    ) -> Result<Self, Error> {
+        let mut connection =
+            encrypted::Connection::with(stream, remote_node.addr);
+        let transcoder = NoiseTranscoder::new_initiator(
+            local_key,
+            remote_node.public_key(),
+            &mut connection,
+        )?;
+        Ok(Self {
+            transcoder,
+            connection,
+        })
     }
 
     fn connect_tcp_encrypted(
