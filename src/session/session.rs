@@ -361,7 +361,7 @@ impl BrontozaurSession {
         local_key: secp256k1::SecretKey,
         remote_node: NodeAddr,
     ) -> Result<Self, Error> {
-        BrontozaurSession::with_connect_tcp_encrypted(
+        BrontozaurSession::connect_with_tcp_encrypted(
             stream,
             local_key,
             remote_node,
@@ -444,7 +444,7 @@ impl<const LEN_SIZE: usize>
         )
     }
 
-    fn with_connect_tcp_encrypted(
+    fn connect_with_tcp_encrypted(
         stream: std::net::TcpStream,
         local_key: secp256k1::SecretKey,
         remote_node: NodeAddr,
