@@ -17,9 +17,11 @@ use strict_encoding::net::{
     AddrFormat, DecodeError, RawAddr, Transport, Uniform, UniformAddr,
 };
 #[cfg(feature = "tor")]
-use torut::onion::{TorPublicKeyV3, TORV3_PUBLIC_KEY_LENGTH};
+use torut::onion::{OnionAddressV3, TorPublicKeyV3, TORV3_PUBLIC_KEY_LENGTH};
 
 use crate::inet::PartialSocketAddr;
+#[cfg(feature = "tor")]
+use crate::inet::TorAddrV3;
 use crate::{InetAddr, InetSocketAddr, InetSocketAddrExt};
 
 impl strict_encoding::Strategy for InetAddr {
@@ -58,17 +60,21 @@ impl Uniform for InetAddr {
             InetAddr::Tor(tor) => {
                 use strict_encoding::net::ADDR_LEN;
                 let mut buf = [0u8; ADDR_LEN];
-                buf[1..].copy_from_slice(&tor.to_bytes());
+                buf[1..].copy_from_slice(&tor.get_public_key().to_bytes());
                 buf
             }
         }
     }
 
     #[inline]
-    fn port(&self) -> Option<u16> { None }
+    fn port(&self) -> Option<u16> {
+        None
+    }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> { None }
+    fn transport(&self) -> Option<Transport> {
+        None
+    }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -101,13 +107,21 @@ impl Uniform for InetAddr {
 }
 
 impl Uniform for PartialSocketAddr {
-    fn addr_format(&self) -> AddrFormat { self.address().addr_format() }
+    fn addr_format(&self) -> AddrFormat {
+        self.address().addr_format()
+    }
 
-    fn addr(&self) -> RawAddr { self.address().addr() }
+    fn addr(&self) -> RawAddr {
+        self.address().addr()
+    }
 
-    fn port(&self) -> Option<u16> { PartialSocketAddr::port(*self) }
+    fn port(&self) -> Option<u16> {
+        PartialSocketAddr::port(*self)
+    }
 
-    fn transport(&self) -> Option<Transport> { None }
+    fn transport(&self) -> Option<Transport> {
+        None
+    }
 
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
     where
@@ -134,10 +148,14 @@ impl Uniform for PartialSocketAddr {
 
 impl Uniform for InetSocketAddr {
     #[inline]
-    fn addr_format(&self) -> AddrFormat { self.address().addr_format() }
+    fn addr_format(&self) -> AddrFormat {
+        self.address().addr_format()
+    }
 
     #[inline]
-    fn addr(&self) -> RawAddr { self.address().addr() }
+    fn addr(&self) -> RawAddr {
+        self.address().addr()
+    }
 
     #[inline]
     fn port(&self) -> Option<u16> {
@@ -145,12 +163,14 @@ impl Uniform for InetSocketAddr {
             InetSocketAddr::IPv4(socket) => Some(socket.port()),
             InetSocketAddr::IPv6(socket) => Some(socket.port()),
             #[cfg(feature = "tor")]
-            InetSocketAddr::Tor(_) => None,
+            InetSocketAddr::Tor(addr) => Some(addr.port),
         }
     }
 
     #[inline]
-    fn transport(&self) -> Option<Transport> { None }
+    fn transport(&self) -> Option<Transport> {
+        None
+    }
 
     #[inline]
     fn from_uniform_addr(addr: UniformAddr) -> Result<Self, DecodeError>
@@ -177,7 +197,14 @@ impl Uniform for InetSocketAddr {
             ),
             #[cfg(feature = "tor")]
             AddrFormat::OnionV3 => {
-                InetSocketAddr::Tor(tor_from_raw_addr(addr.addr)?)
+                if let Some(port) = addr.port {
+                    InetSocketAddr::Tor(TorAddrV3::new(
+                        tor_from_raw_addr(addr.addr)?,
+                        port,
+                    ))
+                } else {
+                    return Err(DecodeError::InsufficientData);
+                }
             }
             _ => return Err(DecodeError::UnsupportedAddrFormat),
         })
@@ -186,13 +213,19 @@ impl Uniform for InetSocketAddr {
 
 impl Uniform for InetSocketAddrExt {
     #[inline]
-    fn addr_format(&self) -> AddrFormat { self.1.addr_format() }
+    fn addr_format(&self) -> AddrFormat {
+        self.1.addr_format()
+    }
 
     #[inline]
-    fn addr(&self) -> RawAddr { self.1.addr() }
+    fn addr(&self) -> RawAddr {
+        self.1.addr()
+    }
 
     #[inline]
-    fn port(&self) -> Option<u16> { self.1.port() }
+    fn port(&self) -> Option<u16> {
+        self.1.port()
+    }
 
     #[inline]
     fn transport(&self) -> Option<Transport> {
@@ -234,8 +267,10 @@ impl Uniform for InetSocketAddrExt {
 }
 
 #[cfg(feature = "tor")]
-fn tor_from_raw_addr(raw: RawAddr) -> Result<TorPublicKeyV3, DecodeError> {
+fn tor_from_raw_addr(raw: RawAddr) -> Result<OnionAddressV3, DecodeError> {
     let mut a = [0u8; TORV3_PUBLIC_KEY_LENGTH];
     a.copy_from_slice(&raw[1..]);
-    TorPublicKeyV3::from_bytes(&a).map_err(|_| DecodeError::InvalidPubkey)
+    TorPublicKeyV3::from_bytes(&a)
+        .map_err(|_| DecodeError::InvalidPubkey)
+        .map(|key| key.get_onion_address())
 }

@@ -22,7 +22,7 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 
 #[cfg(feature = "tor")]
-use torut::onion::{OnionAddressV3, TorPublicKeyV3};
+use torut::onion::OnionAddressV3;
 
 /// Address type do not support ONION address format and can be used only with
 /// IPv4 or IPv6 addresses
@@ -73,12 +73,6 @@ pub enum AddrParseError {
 /// * IPv6 address
 /// * Tor Onion address (V3 only)
 ///
-/// NB: we are using [`TorPublicKeyV3`] instead of `OnionAddressV3`, since
-/// `OnionAddressV3` keeps checksum and other information which can be
-/// reconstructed from [`TorPublicKeyV3`]. The 2-byte checksum in
-/// `OnionAddressV3` is designed for human-readable part that checks that the
-/// address was typed in correctly. In computer-stored digital data it may be
-/// deterministically regenerated and does not add any additional security.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, From, Display)]
 #[cfg_attr(
     all(feature = "serde", feature = "serde_str_helpers"),
@@ -108,7 +102,7 @@ pub enum InetAddr {
     /// Tor address of V3 standard
     #[cfg(feature = "tor")]
     #[from]
-    Tor(TorPublicKeyV3),
+    Tor(OnionAddressV3),
 }
 
 impl PartialOrd for InetAddr {
@@ -122,7 +116,7 @@ impl PartialOrd for InetAddr {
             }
             #[cfg(feature = "tor")]
             (InetAddr::Tor(addr1), InetAddr::Tor(addr2)) => {
-                addr1.partial_cmp(addr2)
+                addr1.get_public_key().partial_cmp(&addr2.get_public_key())
             }
             (InetAddr::IPv4(_), _) => Some(Ordering::Greater),
             (_, InetAddr::IPv4(_)) => Some(Ordering::Less),
@@ -140,7 +134,7 @@ impl Ord for InetAddr {
     }
 }
 
-// We need this since TorPublicKeyV3 does not implement Hash
+// We need this since OnionAddressV3 does not implement Hash
 #[allow(clippy::derive_hash_xor_eq)]
 impl std::hash::Hash for InetAddr {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -148,7 +142,9 @@ impl std::hash::Hash for InetAddr {
             InetAddr::IPv4(ipv4) => ipv4.hash(state),
             InetAddr::IPv6(ipv6) => ipv6.hash(state),
             #[cfg(feature = "tor")]
-            InetAddr::Tor(torv3) => torv3.as_bytes().hash(state),
+            InetAddr::Tor(torv3) => {
+                torv3.get_public_key().as_bytes().hash(state)
+            }
         }
     }
 }
@@ -182,18 +178,24 @@ impl InetAddr {
     /// enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn is_tor(self) -> bool { false }
+    pub fn is_tor(self) -> bool {
+        false
+    }
 
     /// Always returns [`Option::None`] (the library is built without `tor`
     /// feature; use it to enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn onion_address(self) -> Option<()> { None }
+    pub fn onion_address(self) -> Option<()> {
+        None
+    }
 
     /// Determines whether provided address is a Tor address
     #[cfg(feature = "tor")]
     #[inline]
-    pub fn is_tor(self) -> bool { matches!(self, InetAddr::Tor(_)) }
+    pub fn is_tor(self) -> bool {
+        matches!(self, InetAddr::Tor(_))
+    }
 
     /// Returns Onion v3 address, if any, or [`Option::None`]
     #[cfg(feature = "tor")]
@@ -201,14 +203,16 @@ impl InetAddr {
     pub fn onion_address(self) -> Option<OnionAddressV3> {
         match self {
             InetAddr::IPv4(_) | InetAddr::IPv6(_) => None,
-            InetAddr::Tor(key) => Some(OnionAddressV3::from(&key)),
+            InetAddr::Tor(onion) => Some(onion),
         }
     }
 }
 
 impl Default for InetAddr {
     #[inline]
-    fn default() -> Self { InetAddr::IPv4(Ipv4Addr::from(0)) }
+    fn default() -> Self {
+        InetAddr::IPv4(Ipv4Addr::from(0))
+    }
 }
 
 #[cfg(feature = "tor")]
@@ -243,14 +247,6 @@ impl From<IpAddr> for InetAddr {
             IpAddr::V4(v4) => InetAddr::from(v4),
             IpAddr::V6(v6) => InetAddr::from(v6),
         }
-    }
-}
-
-#[cfg(feature = "tor")]
-impl From<OnionAddressV3> for InetAddr {
-    #[inline]
-    fn from(addr: OnionAddressV3) -> Self {
-        InetAddr::Tor(addr.get_public_key())
     }
 }
 
@@ -298,17 +294,23 @@ impl parse_arg::ParseArgFromStr for InetAddr {
 
 impl From<[u8; 4]> for InetAddr {
     #[inline]
-    fn from(value: [u8; 4]) -> Self { InetAddr::from(Ipv4Addr::from(value)) }
+    fn from(value: [u8; 4]) -> Self {
+        InetAddr::from(Ipv4Addr::from(value))
+    }
 }
 
 impl From<[u8; 16]> for InetAddr {
     #[inline]
-    fn from(value: [u8; 16]) -> Self { InetAddr::from(Ipv6Addr::from(value)) }
+    fn from(value: [u8; 16]) -> Self {
+        InetAddr::from(Ipv6Addr::from(value))
+    }
 }
 
 impl From<[u16; 8]> for InetAddr {
     #[inline]
-    fn from(value: [u16; 8]) -> Self { InetAddr::from(Ipv6Addr::from(value)) }
+    fn from(value: [u16; 8]) -> Self {
+        InetAddr::from(Ipv6Addr::from(value))
+    }
 }
 
 /// A universal address covering IPv4, IPv6 and Tor in a single byte sequence
@@ -336,10 +338,9 @@ pub enum PartialSocketAddr {
     /// IP address of V6 standard with optional port number
     IPv6(Ipv6Addr, Option<u16>),
 
-    /// Tor address of V3 standard
+    /// Tor address of V3 standard with optional port number
     #[cfg(feature = "tor")]
-    #[from]
-    Tor(TorPublicKeyV3),
+    Tor(OnionAddressV3, Option<u16>),
 }
 
 impl PartialOrd for PartialSocketAddr {
@@ -355,6 +356,12 @@ impl PartialOrd for PartialSocketAddr {
                 PartialSocketAddr::IPv6(addr2, Some(port2)),
             ) => SocketAddrV6::new(*addr1, *port1, 0, 0)
                 .partial_cmp(&SocketAddrV6::new(*addr2, *port2, 0, 0)),
+            #[cfg(feature = "tor")]
+            (
+                PartialSocketAddr::Tor(addr1, Some(port1)),
+                PartialSocketAddr::Tor(addr2, Some(port2)),
+            ) => TorAddrV3::new(*addr1, *port1)
+                .partial_cmp(&TorAddrV3::new(*addr2, *port2)),
             (
                 PartialSocketAddr::IPv4(addr1, Some(port1)),
                 PartialSocketAddr::IPv4(addr2, None),
@@ -365,6 +372,12 @@ impl PartialOrd for PartialSocketAddr {
                 PartialSocketAddr::IPv6(addr2, None),
             ) => SocketAddrV6::new(*addr1, *port1, 0, 0)
                 .partial_cmp(&SocketAddrV6::new(*addr2, 0, 0, 0)),
+            #[cfg(feature = "tor")]
+            (
+                PartialSocketAddr::Tor(addr1, Some(port1)),
+                PartialSocketAddr::Tor(addr2, None),
+            ) => TorAddrV3::new(*addr1, *port1)
+                .partial_cmp(&TorAddrV3::new(*addr2, 0)),
             (
                 PartialSocketAddr::IPv4(addr1, None),
                 PartialSocketAddr::IPv4(addr2, Some(port2)),
@@ -375,6 +388,12 @@ impl PartialOrd for PartialSocketAddr {
                 PartialSocketAddr::IPv6(addr2, Some(port2)),
             ) => SocketAddrV6::new(*addr1, 0, 0, 0)
                 .partial_cmp(&SocketAddrV6::new(*addr2, *port2, 0, 0)),
+            #[cfg(feature = "tor")]
+            (
+                PartialSocketAddr::Tor(addr1, None),
+                PartialSocketAddr::Tor(addr2, Some(port2)),
+            ) => TorAddrV3::new(*addr1, 0)
+                .partial_cmp(&TorAddrV3::new(*addr2, *port2)),
             (
                 PartialSocketAddr::IPv4(addr1, None),
                 PartialSocketAddr::IPv4(addr2, None),
@@ -384,9 +403,11 @@ impl PartialOrd for PartialSocketAddr {
                 PartialSocketAddr::IPv6(addr2, None),
             ) => addr1.partial_cmp(addr2),
             #[cfg(feature = "tor")]
-            (PartialSocketAddr::Tor(addr1), PartialSocketAddr::Tor(addr2)) => {
-                addr1.partial_cmp(addr2)
-            }
+            (
+                PartialSocketAddr::Tor(addr1, None),
+                PartialSocketAddr::Tor(addr2, None),
+            ) => TorAddrV3::new(*addr1, 0)
+                .partial_cmp(&TorAddrV3::new(*addr2, 0)),
             (PartialSocketAddr::IPv4(_, _), _) => Some(Ordering::Greater),
             (_, PartialSocketAddr::IPv4(_, _)) => Some(Ordering::Less),
             #[cfg(feature = "tor")]
@@ -403,7 +424,7 @@ impl Ord for PartialSocketAddr {
     }
 }
 
-// We need this since TorPublicKeyV3 does not implement Hash
+// We need this since OnionAddressV3 does not implement Hash
 #[allow(clippy::derive_hash_xor_eq)]
 impl std::hash::Hash for PartialSocketAddr {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -417,7 +438,10 @@ impl std::hash::Hash for PartialSocketAddr {
                 port.hash(state)
             }
             #[cfg(feature = "tor")]
-            PartialSocketAddr::Tor(torv3) => torv3.as_bytes().hash(state),
+            PartialSocketAddr::Tor(torv3, port) => {
+                torv3.get_public_key().as_bytes().hash(state);
+                port.hash(state);
+            }
         }
     }
 }
@@ -426,7 +450,9 @@ impl PartialSocketAddr {
     /// Constructs new socket address matching the provided Tor v3 address
     #[cfg(feature = "tor")]
     #[inline]
-    pub fn tor3(tor: TorPublicKeyV3) -> Self { PartialSocketAddr::Tor(tor) }
+    pub fn tor3(tor: OnionAddressV3, port: Option<u16>) -> Self {
+        PartialSocketAddr::Tor(tor, port)
+    }
 
     /// Constructs new socket address from an internet address and a port
     /// information
@@ -443,18 +469,24 @@ impl PartialSocketAddr {
     /// enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn is_tor(self) -> bool { false }
+    pub fn is_tor(self) -> bool {
+        false
+    }
 
     /// Always returns [`Option::None`] (the library is built without `tor`
     /// feature; use it to enable Tor addresses).
     #[cfg(not(feature = "tor"))]
     #[inline]
-    pub fn onion_address(self) -> Option<()> { None }
+    pub fn onion_address(self) -> Option<()> {
+        None
+    }
 
     /// Determines whether provided address is a Tor address
     #[cfg(feature = "tor")]
     #[inline]
-    pub fn is_tor(self) -> bool { matches!(self, PartialSocketAddr::Tor(_)) }
+    pub fn is_tor(self) -> bool {
+        matches!(self, PartialSocketAddr::Tor(_, _))
+    }
 
     /// Returns Onion v3 address, if any, or [`Option::None`]
     #[cfg(feature = "tor")]
@@ -464,7 +496,7 @@ impl PartialSocketAddr {
             PartialSocketAddr::IPv4(_, _) | PartialSocketAddr::IPv6(_, _) => {
                 None
             }
-            PartialSocketAddr::Tor(key) => Some(OnionAddressV3::from(&key)),
+            PartialSocketAddr::Tor(onion, _) => Some(onion),
         }
     }
 
@@ -475,7 +507,7 @@ impl PartialSocketAddr {
             PartialSocketAddr::IPv4(addr, _) => InetAddr::IPv4(addr),
             PartialSocketAddr::IPv6(addr, _) => InetAddr::IPv6(addr),
             #[cfg(feature = "tor")]
-            PartialSocketAddr::Tor(tor) => InetAddr::Tor(tor),
+            PartialSocketAddr::Tor(onion, _) => InetAddr::Tor(onion),
         }
     }
 
@@ -486,7 +518,7 @@ impl PartialSocketAddr {
             PartialSocketAddr::IPv4(_, port)
             | PartialSocketAddr::IPv6(_, port) => port,
             #[cfg(feature = "tor")]
-            PartialSocketAddr::Tor(_) => None,
+            PartialSocketAddr::Tor(_, _) => None,
         }
     }
 
@@ -499,6 +531,10 @@ impl PartialSocketAddr {
             PartialSocketAddr::IPv6(addr, None) => InetSocketAddr::IPv6(
                 SocketAddrV6::new(addr, default_port, 0, 0),
             ),
+            #[cfg(feature = "tor")]
+            PartialSocketAddr::Tor(addr, None) => {
+                InetSocketAddr::Tor(TorAddrV3::new(addr, default_port))
+            }
             PartialSocketAddr::IPv4(addr, Some(port)) => {
                 InetSocketAddr::IPv4(SocketAddrV4::new(addr, port))
             }
@@ -506,14 +542,18 @@ impl PartialSocketAddr {
                 InetSocketAddr::IPv6(SocketAddrV6::new(addr, port, 0, 0))
             }
             #[cfg(feature = "tor")]
-            PartialSocketAddr::Tor(addr) => InetSocketAddr::Tor(addr),
+            PartialSocketAddr::Tor(addr, Some(port)) => {
+                InetSocketAddr::Tor(TorAddrV3::new(addr, port))
+            }
         }
     }
 }
 
 impl Default for PartialSocketAddr {
     #[inline]
-    fn default() -> Self { PartialSocketAddr::IPv4(Ipv4Addr::from(0), None) }
+    fn default() -> Self {
+        PartialSocketAddr::IPv4(Ipv4Addr::from(0), None)
+    }
 }
 
 #[cfg(feature = "tor")]
@@ -525,7 +565,7 @@ impl TryFrom<PartialSocketAddr> for IpAddr {
             PartialSocketAddr::IPv4(addr, _) => IpAddr::V4(addr),
             PartialSocketAddr::IPv6(addr, _) => IpAddr::V6(addr),
             #[cfg(feature = "tor")]
-            PartialSocketAddr::Tor(_) => return Err(NoOnionSupportError),
+            PartialSocketAddr::Tor(_, _) => return Err(NoOnionSupportError),
         })
     }
 }
@@ -542,12 +582,16 @@ impl From<IpAddr> for PartialSocketAddr {
 
 impl From<Ipv4Addr> for PartialSocketAddr {
     #[inline]
-    fn from(value: Ipv4Addr) -> Self { PartialSocketAddr::IPv4(value, None) }
+    fn from(value: Ipv4Addr) -> Self {
+        PartialSocketAddr::IPv4(value, None)
+    }
 }
 
 impl From<Ipv6Addr> for PartialSocketAddr {
     #[inline]
-    fn from(value: Ipv6Addr) -> Self { PartialSocketAddr::IPv6(value, None) }
+    fn from(value: Ipv6Addr) -> Self {
+        PartialSocketAddr::IPv6(value, None)
+    }
 }
 
 impl From<SocketAddr> for PartialSocketAddr {
@@ -578,7 +622,7 @@ impl From<SocketAddrV6> for PartialSocketAddr {
 impl From<OnionAddressV3> for PartialSocketAddr {
     #[inline]
     fn from(addr: OnionAddressV3) -> Self {
-        PartialSocketAddr::Tor(addr.get_public_key())
+        PartialSocketAddr::Tor(addr, None)
     }
 }
 
@@ -588,7 +632,7 @@ impl From<InetAddr> for PartialSocketAddr {
             InetAddr::IPv4(addr) => PartialSocketAddr::IPv4(addr, None),
             InetAddr::IPv6(addr) => PartialSocketAddr::IPv6(addr, None),
             #[cfg(feature = "tor")]
-            InetAddr::Tor(addr) => PartialSocketAddr::Tor(addr),
+            InetAddr::Tor(addr) => PartialSocketAddr::Tor(addr, None),
         }
     }
 }
@@ -603,7 +647,9 @@ impl From<InetSocketAddr> for PartialSocketAddr {
                 PartialSocketAddr::IPv6(*socket.ip(), Some(socket.port()))
             }
             #[cfg(feature = "tor")]
-            InetSocketAddr::Tor(addr) => PartialSocketAddr::Tor(addr),
+            InetSocketAddr::Tor(tor) => {
+                PartialSocketAddr::Tor(tor.onion_address, Some(tor.port))
+            }
         }
     }
 }
@@ -613,6 +659,8 @@ impl fmt::Display for PartialSocketAddr {
         match self {
             PartialSocketAddr::IPv4(addr, None) => fmt::Display::fmt(addr, f),
             PartialSocketAddr::IPv6(addr, None) => fmt::Display::fmt(addr, f),
+            #[cfg(feature = "tor")]
+            PartialSocketAddr::Tor(addr, None) => fmt::Display::fmt(addr, f),
             PartialSocketAddr::IPv4(addr, Some(port)) => {
                 fmt::Display::fmt(&SocketAddrV4::new(*addr, *port), f)
             }
@@ -620,7 +668,9 @@ impl fmt::Display for PartialSocketAddr {
                 fmt::Display::fmt(&SocketAddrV6::new(*addr, *port, 0, 0), f)
             }
             #[cfg(feature = "tor")]
-            PartialSocketAddr::Tor(addr) => fmt::Display::fmt(addr, f),
+            PartialSocketAddr::Tor(addr, Some(port)) => {
+                fmt::Display::fmt(&TorAddrV3::new(*addr, *port), f)
+            }
         }
     }
 }
@@ -717,7 +767,9 @@ pub enum Transport {
 
 impl Default for Transport {
     #[inline]
-    fn default() -> Self { Transport::Tcp }
+    fn default() -> Self {
+        Transport::Tcp
+    }
 }
 
 impl FromStr for Transport {
@@ -768,7 +820,72 @@ pub enum InetSocketAddr {
     /// Tor address of V3 standard
     #[cfg(feature = "tor")]
     #[from]
-    Tor(TorPublicKeyV3),
+    Tor(TorAddrV3),
+}
+
+#[derive(Copy, Clone, Display, Eq, PartialEq, Debug)]
+#[cfg_attr(
+    all(feature = "serde", feature = "serde_str_helpers"),
+    derive(Serialize, Deserialize),
+    serde(
+        try_from = "serde_str_helpers::DeserBorrowStr",
+        into = "String",
+        crate = "serde_crate"
+    )
+)]
+#[cfg_attr(
+    all(feature = "serde", not(feature = "serde_str_helpers")),
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
+#[cfg(feature = "tor")]
+#[display("{onion_address}:{port}")]
+pub struct TorAddrV3 {
+    pub onion_address: OnionAddressV3,
+    pub port: u16,
+}
+
+#[cfg(feature = "tor")]
+impl TorAddrV3 {
+    pub fn new(onion_address: OnionAddressV3, port: u16) -> TorAddrV3 {
+        TorAddrV3 {
+            onion_address,
+            port,
+        }
+    }
+}
+
+#[cfg(feature = "tor")]
+impl FromStr for TorAddrV3 {
+    type Err = AddrParseError;
+    fn from_str(str: &str) -> Result<Self, Self::Err> {
+        let (str_addr, str_port) =
+            str.split_once(':')
+                .ok_or(AddrParseError::WrongSocketFormat(
+                "Tor address needs to be formatted as <onion_address>:<port>"
+                    .to_string(),
+            ))?;
+        let onion_address = OnionAddressV3::from_str(&str_addr)?;
+        let port = u16::from_str(&str_port)?;
+        Ok(TorAddrV3::new(onion_address, port))
+    }
+}
+
+#[cfg(feature = "tor")]
+impl PartialOrd for TorAddrV3 {
+    fn partial_cmp(&self, other: &TorAddrV3) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[cfg(feature = "tor")]
+impl Ord for TorAddrV3 {
+    fn cmp(&self, other: &TorAddrV3) -> Ordering {
+        self.onion_address
+            .get_public_key()
+            .cmp(&other.onion_address.get_public_key())
+            .then(self.port.cmp(&other.port))
+    }
 }
 
 impl PartialOrd for InetSocketAddr {
@@ -800,7 +917,7 @@ impl Ord for InetSocketAddr {
     }
 }
 
-// We need this since TorPublicKeyV3 does not implement Hash
+// We need this since OnionAddressV3 does not implement Hash
 #[allow(clippy::derive_hash_xor_eq)]
 impl std::hash::Hash for InetSocketAddr {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -808,7 +925,14 @@ impl std::hash::Hash for InetSocketAddr {
             InetSocketAddr::IPv4(socketv4) => socketv4.hash(state),
             InetSocketAddr::IPv6(socketv6) => socketv6.hash(state),
             #[cfg(feature = "tor")]
-            InetSocketAddr::Tor(torv3) => torv3.as_bytes().hash(state),
+            InetSocketAddr::Tor(tor_addr) => {
+                tor_addr
+                    .onion_address
+                    .get_public_key()
+                    .as_bytes()
+                    .hash(state);
+                tor_addr.port.hash(state);
+            }
         }
     }
 }
@@ -824,7 +948,9 @@ impl InetSocketAddr {
     /// Constructs new socket address matching the provided Tor v3 address
     #[cfg(feature = "tor")]
     #[inline]
-    pub fn tor3(tor: TorPublicKeyV3) -> Self { InetSocketAddr::Tor(tor) }
+    pub fn tor3(onion_address: OnionAddressV3, port: u16) -> Self {
+        InetSocketAddr::Tor(TorAddrV3::new(onion_address, port))
+    }
 
     /// Constructs new socket address from an internet address and a port
     /// information
@@ -857,7 +983,7 @@ impl InetSocketAddr {
             InetSocketAddr::IPv4(socket) => InetAddr::IPv4(*socket.ip()),
             InetSocketAddr::IPv6(socket) => InetAddr::IPv6(*socket.ip()),
             #[cfg(feature = "tor")]
-            InetSocketAddr::Tor(tor) => InetAddr::Tor(tor),
+            InetSocketAddr::Tor(tor) => InetAddr::Tor(tor.onion_address),
         }
     }
 
@@ -895,8 +1021,8 @@ impl FromStr for InetSocketAddr {
                 Err(AddrParseError::NeedsTorFeature)
             }
             #[cfg(feature = "tor")]
-            if let Ok(addr) = OnionAddressV3::from_str(s) {
-                Ok(InetSocketAddr::Tor(addr.get_public_key()))
+            if let Ok(addr) = TorAddrV3::from_str(s) {
+                Ok(InetSocketAddr::Tor(addr))
             } else {
                 Err(AddrParseError::WrongAddrFormat(s.to_owned()))
             }
