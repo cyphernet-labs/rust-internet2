@@ -111,7 +111,7 @@ impl<const LEN_SIZE: usize> NoiseEncryptor<LEN_SIZE> {
         let mut ciphertext = vec![
             0u8;
             Self::TAGGED_MESSAGE_LENGTH_HEADER_SIZE
-                + length as usize
+                + length
                 + chacha::TAG_SIZE
         ];
 
@@ -373,7 +373,7 @@ impl<const LEN_SIZE: usize> NoiseTranscoder<LEN_SIZE> {
             let (act, h) = handshake.next(&data)?;
             handshake = h;
             if let Some(ref act) = act {
-                connection.as_sender().send_raw(&*act)?;
+                connection.as_sender().send_raw(act)?;
                 if let HandshakeState::Complete(transcoder) = handshake {
                     break Ok(transcoder);
                 }
@@ -404,7 +404,7 @@ impl<const LEN_SIZE: usize> NoiseTranscoder<LEN_SIZE> {
                 break Ok(transcoder);
             }
             if let Some(act) = act {
-                connection.as_sender().send_raw(&*act)?;
+                connection.as_sender().send_raw(&act)?;
                 data =
                     connection.as_receiver().recv_raw(handshake.data_len())?;
             }

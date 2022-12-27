@@ -208,8 +208,7 @@ fn recv_noise_message<const LEN_SIZE: usize>(
     decrypt.decrypt(encrypted_len)?;
     let len = decrypt.pending_message_len().ok_or(Error::NoNoiseHeader)?;
     // Reading & decrypting payload
-    let encrypted_payload =
-        reader.recv_raw(len as usize + noise::chacha::TAG_SIZE)?;
+    let encrypted_payload = reader.recv_raw(len + noise::chacha::TAG_SIZE)?;
     let payload = decrypt.decrypt(encrypted_payload)?;
     Ok(payload)
 }
