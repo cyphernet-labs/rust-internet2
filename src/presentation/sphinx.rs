@@ -288,7 +288,7 @@ impl<const PACKET_LEN: usize> SphinxPacket<PACKET_LEN> {
         // Allocate and initialize fields to zero-filled slices
         let mut mix_header = [0u8; PACKET_LEN];
         let mut mix_header_len = 0usize;
-        let mut next_hmac = Hmac::<sha256::Hash>::default();
+        let mut next_hmac = Hmac::<sha256::Hash>::all_zeros();
 
         let padding_key = generate_key(PAD_KEY, &session_key[..]);
         let padding_bytes = generate_cipher_stream(padding_key, PACKET_LEN);
@@ -559,10 +559,13 @@ where
         engine.input(&ephemeral_pk.serialize());
         engine.input(&shared_secret);
         let blinding_factor = sha256::Hash::from_engine(engine);
+        let blinding_factor =
+            secp256k1::Scalar::from_be_bytes(blinding_factor.into_inner())
+                .expect("negligible probability");
 
         // Blind ephemeral key for next loop
-        ephemeral_key
-            .mul_assign(&blinding_factor)
+        ephemeral_key = ephemeral_key
+            .mul_tweak(&blinding_factor)
             .expect("negligible probability of exceeding group size");
     }
 

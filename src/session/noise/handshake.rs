@@ -38,9 +38,7 @@ macro_rules! concat_then_sha256 {
 	}}
 }
 
-#[derive(
-    Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Display, Error, From
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Display, Error, From)]
 #[display(inner)]
 pub enum HandshakeError {
     #[from]
@@ -49,6 +47,9 @@ pub enum HandshakeError {
     #[from]
     #[from(chacha20poly1305::aead::Error)]
     Encryption(EncryptionError),
+
+    #[from]
+    InvalidSecretKey(secp256k1::scalar::OutOfRangeError),
 }
 
 #[derive(Debug)]
@@ -416,7 +417,7 @@ impl InitiatorAwaitingActTwoState {
         let ecdh = ecdh(
             &initiator_static_private_key,
             &responder_ephemeral_public_key,
-        );
+        )?;
 
         // 4. ck, temp_k3 = HKDF(ck, se)
         let (chaining_key, temporary_key) = hkdf::derive(&chaining_key, &ecdh);
@@ -523,7 +524,7 @@ impl ResponderAwaitingActThreeState {
         let hash = concat_then_sha256!(hash, tagged_encrypted_pubkey);
 
         // 6. se = ECDH(e.priv, rs)
-        let ecdh = ecdh(&responder_ephemeral_private_key, &initiator_pubkey);
+        let ecdh = ecdh(&responder_ephemeral_private_key, &initiator_pubkey)?;
 
         // 7. ck, temp_k3 = HKDF(ck, se)
         let (chaining_key, temporary_key) = hkdf::derive(&chaining_key, &ecdh);
@@ -593,7 +594,7 @@ fn calculate_act_message(
 
     // 3. ACT1: es = ECDH(e.priv, rs)
     // 3. ACT2: es = ECDH(e.priv, re)
-    let ecdh = ecdh(local_private_ephemeral_key, remote_public_key);
+    let ecdh = ecdh(local_private_ephemeral_key, remote_public_key)?;
 
     // 4. ACT1: ck, temp_k1 = HKDF(ck, es)
     // 4. ACT2: ck, temp_k2 = HKDF(ck, ee)
@@ -655,7 +656,7 @@ fn process_act_message(
 
     // 5. Act1: es = ECDH(s.priv, re)
     // 5. Act2: ee = ECDH(e.priv, ee)
-    let ecdh = ecdh(local_private_key, &ephemeral_public_key);
+    let ecdh = ecdh(local_private_key, &ephemeral_public_key)?;
 
     // 6. Act1: ck, temp_k1 = HKDF(ck, es)
     // 6. Act2: ck, temp_k2 = HKDF(ck, ee)
@@ -677,15 +678,17 @@ fn private_key_to_public_key(private_key: &SecretKey) -> PublicKey {
     PublicKey::from_secret_key(&curve, private_key)
 }
 
-fn ecdh(private_key: &SecretKey, public_key: &PublicKey) -> SymmetricKey {
+fn ecdh(
+    private_key: &SecretKey,
+    public_key: &PublicKey,
+) -> Result<SymmetricKey, secp256k1::scalar::OutOfRangeError> {
     let curve = secp256k1::Secp256k1::new();
-    let mut pk_object = *public_key;
-    pk_object
-        .mul_assign(&curve, &private_key[..])
-        .expect("invalid multiplication");
-
-    let preimage = pk_object.serialize();
-    concat_then_sha256!(preimage).into_inner()
+    let scalar = secp256k1::Scalar::from_be_bytes(private_key.secret_bytes())?;
+    let preimage = public_key
+        .mul_tweak(&curve, &scalar)
+        .expect("invalid multiplication")
+        .serialize();
+    Ok(concat_then_sha256!(preimage).into_inner())
 }
 
 #[cfg(test)]

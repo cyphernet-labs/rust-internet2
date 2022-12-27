@@ -1,6 +1,6 @@
 [package]
 name = "internet2"
-version = "0.8.4"
+version = "0.9.0-rc.1"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 description = "Rust implementation for the stack of Internet2 protocols"
@@ -33,15 +33,15 @@ required-features = ["keygen"]
 [dependencies]
 # Dependencies on other LNP/BP repositories
 # -----------------------------------------
-amplify = "3.12.1"
-strict_encoding = { version = "0.8.0", default-features = false, features = ["derive"] }
-lightning_encoding = "0.8.0"
-inet2_addr = { version = "0.8.3", features = ["strict_encoding", "lightning_encoding", "stringly_conversions"], path = "./addr" }
+amplify = "3.13.0"
+strict_encoding = { version = "0.9.0-rc.2", default-features = false, features = ["derive"] }
+lightning_encoding = "0.9.0-rc.1"
+inet2_addr = { version = "0.9.0-rc.1", features = ["strict_encoding", "lightning_encoding", "stringly_conversions"], path = "./addr" }
 inet2_derive = { version = "0.9.0-rc.1", default-features = false, optional = true, path = "./derive" }
 # Dependencies on core rust-bitcoin & cryptography
 # ------------------------------------------------
-secp256k1 = "0.22.1"
-bitcoin_hashes = "0.10.0"
+secp256k1 = "0.24.2"
+bitcoin_hashes = "0.11.0"
 chacha20 = "0.9"
 chacha20poly1305 = "0.9"
 # Core rust projects
@@ -51,7 +51,7 @@ chacha20poly1305 = "0.9"
 # <https://github.com/rust-lang/api-guidelines/issues/180> for the explanation
 # and references.
 serde_crate = { package = "serde", version = "1.0", features = ["derive"], optional = true }
-serde_with = { version = "1.8", features = ["hex"], optional = true }
+serde_with = { version = "1.14", features = ["hex"], optional = true }
 # Networking deps
 # ---------------
 # These dependencies are used to provide support for networking URLs in
@@ -59,9 +59,9 @@ zmq = { package = "zmq2", version = "0.5.0", optional = true }
 
 [dev-dependencies]
 torut = "0.2.0"
-strict_encoding_test = "0.8.0"
+strict_encoding_test = "0.9.0-rc.1"
 strict_encoding_derive = "0.8.0"
-compiletest_rs = "0.7.0"
+compiletest_rs = "0.9.0"
 
 # Features
 # ========
