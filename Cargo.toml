@@ -37,7 +37,7 @@ amplify = "3.12.1"
 strict_encoding = { version = "0.8.0", default-features = false, features = ["derive"] }
 lightning_encoding = "0.8.0"
 inet2_addr = { version = "0.8.3", features = ["strict_encoding", "lightning_encoding", "stringly_conversions"], path = "./addr" }
-inet2_derive = { version = "0.8.0", default-features = false, optional = true, path = "./derive" }
+inet2_derive = { version = "0.9.0-rc.1", default-features = false, optional = true, path = "./derive" }
 # Dependencies on core rust-bitcoin & cryptography
 # ------------------------------------------------
 secp256k1 = "0.22.1"

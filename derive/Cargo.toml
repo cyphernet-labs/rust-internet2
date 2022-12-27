@@ -1,6 +1,6 @@
 [package]
 name = "inet2_derive"
-version = "0.8.1"
+version = "0.9.0-rc.1"
 license = "Apache-2.0"
 authors = ["Dr. Maxim Orlovsky <orlovsky@pandoracore.com>"]
 description = "Derivation macros for Internet2-based crates"
@@ -18,11 +18,11 @@ proc-macro = true
 quote = "1"
 syn = "1.0.75"
 proc-macro2 = "1"
-amplify = "3.12.1"
+amplify = "3.13.0"
 
 [dev-dependencies]
-amplify = "3.12.1"
+amplify = "3.13.0"
 internet2 = { path = "..", default-features = false }
-strict_encoding = { version = "0.8.0", default-features = false, features = ["derive"] }
-lightning_encoding = "0.8.0"
-secp256k1 = "0.22.1"
+strict_encoding = { version = "0.9.0-rc.2", default-features = false, features = ["derive"] }
+lightning_encoding = "0.9.0-rc.1"
+secp256k1 = "0.24.2"
