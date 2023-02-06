@@ -56,7 +56,7 @@ pub(crate) fn get_encoding_crate(
     name: &str,
     default: &str,
 ) -> Path {
-    let example = format!("#[{}(crate_path)]", name);
+    let example = format!("#[{name}(crate_path)]");
     let default = Path::from(Ident::new(default, input.span()));
 
     let list = match attr_list(&input.attrs, name, &example).ok().flatten() {

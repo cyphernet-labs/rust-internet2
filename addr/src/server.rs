@@ -147,5 +147,5 @@ impl FromStr for ServiceAddr {
 
 impl ServiceAddr {
     /// Returns ZeroMQ connection string
-    pub fn zmq_connect_string(&self) -> String { format!("{:#}", self) }
+    pub fn zmq_connect_string(&self) -> String { format!("{self:#}") }
 }
